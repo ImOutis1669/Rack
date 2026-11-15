@@ -40,6 +40,11 @@ class ListingOut(BaseModel):
     country: str | None
     score: float | None = None
     why: str | None = None
+    category: str | None = None
+    measurements: dict[str, float] = {}
+    feedback: int | None = None
+    saved: bool = False
+    price_gbp_at_save: Decimal | None = None
     buy_links: list[BuyLink]
 
 
@@ -60,3 +65,8 @@ class SourceHealthOut(BaseModel):
     consecutive_errors: int
     last_result_count: int | None
     status: str  # ok | degraded | down | not_configured | never_run
+
+
+class VisitOut(BaseModel):
+    visit_start: datetime
+    last_visit: datetime | None

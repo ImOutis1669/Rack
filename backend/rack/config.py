@@ -31,13 +31,26 @@ class Settings(BaseSettings):
     rate_vinted: float = 10.0
     rate_grailed: float = 10.0
     rate_vestiaire: float = 15.0
+    rate_images: float = 1.0  # listing thumbnails from marketplace CDNs (embedding only)
+
+    # Embeddings (worker only)
+    clip_model: str = "ViT-B-32"
+    clip_pretrained: str = "laion2b_s34b_b79k"
+    rack_embed_images_per_listing: int = 1
+    rack_data_dir: Path = Path("data")
 
     # Worker
     rack_refresh_minutes: int = 30
-    # Phase 1 only: plain queries until the taste-driven planner exists (Phase 2).
+    rack_queries_per_refresh: int = 12
+    rack_score_seconds: int = 60
+    # Used only until you've added designers / wishlist text.
     rack_seed_queries: str = "maison margiela,rick owens,our legacy"
 
     static_dir: Path = Field(default=Path(__file__).resolve().parent.parent / "static")
+
+    @property
+    def uploads_dir(self) -> Path:
+        return self.rack_data_dir / "uploads"
 
     @property
     def seed_queries(self) -> list[str]:

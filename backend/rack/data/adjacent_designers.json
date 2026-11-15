@@ -1,0 +1,23 @@
+{
+  "maison margiela": ["MM6", "Ann Demeulemeester", "Dries Van Noten", "Lemaire", "Our Legacy", "Comme des Garcons", "Yohji Yamamoto"],
+  "margiela": ["MM6", "Ann Demeulemeester", "Dries Van Noten", "Lemaire", "Our Legacy"],
+  "rick owens": ["Ann Demeulemeester", "Julius", "Boris Bidjan Saberi", "Carol Christian Poell", "Guidi", "Yohji Yamamoto", "Undercover"],
+  "our legacy": ["Lemaire", "Acne Studios", "Auralee", "Margaret Howell", "Studio Nicholson", "Sefr"],
+  "lemaire": ["Our Legacy", "Auralee", "Studio Nicholson", "Margaret Howell", "Jil Sander"],
+  "yohji yamamoto": ["Comme des Garcons", "Issey Miyake", "Kapital", "Y's", "Ann Demeulemeester"],
+  "comme des garcons": ["Junya Watanabe", "Yohji Yamamoto", "Issey Miyake", "Noir Kei Ninomiya"],
+  "dries van noten": ["Maison Margiela", "Haider Ackermann", "Ann Demeulemeester", "Marni"],
+  "ann demeulemeester": ["Rick Owens", "Haider Ackermann", "Dries Van Noten", "Julius"],
+  "raf simons": ["Helmut Lang", "Jil Sander", "Prada", "Undercover"],
+  "helmut lang": ["Raf Simons", "Jil Sander", "Prada"],
+  "jil sander": ["Lemaire", "Helmut Lang", "Raf Simons", "The Row"],
+  "acne studios": ["Our Legacy", "A.P.C.", "Lemaire", "Sefr"],
+  "undercover": ["Number (N)ine", "The Soloist", "Kapital", "Sacai"],
+  "kapital": ["Visvim", "Needles", "Undercover", "45R"],
+  "visvim": ["Kapital", "Needles", "Engineered Garments"],
+  "stone island": ["C.P. Company", "Arc'teryx Veilance", "Acronym"],
+  "issey miyake": ["Homme Plisse Issey Miyake", "Yohji Yamamoto", "Comme des Garcons"],
+  "prada": ["Miu Miu", "Raf Simons", "Jil Sander", "Helmut Lang"],
+  "bottega veneta": ["The Row", "Loewe", "Jil Sander"],
+  "loewe": ["Bottega Veneta", "JW Anderson", "Lemaire"]
+}

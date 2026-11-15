@@ -1,59 +1,19 @@
 import json
-from collections.abc import AsyncIterator
 from pathlib import Path
 
 import httpx
 import pytest
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from rack.api.auth import attempts, hash_password, require_session
-from rack.api.main import create_app
-from rack.config import Settings, get_settings
-from rack.db import get_session
 from rack.ingest import upsert_listings
 from rack.sources.base import Listing, SearchQuery, SourceError
 from rack.sources.ebay import parse_search
 from rack.worker.refresh import refresh_all
+from tests.conftest import PASSWORD, login
 
 pytestmark = pytest.mark.db
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ebay" / "search_sample.json"
-PASSWORD = "a-very-long-test-password"
-HASH = hash_password(PASSWORD)
-
-
-@pytest.fixture
-async def client(
-    sessions: async_sessionmaker[AsyncSession], tmp_path: Path
-) -> AsyncIterator[httpx.AsyncClient]:
-    settings = Settings(
-        rack_password_hash=HASH, rack_session_secret="test-secret", rack_cookie_secure=False
-    )
-    app = create_app(static_dir=tmp_path)
-
-    @app.post("/api/_test/mutate", dependencies=[Depends(require_session)])
-    def _mutate() -> dict[str, bool]:
-        return {"ok": True}
-
-    # The SPA catch-all was registered first; move our test route ahead of it.
-    app.router.routes.insert(0, app.router.routes.pop())
-
-    async def _session() -> AsyncIterator[AsyncSession]:
-        async with sessions() as s:
-            yield s
-
-    app.dependency_overrides[get_settings] = lambda: settings
-    app.dependency_overrides[get_session] = _session
-    attempts._hits.clear()
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
-
-
-async def login(client: httpx.AsyncClient) -> None:
-    r = await client.post("/api/auth/login", json={"password": PASSWORD})
-    assert r.status_code == 204
 
 
 async def test_feed_requires_login(client: httpx.AsyncClient) -> None:

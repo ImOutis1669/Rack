@@ -1,27 +1,53 @@
-"""Feed and source-health endpoints. Phase 1: newest/price ordering; ranking arrives in Phase 2."""
+"""Feed and source-health endpoints.
+
+sort=best (default): score order, re-ranked with MMR for variety plus an exploration share.
+Other sorts use keyset pagination. Hard-filtered listings never appear in any sort.
+"""
 
 import base64
 import json
+import random
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import require_session
 from rack.db import get_session
-from rack.models import ListingRow, SourceHealthRow
+from rack.models import (
+    FeedbackRow,
+    ListingImageRow,
+    ListingRow,
+    ListingScoreRow,
+    SavedRow,
+    SeenRow,
+    SourceHealthRow,
+)
+from rack.ranking.mmr import interleave_exploration, mmr
+from rack.ranking.vectors import as_matrix
 from rack.schemas import BuyLink, FeedPage, ListingOut, SellerOut, SourceHealthOut
+from rack.sources.base import Category
 from rack.sources.registry import SOURCE_NAMES
+from rack.store import load_profile
 
 router = APIRouter(prefix="/api", tags=["feed"], dependencies=[Depends(require_session)])
 
-Sort = Literal["newest", "price_asc", "price_desc"]
+Sort = Literal["best", "newest", "price_asc", "price_desc"]
+MMR_HEAD = 300
+MMR_LAMBDA = 0.7
+BEST_POOL = 3000
 
 
-def to_out(row: ListingRow) -> ListingOut:
+def to_out(
+    row: ListingRow,
+    score: ListingScoreRow | None = None,
+    feedback: int | None = None,
+    saved: SavedRow | None = None,
+) -> ListingOut:
     seller = (
         SellerOut(name=row.seller_name, rating=row.seller_rating, count=row.seller_count)
         if row.seller_name or row.seller_rating is not None
@@ -45,20 +71,58 @@ def to_out(row: ListingRow) -> ListingOut:
         listed_at=row.listed_at,
         first_seen_at=row.first_seen_at,
         country=row.country,
+        score=score.score if score else None,
+        why=score.why if score else None,
+        category=score.category if score else None,
+        measurements=dict(score.measurements) if score else {},
+        feedback=feedback,
+        saved=saved is not None,
+        price_gbp_at_save=saved.price_gbp_at_save if saved else None,
         buy_links=[BuyLink(source=row.source, url=row.url, price_gbp=row.price_gbp)],
     )
 
 
-def encode_cursor(values: dict[str, str | int]) -> str:
+async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[ListingOut]:
+    """Attach score/why, your vote and saved state to listing rows (keeps order)."""
+    ids = [r.id for r in rows]
+    if not ids:
+        return []
+    scores = {
+        s.listing_id: s
+        for s in (
+            await session.execute(
+                select(ListingScoreRow).where(ListingScoreRow.listing_id.in_(ids))
+            )
+        ).scalars()
+    }
+    votes = dict(
+        (
+            await session.execute(
+                select(FeedbackRow.listing_id, FeedbackRow.value).where(
+                    FeedbackRow.listing_id.in_(ids)
+                )
+            )
+        ).all()
+    )
+    saved = {
+        s.listing_id: s
+        for s in (
+            await session.execute(select(SavedRow).where(SavedRow.listing_id.in_(ids)))
+        ).scalars()
+    }
+    return [to_out(r, scores.get(r.id), votes.get(r.id), saved.get(r.id)) for r in rows]
+
+
+def encode_cursor(values: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(json.dumps(values).encode()).decode()
 
 
-def decode_cursor(cursor: str) -> dict[str, str | int]:
-    data: dict[str, str | int] = json.loads(base64.urlsafe_b64decode(cursor.encode()))
+def decode_cursor(cursor: str) -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(base64.urlsafe_b64decode(cursor.encode()))
     return data
 
 
-def _apply_cursor(stmt: Select[ListingRow], sort: Sort, cursor: str) -> Select[ListingRow]:
+def _apply_cursor(stmt: Select[Any], sort: Sort, cursor: str) -> Select[Any]:
     c = decode_cursor(cursor)
     cid = int(c["id"])
     if sort == "newest":
@@ -77,28 +141,63 @@ def _apply_cursor(stmt: Select[ListingRow], sort: Sort, cursor: str) -> Select[L
     )
 
 
+def best_order(
+    ids: list[int], scores: list[float], embs: dict[int, list[float]], exploration: float, seed: int
+) -> list[int]:
+    """MMR over the top of the score list, then interleave mid-band items for exploration."""
+    head = ids[:MMR_HEAD]
+    mat = as_matrix([embs.get(i) or [0.0] * 512 for i in head])
+    order = [head[j] for j in mmr(scores[: len(head)], mat, MMR_LAMBDA)]
+    n = len(ids)
+    mid = ids[int(n * 0.3) : int(n * 0.7)] if n >= 20 else []
+    mixed = interleave_exploration(order, mid, exploration, seed)
+    out = list(dict.fromkeys(mixed + ids[MMR_HEAD:]))
+    return out
+
+
 @router.get("/feed", response_model=FeedPage)
 async def feed(
     session: Annotated[AsyncSession, Depends(get_session)],
-    sort: Sort = "newest",
+    sort: Sort = "best",
     source: Annotated[list[str] | None, Query()] = None,
+    category: Category | None = None,
+    brand: Annotated[str | None, Query(max_length=100)] = None,
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
+    new_since: datetime | None = None,
+    hide_seen_before: datetime | None = None,
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
 ) -> FeedPage:
-    stmt = select(ListingRow).where(ListingRow.active.is_(True))
+    stmt = (
+        select(ListingRow)
+        .outerjoin(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
+        .where(ListingRow.active.is_(True), ListingScoreRow.filtered_reason.is_(None))
+    )
     if source:
         stmt = stmt.where(ListingRow.source.in_(source))
+    if category and category != Category.ANY:
+        stmt = stmt.where(ListingScoreRow.category == category.value)
+    if brand:
+        stmt = stmt.where(ListingRow.brand.ilike(f"%{brand.strip()}%"))
     if min_price is not None:
         stmt = stmt.where(ListingRow.price_gbp >= min_price)
     if max_price is not None:
         stmt = stmt.where(ListingRow.price_gbp <= max_price)
+    if new_since is not None:
+        stmt = stmt.where(ListingRow.first_seen_at > new_since)
+    if hide_seen_before is not None:
+        stmt = stmt.where(
+            ~exists().where(SeenRow.listing_id == ListingRow.id, SeenRow.seen_at < hide_seen_before)
+        )
+
+    if sort == "best":
+        return await _best_page(session, stmt, cursor, limit)
+
     if sort != "newest":
         stmt = stmt.where(ListingRow.price_gbp.is_not(None))
     if cursor:
         stmt = _apply_cursor(stmt, sort, cursor)
-
     if sort == "newest":
         stmt = stmt.order_by(ListingRow.first_seen_at.desc(), ListingRow.id.desc())
     elif sort == "price_asc":
@@ -113,7 +212,63 @@ async def feed(
         last = page[-1]
         k = last.first_seen_at.isoformat() if sort == "newest" else str(last.price_gbp)
         next_cursor = encode_cursor({"k": k, "id": last.id})
-    return FeedPage(items=[to_out(r) for r in page], next_cursor=next_cursor)
+    return FeedPage(items=await hydrate(session, page), next_cursor=next_cursor)
+
+
+async def _best_page(
+    session: AsyncSession, stmt: Select[Any], cursor: str | None, limit: int
+) -> FeedPage:
+    c = decode_cursor(cursor) if cursor else {}
+    offset = int(c.get("o", 0))
+    seed = int(c.get("s", random.randrange(1 << 30)))
+
+    ranked = (
+        await session.execute(
+            stmt.with_only_columns(ListingRow.id, ListingScoreRow.score)
+            .where(ListingScoreRow.score.is_not(None))
+            .order_by(ListingScoreRow.score.desc(), ListingRow.id.desc())
+            .limit(BEST_POOL)
+        )
+    ).all()
+    ids = [i for i, _ in ranked]
+    scores = [float(s) for _, s in ranked]
+    head = ids[:MMR_HEAD]
+    embs = {
+        lid: list(e)
+        for lid, e in (
+            await session.execute(
+                select(ListingImageRow.listing_id, ListingImageRow.embedding).where(
+                    ListingImageRow.listing_id.in_(head),
+                    ListingImageRow.position == 0,
+                    ListingImageRow.embedding.is_not(None),
+                )
+            )
+        ).all()
+        if e is not None
+    }
+    profile, _ = await load_profile(session)
+    order = best_order(ids, scores, embs, profile.exploration, seed)
+    # Not scored yet (the worker scores within a minute or so): newest, after the scored ones.
+    unscored = (
+        await session.execute(
+            stmt.with_only_columns(ListingRow.id)
+            .where(ListingScoreRow.listing_id.is_(None))
+            .order_by(ListingRow.first_seen_at.desc(), ListingRow.id.desc())
+            .limit(BEST_POOL)
+        )
+    ).scalars()
+    order += list(unscored)
+    page_ids = order[offset : offset + limit]
+    rows = {
+        r.id: r
+        for r in (
+            await session.execute(select(ListingRow).where(ListingRow.id.in_(page_ids)))
+        ).scalars()
+    }
+    page = [rows[i] for i in page_ids if i in rows]
+    more = offset + limit < len(order)
+    next_cursor = encode_cursor({"o": offset + limit, "s": seed}) if more else None
+    return FeedPage(items=await hydrate(session, page), next_cursor=next_cursor)
 
 
 def health_status(row: SourceHealthRow | None) -> str:

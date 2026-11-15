@@ -6,6 +6,8 @@ x-app: &app
   env_file: .env
   environment:
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rack}:${POSTGRES_PASSWORD:-rack}@db:5432/${POSTGRES_DB:-rack}
+    RACK_DATA_DIR: /data          # uploads live in /data/uploads
+    HF_HOME: /data/hf             # CLIP weights (~600 MB) download here once
   depends_on:
     db:
       condition: service_healthy

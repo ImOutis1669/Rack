@@ -11,11 +11,17 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   - `sources/` one adapter per marketplace implementing `SourceAdapter` (`base.py`), all HTTP via
     `RateLimitedClient` (`http.py`): ≥10 s/request/source + jitter, backoff, one in flight, honest UA.
   - `parsing/` measurements/sizes/condition parsers (pure functions).
-  - `embeddings/` open_clip ViT-B-32 on CPU, cached per image URL hash.
-  - `ranking/` planner → filters → scoring → MMR/exploration → optional LLM.
+  - `embeddings/` open_clip ViT-B-32 on CPU (worker only; API never imports torch), cached per image URL
+    hash. `images.py` sanitises uploads (EXIF stripped, re-encoded JPEG) and guards pasted URLs (SSRF).
+  - `ranking/` planner → filters → scoring → explain; MMR/exploration applied at request time in
+    `api/feed.py` (sort=best). Optional LLM re-rank deferred to Phase 5.
+  - `profile.py` taste profile schema (JSON in the single `profile` row); `store.py` profile/app_state
+    helpers. Anything that changes ranking calls `bump_version()`; the worker rescores when the
+    version, embeddings or listings change (`app_state['scoring']`).
   - `pricing/` FX (ECB via frankfurter.app), landed-cost estimate, deal score.
   - `notify/` ntfy (default), Telegram, Web Push.
-  - `worker/` APScheduler process: source refresh, embeddings, hunts, price drops; polls `jobs` table.
+  - `worker/` APScheduler process: source refresh (planner-driven, rotating cursor in
+    `app_state['planner']`), embed+score every 60 s; later hunts and price drops.
 - `frontend/` — React + Vite + TS + Tailwind PWA, TanStack Query. Built into the backend image and
   served by FastAPI at `/` (single origin).
 - Postgres 16 + pgvector (512-d, HNSW). No Redis.
@@ -44,12 +50,20 @@ On this Windows dev box uv lives at
   If a source's real behaviour differs from the plan, stop and tell the user.
 - Brand is only ever a positive signal; unknown brand scores neutral (0), never negative.
 - Commit at the end of each phase after tests pass.
+- APScheduler 3 needs a real coroutine function (bound `async def` method), not an object with async
+  `__call__` — the latter is silently never awaited.
+- Scoring constants (cosine calibration bands, neighbour thresholds) live at the top of
+  `ranking/scoring.py`. They are educated guesses for CLIP ViT-B-32 and need tuning on real listings.
+- No "replica" in default banned words: Maison Margiela sells a genuine "Replica" line.
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 1 done (commit 917fea3). 17 backend + 5 Vitest tests pass; compose stack verified locally.
-eBay fixture is hand-built from the documented schema — replace with a live recording once keys exist.
+Status: Phase 2 done. 57 backend (+1 slow real-CLIP) + 10 Vitest tests pass; compose stack verified
+locally (CLIP weights download to `/data/hf` on first worker run, ~2 min).
+eBay fixture is hand-built from the documented schema; its image URLs resolve to eBay's grey placeholder,
+so visual matches on fixture data are meaningless. Replace with a live recording once keys exist.
 Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
-Next: Phase 2 (taste profile + ranking).
+Next: Phase 3 — first a read-only live check of Vinted/Grailed/Vestiaire, reported to the user before
+writing adapters.
