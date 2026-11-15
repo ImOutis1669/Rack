@@ -1,0 +1,51 @@
+name: rack
+
+x-app: &app
+  build: .
+  image: rack:latest
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rack}:${POSTGRES_PASSWORD:-rack}@db:5432/${POSTGRES_DB:-rack}
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+  volumes:
+    - rack_data:/data
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rack}
+      POSTGRES_DB: ${POSTGRES_DB:-rack}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rack}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    ports:
+      - "${RACK_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "rack.worker.main"]
+    depends_on:
+      api:
+        condition: service_healthy  # api runs migrations first
+
+volumes:
+  pg_data:
+  rack_data:

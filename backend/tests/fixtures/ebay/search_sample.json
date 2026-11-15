@@ -1,0 +1,56 @@
+{
+  "_note": "Hand-built from the documented Browse API item_summary/search response schema (no keys yet). Replace with a live recording via `rack probe ebay \"maison margiela\" --record ...` once EBAY_CLIENT_ID/SECRET are set.",
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=maison+margiela&limit=3",
+  "total": 3,
+  "limit": 3,
+  "offset": 0,
+  "itemSummaries": [
+    {
+      "itemId": "v1|186712345678|0",
+      "title": "Maison Margiela Replica GAT Sneakers White EU 46 UK 12",
+      "leafCategoryIds": ["15709"],
+      "categories": [{"categoryId": "15709", "categoryName": "Trainers"}],
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/AAA/s-l1600.jpg"},
+      "additionalImages": [
+        {"imageUrl": "https://i.ebayimg.com/images/g/BBB/s-l1600.jpg"},
+        {"imageUrl": "https://i.ebayimg.com/images/g/CCC/s-l1600.jpg"}
+      ],
+      "price": {"value": "185.00", "currency": "GBP"},
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C186712345678%7C0",
+      "seller": {"username": "archive_finds_uk", "feedbackPercentage": "99.6", "feedbackScore": 1342},
+      "condition": "Pre-owned",
+      "conditionId": "3000",
+      "shippingOptions": [
+        {"shippingCostType": "FIXED", "shippingCost": {"value": "4.99", "currency": "GBP"}},
+        {"shippingCostType": "FIXED", "shippingCost": {"value": "9.99", "currency": "GBP"}}
+      ],
+      "buyingOptions": ["FIXED_PRICE", "BEST_OFFER"],
+      "itemWebUrl": "https://www.ebay.co.uk/itm/186712345678",
+      "itemLocation": {"postalCode": "E8***", "country": "GB"},
+      "itemCreationDate": "2026-11-14T18:22:05.000Z",
+      "marketplaceId": "EBAY_GB"
+    },
+    {
+      "itemId": "v1|395512345678|0",
+      "title": "Rick Owens DRKSHDW Long Sleeve Tee Black Size L",
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/DDD/s-l1600.jpg"},
+      "price": {"value": "120.00", "currency": "USD"},
+      "seller": {"username": "nyc_archive", "feedbackPercentage": "100.0", "feedbackScore": 87},
+      "condition": "Pre-owned",
+      "shippingOptions": [
+        {"shippingCostType": "FIXED", "shippingCost": {"value": "25.00", "currency": "USD"}}
+      ],
+      "buyingOptions": ["FIXED_PRICE"],
+      "itemWebUrl": "https://www.ebay.co.uk/itm/395512345678",
+      "itemLocation": {"postalCode": "100**", "country": "US"},
+      "itemCreationDate": "2026-11-13T09:01:44.000Z",
+      "marketplaceId": "EBAY_GB"
+    },
+    {
+      "itemId": "v1|111111111111|0",
+      "title": "Broken item with no price",
+      "itemWebUrl": "https://www.ebay.co.uk/itm/111111111111",
+      "condition": "Pre-owned"
+    }
+  ]
+}
