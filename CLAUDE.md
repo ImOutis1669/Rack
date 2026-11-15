@@ -49,6 +49,7 @@ On this Windows dev box uv lives at
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 1 code written (eBay adapter, auth, feed API, worker, frontend feed, compose).
-Non-DB backend tests + Vitest pass; DB tests and `docker compose up` pending WSL/Docker on the dev box.
+Status: Phase 1 done (commit 917fea3). 17 backend + 5 Vitest tests pass; compose stack verified locally.
 eBay fixture is hand-built from the documented schema — replace with a live recording once keys exist.
+Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
+Next: Phase 2 (taste profile + ranking).
