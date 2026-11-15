@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     ebay_client_secret: str = ""
     ebay_marketplace: str = "EBAY_GB"
 
+    # Grailed: public search-only Algolia key that grailed.com ships to browsers
+    grailed_algolia_app_id: str = ""
+    grailed_algolia_api_key: str = ""
+
     # Rate limits (seconds between requests, per source)
     rate_ebay: float = 2.0
     rate_vinted: float = 10.0

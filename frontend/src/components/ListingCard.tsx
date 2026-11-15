@@ -178,18 +178,37 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
               </div>
             )}
           </div>
-          {item.buy_links.map((link) => (
+          {item.buy_links.length === 1 && (
             <a
-              key={link.url}
-              href={link.url}
+              href={item.url}
               target="_blank"
               rel="noopener noreferrer"
               className="ml-auto flex-1 rounded bg-white py-1.5 text-center text-xs font-semibold text-black active:bg-neutral-300"
             >
-              Buy{item.buy_links.length > 1 ? ` · ${SOURCE_LABEL[link.source]}` : ""}
+              Buy
             </a>
-          ))}
+          )}
         </div>
+        {item.buy_links.length > 1 && (
+          <div className="space-y-1 pt-0.5">
+            <p className="text-[11px] text-neutral-400">Listed {item.buy_links.length} times</p>
+            {item.buy_links.map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex justify-between rounded bg-white px-2 py-1.5 text-xs font-semibold text-black active:bg-neutral-300"
+              >
+                <span>
+                  Buy on {SOURCE_LABEL[link.source]}
+                  {link.size && <span className="font-normal text-neutral-600"> · {link.size}</span>}
+                </span>
+                <span>{formatGBP(link.price_gbp)}</span>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </article>
   );

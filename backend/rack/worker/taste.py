@@ -7,12 +7,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-from sqlalchemy import exists, select
+from PIL import Image
+from sqlalchemy import and_, exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.embeddings.clip import Embedder
 from rack.embeddings.images import for_embedding
+from rack.embeddings.phash import phash
 from rack.models import (
     FeedbackRow,
     HiddenRow,
@@ -22,6 +24,7 @@ from rack.models import (
     TasteItemRow,
 )
 from rack.ranking.brands import normalize as normalize_name
+from rack.ranking.dedupe import clusters
 from rack.ranking.explain import explain
 from rack.ranking.filters import Hidden
 from rack.ranking.scoring import ListingFeatures, TasteContext, score_all
@@ -114,7 +117,11 @@ async def embed_listings(
                     .where(
                         ListingRow.active.is_(True),
                         ListingImageRow.position < images_per_listing,
-                        ListingImageRow.embedding.is_(None),
+                        or_(
+                            ListingImageRow.embedding.is_(None),
+                            # first photos also need a pHash for cross-listing dedupe
+                            and_(ListingImageRow.position == 0, ListingImageRow.phash.is_(None)),
+                        ),
                         ListingImageRow.embed_attempts < MAX_ATTEMPTS,
                     )
                     .order_by(ListingRow.last_seen_at.desc())
@@ -125,25 +132,41 @@ async def embed_listings(
             .all()
         )
 
-        todo: list[tuple[ListingImageRow, object]] = []
+        todo: list[tuple[ListingImageRow, Image.Image]] = []
+        to_fetch: list[ListingImageRow] = []
         for row in pending:
             row.embed_attempts += 1
             cached = (
                 await s.execute(
-                    select(ListingImageRow.embedding)
+                    select(ListingImageRow.embedding, ListingImageRow.phash)
                     .where(
                         ListingImageRow.url_hash == row.url_hash,
                         ListingImageRow.embedding.is_not(None),
+                        ListingImageRow.phash.is_not(None),
                     )
                     .limit(1)
                 )
-            ).scalar_one_or_none()
-            if cached is not None:
-                row.embedding = list(cached)
+            ).first()
+            if cached is not None and cached[0] is not None:
+                row.embedding = [float(x) for x in cached[0]]
+                row.phash = cached[1]
                 changed += 1
                 continue
+            to_fetch.append(row)
+
+        # `fetch` keeps one request in flight per image host, so different CDNs run side by side.
+        bodies = await asyncio.gather(*(fetch(r.url) for r in to_fetch), return_exceptions=True)
+        for row, body in zip(to_fetch, bodies, strict=True):
             try:
-                todo.append((row, for_embedding(await fetch(row.url))))
+                if isinstance(body, BaseException):
+                    raise body
+                img = for_embedding(body)
+                if row.position == 0:
+                    row.phash = phash(img)
+                if row.embedding is None:
+                    todo.append((row, img))
+                else:
+                    changed += 1
             except Exception as exc:  # noqa: BLE001 - attempts cap stops retry loops
                 log.info("image fetch failed %s: %s", row.url, exc)
             if len(todo) >= batch:
@@ -174,15 +197,66 @@ async def embed_listings(
     return changed
 
 
-async def _flush(embedder: Embedder, todo: list[tuple[ListingImageRow, object]]) -> int:
+async def _flush(embedder: Embedder, todo: list[tuple[ListingImageRow, Image.Image]]) -> int:
     if not todo:
         return 0
-    embs = await asyncio.to_thread(embedder.embed_images, [img for _, img in todo])  # type: ignore[misc]
+    embs = await asyncio.to_thread(embedder.embed_images, [img for _, img in todo])
     for (row, _), e in zip(todo, embs, strict=True):
         row.embedding = e.tolist()
     n = len(todo)
     todo.clear()
     return n
+
+
+async def assign_clusters(sessions: async_sessionmaker[AsyncSession]) -> int:
+    """Group listings whose first photos show the same item. Returns count of clustered listings."""
+    async with sessions() as s:
+        rows = (
+            await s.execute(
+                select(
+                    ListingRow.id,
+                    ListingRow.price_gbp,
+                    ListingRow.brand,
+                    ListingRow.title,
+                    ListingRow.cluster_id,
+                    ListingImageRow.phash,
+                    ListingImageRow.embedding,
+                )
+                .join(ListingImageRow, ListingImageRow.listing_id == ListingRow.id)
+                .where(
+                    ListingRow.active.is_(True),
+                    ListingImageRow.position == 0,
+                    ListingImageRow.phash.is_not(None),
+                    ListingImageRow.embedding.is_not(None),
+                )
+            )
+        ).all()
+        current = {r.id: r.cluster_id for r in rows}
+        mapping = clusters(
+            [r.id for r in rows],
+            [str(r.phash) for r in rows],
+            as_matrix([list(r.embedding) for r in rows]),
+            [float(r.price_gbp) if r.price_gbp is not None else None for r in rows],
+            [r.brand for r in rows],
+            [r.title for r in rows],
+        )
+        changed = [lid for lid in current if current[lid] != mapping.get(lid)]
+        for lid in changed:
+            await s.execute(
+                update(ListingRow).where(ListingRow.id == lid).values(cluster_id=mapping.get(lid))
+            )
+        # listings that lost their photo/hash data drop out of any cluster
+        await s.execute(
+            update(ListingRow)
+            .where(ListingRow.cluster_id.is_not(None), ListingRow.id.not_in(list(current) or [0]))
+            .values(cluster_id=None)
+        )
+        await s.commit()
+        if changed:
+            log.info(
+                "dedupe: %d listings changed cluster (%d clustered)", len(changed), len(mapping)
+            )
+        return len(mapping)
 
 
 async def rescore(

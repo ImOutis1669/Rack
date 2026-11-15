@@ -16,6 +16,7 @@ class BuyLink(BaseModel):
     source: str
     url: str
     price_gbp: Decimal | None
+    size: str | None = None
 
 
 class ListingOut(BaseModel):
@@ -64,7 +65,9 @@ class SourceHealthOut(BaseModel):
     error_count: int
     consecutive_errors: int
     last_result_count: int | None
-    status: str  # ok | degraded | down | not_configured | never_run
+    blocked: bool = False
+    last_check_at: datetime | None = None
+    status: str  # ok | degraded | down | blocked | not_configured | never_run
 
 
 class VisitOut(BaseModel):

@@ -3,7 +3,7 @@
 A personal, self-hosted fashion feed across eBay UK, Vinted UK, Grailed and Vestiaire Collective, ranked by
 *your* taste profile rather than your click history. Single user, runs on a small home server.
 
-> **Status:** Phase 2 (taste + ranking). eBay only so far. See `CLAUDE.md` for the roadmap.
+> **Status:** Phase 3. Vinted and Grailed live, eBay ready for keys, Vestiaire blocked. See `CLAUDE.md`.
 
 ## Quick start
 
@@ -38,6 +38,18 @@ The worker computes CLIP embeddings on the CPU. The first run downloads the mode
 volume. It rescores the whole feed within about a minute of any change. Listings whose stated
 measurements are too short for you are hidden; listings without measurements never are. A designer you
 list only ever *adds* to a score: unbranded or unknown items are not pushed down for it.
+
+## Sources
+| Source | How | Notes |
+|---|---|---|
+| eBay UK | Official Browse API | Needs your keys (below). |
+| Vinted UK | Its public search page | Price shown includes Vinted's compulsory buyer-protection fee (postage extra). |
+| Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env`). If Grailed rotates it, source health shows the error; update the key. No descriptions, so measurements come from titles only. |
+| Vestiaire | — | Blocked by Cloudflare's human check. Rack checks once a day and says so in source health; it won't try to get around it. |
+
+Tap the source dots under the header for each source's status, last run and last error. The same item
+listed more than once (another site, a repost, or one listing per size) is shown as a single card with a
+buy button per copy.
 
 ## Honest caveats
 Only eBay is accessed through an official API. Other sources (added in Phase 3) use the endpoints their own

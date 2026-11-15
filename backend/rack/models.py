@@ -56,6 +56,8 @@ class ListingRow(Base):
     raw: Mapped[dict[str, Any]] = mapped_column(default=dict)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     text_embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
+    # Same item listed more than once (cross-listed / reposted): id of the cheapest copy.
+    cluster_id: Mapped[int | None] = mapped_column(Integer, index=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
@@ -97,6 +99,8 @@ class SourceHealthRow(Base):
     error_count: Mapped[int] = mapped_column(Integer, default=0)
     consecutive_errors: Mapped[int] = mapped_column(Integer, default=0)
     last_result_count: Mapped[int | None] = mapped_column(Integer)
+    blocked: Mapped[bool] = mapped_column(Boolean, default=False)  # site refuses Rack outright
+    last_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 # --- Phase 2: taste profile, scoring, feedback ---

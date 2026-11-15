@@ -47,6 +47,7 @@ def to_out(
     score: ListingScoreRow | None = None,
     feedback: int | None = None,
     saved: SavedRow | None = None,
+    copies: Sequence[ListingRow] = (),
 ) -> ListingOut:
     seller = (
         SellerOut(name=row.seller_name, rating=row.seller_rating, count=row.seller_count)
@@ -78,7 +79,10 @@ def to_out(
         feedback=feedback,
         saved=saved is not None,
         price_gbp_at_save=saved.price_gbp_at_save if saved else None,
-        buy_links=[BuyLink(source=row.source, url=row.url, price_gbp=row.price_gbp)],
+        buy_links=[
+            BuyLink(source=r.source, url=r.url, price_gbp=r.price_gbp, size=r.size)
+            for r in ([row, *copies] if copies else [row])
+        ],
     )
 
 
@@ -110,7 +114,29 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
             await session.execute(select(SavedRow).where(SavedRow.listing_id.in_(ids)))
         ).scalars()
     }
-    return [to_out(r, scores.get(r.id), votes.get(r.id), saved.get(r.id)) for r in rows]
+    # other listings of the same item (cross-listed / reposted), cheapest first
+    cluster_ids = {r.cluster_id for r in rows if r.cluster_id is not None}
+    copies: dict[int, list[ListingRow]] = {}
+    if cluster_ids:
+        others = (
+            await session.execute(
+                select(ListingRow)
+                .where(ListingRow.cluster_id.in_(cluster_ids), ListingRow.active.is_(True))
+                .order_by(ListingRow.price_gbp.asc().nulls_last(), ListingRow.id)
+            )
+        ).scalars()
+        for o in others:
+            copies.setdefault(o.cluster_id or 0, []).append(o)
+    return [
+        to_out(
+            r,
+            scores.get(r.id),
+            votes.get(r.id),
+            saved.get(r.id),
+            [c for c in copies.get(r.cluster_id or -1, []) if c.id != r.id],
+        )
+        for r in rows
+    ]
 
 
 def encode_cursor(values: dict[str, Any]) -> str:
@@ -172,7 +198,12 @@ async def feed(
     stmt = (
         select(ListingRow)
         .outerjoin(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
-        .where(ListingRow.active.is_(True), ListingScoreRow.filtered_reason.is_(None))
+        .where(
+            ListingRow.active.is_(True),
+            ListingScoreRow.filtered_reason.is_(None),
+            # one card per cluster: only its representative (cheapest copy)
+            or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
+        )
     )
     if source:
         stmt = stmt.where(ListingRow.source.in_(source))
@@ -276,6 +307,8 @@ def health_status(row: SourceHealthRow | None) -> str:
         return "never_run"
     if not row.configured:
         return "not_configured"
+    if row.blocked:
+        return "blocked"
     if row.consecutive_errors >= 3:
         return "down"
     if row.consecutive_errors > 0:
@@ -301,6 +334,8 @@ async def sources_health(
                 error_count=row.error_count if row else 0,
                 consecutive_errors=row.consecutive_errors if row else 0,
                 last_result_count=row.last_result_count if row else None,
+                blocked=row.blocked if row else False,
+                last_check_at=row.last_check_at if row else None,
                 status=health_status(row),
             )
         )

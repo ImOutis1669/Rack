@@ -1,6 +1,7 @@
 # Rack — CLAUDE.md
 
 Personal, self-hosted, single-user cross-marketplace fashion feed (eBay UK, Vinted UK, Grailed, Vestiaire).
+Host: the user's Windows gaming PC (Ryzen 5 7600X, 32 GB, RTX 4070 Super) via Docker Desktop, not an N100.
 Ranks listings by an explicit taste profile (wardrobe/wishlist CLIP embeddings, designers, free text, fit),
 not by click history. Saved "hunts" push alerts via ntfy/Telegram/Web Push.
 Full approved plan: see "Phases" below; deviations must be discussed with the user first.
@@ -35,8 +36,11 @@ On this Windows dev box uv lives at
   `-m "not slow"` skips the real CLIP test)
 - Dev server: `cd backend && uv run uvicorn rack.api.main:app --reload` + `cd frontend && npm run dev`
   (Vite proxies `/api` to :8000; set `RACK_COOKIE_SECURE=false` for http dev)
-- Demo data without eBay keys: `uv run rack load-fixture ebay tests/fixtures/ebay/search_sample.json`
-- Live probe + record fixture: `uv run rack probe ebay "query" --record tests/fixtures/ebay/x.json`
+- CLI: use `uv run python -m rack.cli …` on this PC (Windows Application Control blocks the
+  generated `rack.exe`); inside Docker `rack …` works.
+- Demo data: `python -m rack.cli load-fixture {ebay|vinted|grailed} <fixture>`
+- Live probe + record fixture: `python -m rack.cli probe vinted "query" --record tests/fixtures/vinted/x.html`
+  (Vinted fixtures are trimmed to the result objects; Grailed drops `_highlightResult`)
 - Lint/types: `cd backend && uv run ruff check . && uv run mypy rack`
 - Frontend tests: `cd frontend && npm test`
 - Whole stack: `docker compose up --build`
@@ -55,15 +59,31 @@ On this Windows dev box uv lives at
 - Scoring constants (cosine calibration bands, neighbour thresholds) live at the top of
   `ranking/scoring.py`. They are educated guesses for CLIP ViT-B-32 and need tuning on real listings.
 - No "replica" in default banned words: Maison Margiela sells a genuine "Replica" line.
+- Sources (checked live 2026-11-15, see module docstrings):
+  - eBay: official Browse API (no keys yet).
+  - Vinted: `/api/v2/catalog/items` is gone (404); parse `productItem` objects from the Next.js
+    flight data of `/catalog?search_text=…`, men's catalogue ids from the page's own tree.
+    price_gbp includes the compulsory buyer-protection fee. DataDome is present.
+  - Grailed: grailed.com is Cloudflare-blocked (also for headless Chromium). User chose to query
+    Grailed's Algolia index directly with the public search-only key (in .env), honest UA, no browser
+    impersonation headers. Index has no descriptions; hits that don't ship to the UK are dropped.
+  - Vestiaire: Cloudflare Turnstile. Stub only; `sources/recheck.py` checks once a day.
+  - Boundaries agreed with the user: no CAPTCHA solving, stealth/fingerprint spoofing, browser UA
+    impersonation or proxies, even though they're fine with "whatever it takes".
+- Dedupe (`ranking/dedupe.py`): pHash ≤ 6 bits AND CLIP ≥ 0.96 AND compatible brands (checked per
+  group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:
+  near-identical photos + titles of genuinely different items (e.g. two lookbooks) still merge.
+- The worker stores the last refresh time; restarts don't re-run searches early.
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 2 done. 57 backend (+1 slow real-CLIP) + 10 Vitest tests pass; compose stack verified
+Status: Phase 3 done (Vinted + Grailed live, Vestiaire blocked stub, health panel, dedupe).
+73 backend tests (+1 slow) + 10 Vitest pass. Phase 2 notes: 57 backend (+1 slow real-CLIP) + 10 Vitest tests pass; compose stack verified
 locally (CLIP weights download to `/data/hf` on first worker run, ~2 min).
 eBay fixture is hand-built from the documented schema; its image URLs resolve to eBay's grey placeholder,
 so visual matches on fixture data are meaningless. Replace with a live recording once keys exist.
 Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
-Next: Phase 3 — first a read-only live check of Vinted/Grailed/Vestiaire, reported to the user before
-writing adapters.
+Next: Phase 4 (hunts + notifications). Price drops need item-page parsing for Vinted (Grailed item
+pages are blocked; could re-query the Algolia index by objectID instead).

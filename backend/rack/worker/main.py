@@ -4,7 +4,8 @@ import asyncio
 import contextlib
 import logging
 import signal
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
@@ -12,14 +13,16 @@ from sqlalchemy import select
 from rack.config import get_settings
 from rack.db import sessionmaker
 from rack.embeddings.clip import ClipEmbedder
+from rack.ingest import record_check
 from rack.models import AdjacentDesignerRow, TasteItemRow
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery
 from rack.sources.http import RateLimitedClient
+from rack.sources.recheck import BLOCKED_SOURCES, check
 from rack.sources.registry import build_adapters
 from rack.store import get_state, load_designers, load_profile, set_state
 from rack.worker.refresh import refresh_all
-from rack.worker.taste import embed_listings, embed_taste, rescore
+from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
 
 log = logging.getLogger("rack.worker")
 
@@ -65,6 +68,9 @@ async def run_refresh() -> None:
     try:
         results = await refresh_all(adapters, queries, sessionmaker())
         log.info("refresh done: %s", results)
+        async with sessionmaker()() as s:
+            await set_state(s, "refresh", {"at": datetime.now(UTC).isoformat(), "results": results})
+            await s.commit()
     finally:
         for a in adapters:
             close = getattr(a, "aclose", None)
@@ -72,15 +78,30 @@ async def run_refresh() -> None:
                 await close()
 
 
+async def recheck_blocked() -> None:
+    for name, url in BLOCKED_SOURCES.items():
+        blocked, detail = await check(url)
+        log.info("recheck %s: %s", name, detail)
+        async with sessionmaker()() as s:
+            await record_check(s, name, blocked=blocked, detail=detail)
+            await s.commit()
+
+
 class EmbedAndScore:
     def __init__(self) -> None:
         settings = get_settings()
         self.settings = settings
         self.embedder = ClipEmbedder(settings.clip_model, settings.clip_pretrained)
-        self.images = RateLimitedClient(min_interval=settings.rate_images, jitter=0.3)
+        self.images: dict[str, RateLimitedClient] = {}
 
     async def fetch(self, url: str) -> bytes:
-        resp = await self.images.get(url)
+        """One request in flight per image host, RATE_IMAGES seconds apart."""
+        host = urlsplit(url).hostname or ""
+        if host not in self.images:
+            self.images[host] = RateLimitedClient(
+                min_interval=self.settings.rate_images, jitter=0.3
+            )
+        resp = await self.images[host].get(url)
         resp.raise_for_status()
         return resp.content
 
@@ -94,9 +115,20 @@ class EmbedAndScore:
                 self.fetch,
                 images_per_listing=self.settings.rack_embed_images_per_listing,
             )
+            await assign_clusters(sessions)
             await rescore(sessions, self.embedder)
         except Exception:
             log.exception("embed/score run failed")
+
+
+async def first_refresh_at(minutes: int) -> datetime:
+    """Restarts don't re-hit the sources: wait out the rest of the interval since the last run."""
+    now = datetime.now(UTC)
+    async with sessionmaker()() as s:
+        last = (await get_state(s, "refresh")).get("at")
+    if not last:
+        return now
+    return max(now, datetime.fromisoformat(last) + timedelta(minutes=minutes))
 
 
 async def main() -> None:
@@ -111,13 +143,22 @@ async def main() -> None:
         id="refresh",
         max_instances=1,
         coalesce=True,
-        next_run_time=now,  # run once at startup, then on the interval
+        next_run_time=await first_refresh_at(settings.rack_refresh_minutes),
     )
     scheduler.add_job(
         EmbedAndScore().run,
         "interval",
         seconds=settings.rack_score_seconds,
         id="embed_score",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=now,
+    )
+    scheduler.add_job(
+        recheck_blocked,
+        "interval",
+        hours=24,
+        id="recheck_blocked",
         max_instances=1,
         coalesce=True,
         next_run_time=now,

@@ -12,6 +12,7 @@ export interface BuyLink {
   source: Source;
   url: string;
   price_gbp: string | null;
+  size: string | null;
 }
 
 export interface Listing {
@@ -65,7 +66,11 @@ export interface SourceHealth {
   last_success_at: string | null;
   last_error: string | null;
   error_count: number;
-  status: "ok" | "degraded" | "down" | "not_configured" | "never_run";
+  consecutive_errors: number;
+  last_result_count: number | null;
+  last_check_at: string | null;
+  blocked: boolean;
+  status: "ok" | "degraded" | "down" | "blocked" | "not_configured" | "never_run";
 }
 
 export type DesignerWeight = "love" | "like" | "curious" | "exclude";
