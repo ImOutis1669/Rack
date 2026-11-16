@@ -65,7 +65,8 @@ Tap the coloured dots under the header for each source's status, last run and la
    inseam/sleeve/length (cm or inches), sizes, budget, exploration share and banned words.
 2. **Wardrobe / Wishlist**: upload photos of clothes you own or want, paste an image or listing link,
    or describe it ("long black wool overcoat").
-3. Use the upvote / downvote arrows, ☆ save, and ⋯ to hide a seller or brand, or **Hunt for this**.
+3. Use the upvote / downvote arrows, ☆ save, share (the marketplace link, via the iOS share sheet
+   or copied), and ⋯ to hide a seller or brand, or **Hunt for this**.
 
 ## Alerts
 Hunt matches and price drops go to any channel you set up; **Settings → Alerts → Send test alert**

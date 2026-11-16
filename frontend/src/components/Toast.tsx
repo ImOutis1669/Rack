@@ -5,7 +5,7 @@ type Listener = (msg: string | null) => void;
 const listeners = new Set<Listener>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 
-/** Show a short status message above the tab bar (not for errors that need action). */
+/** Short status message above the tab bar, and above open sheets (z-60). Not for errors that need action. */
 export function toast(message: string, ms = 4000): void {
   listeners.forEach((l) => l(message));
   if (timer) clearTimeout(timer);
@@ -21,7 +21,7 @@ export function Toaster() {
     };
   }, []);
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-50 flex justify-center px-4 md:bottom-8">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-[60] flex justify-center px-4 md:bottom-8">
       <AnimatePresence>
         {msg && (
           <motion.div

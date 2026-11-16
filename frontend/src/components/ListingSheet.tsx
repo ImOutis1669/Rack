@@ -19,6 +19,7 @@ import { safeHref } from "../lib/safe";
 import { sellerHide } from "../lib/seller";
 import { cn } from "../lib/utils";
 import { AnimatedCircularProgressBar } from "./magicui/animated-circular-progress-bar";
+import { ShareButton } from "./ShareButton";
 import { SourceBadge } from "./SourceBadge";
 import { Button, IconButton, Menu, Sheet } from "./ui";
 import type { ListingActions } from "./useListingActions";
@@ -195,6 +196,7 @@ export function ListingSheet({
             <IconButton label={actions.saved ? "Remove from saved" : "Save"} active={actions.saved} onClick={actions.toggleSave} className="bg-fill">
               <Bookmark size={19} strokeWidth={1.9} fill={actions.saved ? "currentColor" : "none"} />
             </IconButton>
+            <ShareButton links={item.buy_links} title={item.title} className="bg-fill" />
             <IconButton
               label="Hunt for this"
               onClick={() => {
