@@ -168,7 +168,23 @@ class GrailedAdapter:
         return parse_results(await self.fetch(query))
 
     async def get_listing(self, url_or_id: str) -> Listing | None:
-        return None  # grailed.com item pages are behind Cloudflare; search index only
+        """Current state of one listing, from the search index (grailed.com pages are blocked).
+
+        None when it no longer exists, sold, or doesn't ship to the UK.
+        """
+        if not (self._app and self._key):
+            raise SourceNotConfigured("GRAILED_ALGOLIA_APP_ID / GRAILED_ALGOLIA_API_KEY not set")
+        listing_id = url_or_id.rstrip("/").rsplit("/", 1)[-1].split("-", 1)[0]
+        resp = await self._http.get(
+            f"https://{self._app.lower()}-dsn.algolia.net/1/indexes/{RELEVANCE_INDEX}/{listing_id}",
+            headers={"X-Algolia-Application-Id": self._app, "X-Algolia-API-Key": self._key},
+        )
+        if resp.status_code == 404:
+            return None
+        if resp.status_code != 200:
+            raise SourceError(f"Grailed lookup failed: HTTP {resp.status_code}")
+        data: dict[str, Any] = resp.json()
+        return parse_hit(data)
 
     async def aclose(self) -> None:
         await self._http.aclose()

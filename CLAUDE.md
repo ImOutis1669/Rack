@@ -93,11 +93,24 @@ On this Windows dev box uv lives at
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 3 done (Vinted + Grailed live, Vestiaire blocked stub, health panel, dedupe).
+Status: Phase 4 done (hunts, ntfy/Telegram alerts with dedupe, price drops for saved items).
+Phase 3 done (Vinted + Grailed live, Vestiaire blocked stub, health panel, dedupe).
 73 backend tests (+1 slow) + 10 Vitest pass. Phase 2 notes: 57 backend (+1 slow real-CLIP) + 10 Vitest tests pass; compose stack verified
 locally (CLIP weights download to `/data/hf` on first worker run, ~2 min).
 eBay fixture is hand-built from the documented schema; its image URLs resolve to eBay's grey placeholder,
 so visual matches on fixture data are meaningless. Replace with a live recording once keys exist.
 Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
-Next: Phase 4 (hunts + notifications). Price drops need item-page parsing for Vinted (Grailed item
-pages are blocked; could re-query the Algolia index by objectID instead).
+Next: Phase 5 (polish: PWA, deal score from price history, landed cost, Web Push, README/deploy),
+then a security phase using `docs/security-audit-prompt.md`.
+Phase 4 notes:
+- Hunts (`worker/hunts.py`, `ranking/hunt_match.py`): every query word must appear in brand+title+
+  description; unknown size/category/score never excludes. First run (and after editing the search)
+  is a silent baseline. Global hard filters (hidden, banned words, fit, excluded designers) apply.
+  Free sources only (Vestiaire is paid). Min interval 5 min; worker checks due hunts every minute.
+- All worker jobs share one adapter per source (`worker/adapters.py`) so rate limits hold across jobs.
+- Alerts (`notify/`): `notify_once` claims a unique key in `notifications` before sending (no
+  duplicates); if every channel fails the claim is released for retry. Keys: `hunt:<id>:<source>:
+  <source_id>`, `drop:<listing_id>:<price>`. httpx INFO logging is silenced (Telegram token in URL).
+- Price drops (`worker/price_drops.py`): every 30 min, saved items not seen/checked for
+  RACK_PRICE_CHECK_HOURS are re-checked (Vinted item page, Grailed index object, eBay getItem);
+  alert when price falls ≥ both RACK_PRICE_DROP_MIN_PCT and _GBP below the last alerted/saved price.

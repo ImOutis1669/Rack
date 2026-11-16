@@ -11,6 +11,7 @@ import {
   type Weights,
 } from "../api/types";
 import { PageShell } from "../components/Nav";
+import { Notifications } from "../components/Notifications";
 import { formatLength, parseLengthCm, splitList } from "../lib/units";
 
 const INPUT = "w-full rounded bg-neutral-900 px-2.5 py-1.5 text-sm ring-1 ring-white/15";
@@ -40,6 +41,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
           adjacent={adjacent.data}
         />
       )}
+      <Notifications />
       <HiddenList />
     </PageShell>
   );

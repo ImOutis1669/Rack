@@ -3,7 +3,7 @@
 A personal, self-hosted fashion feed across eBay UK, Vinted UK, Grailed and Vestiaire Collective, ranked by
 *your* taste profile rather than your click history. Single user, runs on a small home server.
 
-> **Status:** Phase 3. Vinted and Grailed live, eBay ready for keys, Vestiaire blocked. See `CLAUDE.md`.
+> **Status:** Phase 4. Vinted and Grailed live, eBay ready for keys, Vestiaire blocked. See `CLAUDE.md`.
 
 ## Quick start
 
@@ -50,6 +50,18 @@ list only ever *adds* to a score: unbranded or unknown items are not pushed down
 Tap the middle of a listing's photo to open every photo full-screen (swipe, arrow keys or
 thumbnails), with the full description. Vinted's extra photos are fetched when you open the listing;
 Grailed only shares its cover photo.
+
+## Hunts and alerts
+**Hunts** are saved searches (words, category, max price, sizes, sources) that run on their own schedule,
+from every 5 minutes to daily. Every word you type must appear in the listing. The first run quietly
+records what's already listed; after that, new matches are pushed to your phone. Your hidden sellers,
+banned words and fit rules still apply. Use "Hunt for this" in a listing's ⋯ menu to start one from a
+listing. Saved items are re-checked every few hours and you're alerted when the price drops by at
+least 5% and £5 (configurable).
+
+Alerts go to [ntfy](https://ntfy.sh) and/or Telegram, set in `.env` (see `.env.example`); use **Send
+test alert** in Settings to check. ntfy.sh is a public server: anyone who knows your topic can read the
+alerts, so use a long random topic (or self-host ntfy). Each alert is sent once.
 
 **Refresh** (top of the feed) re-ranks immediately and asks the worker to search the free sources
 now; it's limited to once every 5 minutes (`RACK_MANUAL_REFRESH_COOLDOWN_MINUTES`). Vestiaire isn't

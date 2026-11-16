@@ -188,6 +188,8 @@ class SavedRow(Base):
     )
     price_gbp_at_save: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_alert_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    price_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class HiddenRow(Base):
@@ -216,3 +218,54 @@ class AppStateRow(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
+# --- Phase 4: hunts and notifications ---
+
+
+class HuntRow(Base):
+    __tablename__ = "hunts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    query: Mapped[str] = mapped_column(String(300))
+    category: Mapped[str] = mapped_column(String(16), default="any")
+    max_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    sizes: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    sources: Mapped[list[str]] = mapped_column(JSONB, default=list)  # empty = all free sources
+    min_score: Mapped[float | None]
+    interval_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    run_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class HuntMatchRow(Base):
+    __tablename__ = "hunt_matches"
+    __table_args__ = (UniqueConstraint("hunt_id", "listing_id", name="uq_hunt_match"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hunt_id: Mapped[int] = mapped_column(ForeignKey("hunts.id", ondelete="CASCADE"))
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"))
+    matched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # found on the hunt's first run: shown, but not pushed (no alert storm for old listings)
+    baseline: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class NotificationRow(Base):
+    """One row per alert ever sent; the unique key is what stops duplicates."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(200), unique=True)
+    kind: Mapped[str] = mapped_column(String(16))  # hunt | price_drop | test
+    listing_id: Mapped[int | None] = mapped_column(ForeignKey("listings.id", ondelete="SET NULL"))
+    title: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(Text)
+    channels: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const LINKS = [
   ["/", "Feed"],
   ["/taste", "Wardrobe"],
+  ["/hunts", "Hunts"],
   ["/saved", "Saved"],
   ["/settings", "Settings"],
 ] as const;

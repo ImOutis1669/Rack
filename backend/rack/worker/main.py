@@ -16,13 +16,16 @@ from rack.db import sessionmaker
 from rack.embeddings.clip import ClipEmbedder
 from rack.ingest import record_check, record_error, record_success, upsert_listings
 from rack.models import AdjacentDesignerRow, TasteItemRow
+from rack.notify.dispatch import build_channels
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery, SourceError
 from rack.sources.http import RateLimitedClient
 from rack.sources.recheck import BLOCKED_SOURCES, check
-from rack.sources.registry import build_adapters
 from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
 from rack.store import get_state, load_designers, load_profile, set_state
+from rack.worker.adapters import shared_adapters
+from rack.worker.hunts import run_due_hunts
+from rack.worker.price_drops import check_saved_prices
 from rack.worker.refresh import refresh_all
 from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
 
@@ -80,8 +83,7 @@ async def run_refresh() -> None:
         log.info("refresh already running; skipped")
         return
     async with _refresh_lock:
-        settings = get_settings()
-        adapters = build_adapters(settings)
+        adapters = list(shared_adapters().values())
         await _update_state("refresh", running=True, started_at=_now().isoformat())
         results: dict[str, int] = {}
         try:
@@ -91,10 +93,6 @@ async def run_refresh() -> None:
             log.info("refresh done: %s", results)
         finally:
             await _update_state("refresh", running=False, at=_now().isoformat(), results=results)
-            for a in adapters:
-                close = getattr(a, "aclose", None)
-                if close:
-                    await close()
 
 
 async def run_vestiaire() -> None:
@@ -166,6 +164,25 @@ async def recheck_blocked() -> None:
     await _update_state("recheck", at=_now().isoformat())
 
 
+async def run_hunts() -> None:
+    try:
+        await run_due_hunts(sessionmaker(), shared_adapters(), build_channels(get_settings()))
+    except Exception:
+        log.exception("hunts run failed")
+
+
+async def run_price_checks() -> None:
+    settings = get_settings()
+    try:
+        n = await check_saved_prices(
+            sessionmaker(), shared_adapters(), build_channels(settings), settings
+        )
+        if n:
+            log.info("price drops: %d alerts sent", n)
+    except Exception:
+        log.exception("price check failed")
+
+
 class EmbedAndScore:
     def __init__(self) -> None:
         settings = get_settings()
@@ -234,6 +251,8 @@ async def resume_at(state_key: str, every: timedelta) -> datetime:
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    # httpx logs full request URLs at INFO; Telegram's contains the bot token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = get_settings()
     scheduler = AsyncIOScheduler(timezone="UTC")
     now = _now()
@@ -244,6 +263,8 @@ async def main() -> None:
         (run_refresh, refresh_every, "refresh", await resume_at("refresh", refresh_every)),
         (embed.run, timedelta(seconds=settings.rack_score_seconds), "embed_score", now),
         (ManualRefresh(embed).run, timedelta(seconds=10), "manual_refresh", now),
+        (run_hunts, timedelta(minutes=1), "hunts", now),
+        (run_price_checks, timedelta(minutes=30), "price_drops", now),
         (
             recheck_blocked,
             timedelta(days=1),

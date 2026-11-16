@@ -39,6 +39,16 @@ class Settings(BaseSettings):
     vestiaire_monthly_result_cap: int = 300
     vestiaire_enrich: bool = False  # full descriptions + galleries; slower
 
+    # Notifications. ntfy: phone app subscribes to the topic (the topic name is the secret).
+    ntfy_url: str = "https://ntfy.sh"
+    ntfy_topic: str = ""
+    ntfy_token: str = ""  # only for protected/self-hosted servers
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    rack_price_check_hours: float = 6
+    rack_price_drop_min_pct: float = 5.0
+    rack_price_drop_min_gbp: float = 5.0
+
     # Rate limits (seconds between requests, per source)
     rate_ebay: float = 2.0
     rate_vinted: float = 10.0

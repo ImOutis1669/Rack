@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
 import "./index.css";
 import { Feed } from "./pages/Feed";
+import { Hunts } from "./pages/Hunts";
 import { Login } from "./pages/Login";
 import { Saved } from "./pages/Saved";
 import { Settings } from "./pages/Settings";
@@ -37,6 +38,7 @@ function App() {
       <Route path="/" element={<Feed onLogout={onLogout} />} />
       <Route path="/taste" element={<Taste onLogout={onLogout} />} />
       <Route path="/saved" element={<Saved onLogout={onLogout} />} />
+      <Route path="/hunts" element={<Hunts onLogout={onLogout} />} />
       <Route path="/settings" element={<Settings onLogout={onLogout} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -154,6 +154,45 @@ export interface RefreshStatus {
   message: string;
 }
 
+export type FreeSource = "ebay" | "vinted" | "grailed";
+
+export interface HuntInput {
+  name: string;
+  query: string;
+  category: Category;
+  max_price_gbp: number | null;
+  sizes: string[];
+  sources: FreeSource[];
+  min_score: number | null;
+  interval_minutes: number;
+  enabled: boolean;
+  notify: boolean;
+}
+
+export interface Hunt extends HuntInput {
+  id: number;
+  last_run_at: string | null;
+  run_requested_at: string | null;
+  last_error: string | null;
+  match_count: number;
+  new_count: number;
+}
+
+export interface ChannelStatus {
+  name: string;
+  configured: boolean;
+  detail: string;
+}
+
+export interface SentNotification {
+  kind: string;
+  title: string;
+  body: string;
+  url: string | null;
+  channels: Record<string, string>;
+  sent_at: string;
+}
+
 export interface Visit {
   visit_start: string;
   last_visit: string | null;

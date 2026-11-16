@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
 import { formatGBP, sellerLabel, SOURCE_LABEL, timeAgo } from "../lib/format";
+import { huntFromListing } from "../lib/hunts";
 import { Carousel } from "./Carousel";
 import { Gallery } from "./Gallery";
 import { SourceBadge } from "./SourceBadge";
@@ -25,6 +27,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
   const [saved, setSaved] = useState(item.saved);
   const [menu, setMenu] = useState(false);
   const [gallery, setGallery] = useState(false);
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLElement>(null);
 
@@ -177,7 +180,12 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
                     Hide brand {item.brand}
                   </button>
                 )}
-                {!item.seller?.name && !item.brand && <p className="px-3 py-2 text-neutral-400">Nothing to hide</p>}
+                <button
+                  className="block w-full px-3 py-2 text-left hover:bg-neutral-700"
+                  onClick={() => navigate("/hunts", { state: { prefill: huntFromListing(item) } })}
+                >
+                  Hunt for this
+                </button>
               </div>
             )}
           </div>
