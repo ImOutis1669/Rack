@@ -35,6 +35,7 @@ from rack.sources.http import RateLimitedClient
 from rack.sources.recheck import BLOCKED_SOURCES, check
 from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
 from rack.store import get_state, load_designers, load_profile, set_state
+from rack.thumbs import prune
 from rack.worker.adapters import shared_adapters
 from rack.worker.ebay_details import fetch_ebay_details
 from rack.worker.hunts import run_due_hunts
@@ -269,6 +270,22 @@ async def run_ebay_details() -> None:
         log.exception("eBay details failed")
 
 
+async def prune_thumbnails() -> None:
+    """Keep the thumbnail cache within its age and size limits."""
+    settings = get_settings()
+    try:
+        n = await asyncio.to_thread(
+            prune,
+            settings.rack_data_dir / "thumbs",
+            max_bytes=settings.rack_thumbs_max_mb * 1024 * 1024,
+            max_age_s=settings.rack_thumbs_max_age_days * 86400,
+        )
+        if n:
+            log.info("thumbnails: pruned %d", n)
+    except Exception:
+        log.exception("thumbnail prune failed")
+
+
 async def run_sold_prices() -> None:
     """Grailed sold prices for branded wardrobe items, once a day each (5c)."""
     adapter = shared_adapters().get("grailed")
@@ -424,6 +441,7 @@ async def main() -> None:
         (save_ebay_usage, timedelta(minutes=1), "ebay_usage", now + timedelta(seconds=45)),
         (run_resale_estimates, timedelta(minutes=2), "resale", now + timedelta(seconds=60)),
         (run_sold_prices, timedelta(minutes=10), "sold_prices", now + timedelta(seconds=90)),
+        (prune_thumbnails, timedelta(hours=1), "thumbs_prune", now + timedelta(minutes=5)),
         (
             recheck_blocked,
             timedelta(days=1),

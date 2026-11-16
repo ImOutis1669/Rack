@@ -39,6 +39,7 @@ class TasteItemOut(BaseModel):
     category: str | None = None  # set by you; else worked out from the name (see effective)
     effective_category: str = "any"
     image: str | None  # authenticated URL to the stored image
+    thumb: str | None = None  # /api/taste/{id}/thumb (add ?w=480|960)
     image_url: str | None  # where it was fetched from, if pasted
     embedded: bool
     embed_error: str | None
@@ -109,6 +110,7 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         category=r.category,
         effective_category=item_category(r).value,
         image=f"/api/taste/{r.id}/image" if r.image_path else None,
+        thumb=f"/api/taste/{r.id}/thumb" if r.image_path else None,
         image_url=r.image_url,
         embedded=r.embedding is not None if r.image_path else r.text_embedding is not None,
         embed_error=r.embed_error,

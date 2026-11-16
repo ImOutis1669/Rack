@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import type { Listing } from "../api/types";
 import { formatGBP } from "../lib/format";
 import { landedLabel, previousPrice } from "../lib/landed";
+import { listingTileImage } from "../lib/thumbs";
 import { BlurFade } from "./magicui/blur-fade";
 import { SourceBadge } from "./SourceBadge";
 import { IconButton } from "./ui";
@@ -30,6 +31,7 @@ export function ListingTile({
   const was = previousPrice(item);
   const landed = landedLabel(item.landed);
   const copies = item.buy_links.length;
+  const photo = listingTileImage(item);
   const meta = [item.size && `Size ${item.size}`, landed, copies > 1 && `${copies} listings`].filter(Boolean).join(" · ");
 
   useEffect(() => {
@@ -54,10 +56,13 @@ export function ListingTile({
     <article ref={ref} className="group">
       <div className="relative overflow-hidden rounded-photo bg-fill">
         <button onClick={onOpen} aria-label={`Open ${item.title}`} className="press block w-full">
-          {item.images[0] ? (
+          {photo ? (
             <img
-              src={item.images[0]}
+              src={photo.src}
+              srcSet={photo.srcSet}
+              sizes={photo.sizes}
               alt=""
+              decoding="async"
               loading={index < 8 ? "eager" : "lazy"}
               referrerPolicy="no-referrer"
               className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"

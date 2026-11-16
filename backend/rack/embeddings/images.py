@@ -142,3 +142,23 @@ async def fetch_user_image(url: str, client: httpx.AsyncClient) -> bytes:
         body, _ = await _get_limited(client, urljoin(url, m.group(1)))
     open_image(body)  # validate
     return body
+
+
+async def fetch_listing_image(url: str, client: httpx.AsyncClient) -> bytes:
+    """A listing photo: https marketplace CDNs only, a public IP we connect to directly (Host +
+    SNI kept), no redirects, at most MAX_BYTES. Shared by the worker and the thumbnail route."""
+    if not is_listing_image_host(url):
+        raise ImageError(f"refusing image host {urlsplit(url).hostname!r}")
+    ip = await resolve_public(url)
+    pinned, headers, ext = pinned_request(url, ip)
+    async with client.stream(
+        "GET", pinned, headers=headers, extensions=ext, follow_redirects=False
+    ) as resp:
+        if resp.status_code != 200:
+            raise ImageError(f"image fetch HTTP {resp.status_code}")
+        body = bytearray()
+        async for chunk in resp.aiter_bytes():
+            body.extend(chunk)
+            if len(body) > MAX_BYTES:
+                raise ImageError("image larger than 10 MB")
+    return bytes(body)

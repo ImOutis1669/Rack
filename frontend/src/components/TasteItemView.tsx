@@ -6,6 +6,7 @@ import type { Category, TasteItem } from "../api/types";
 import { defaultPrice, parsePrice } from "../lib/bought";
 import { safeHref } from "../lib/safe";
 import { CATEGORY_LABEL, detailRows, displayName, itemName, sourceLink, tileValue } from "../lib/tasteItem";
+import { thumbSet } from "../lib/thumbs";
 import { tileBadge } from "../lib/trend";
 import { cn } from "../lib/utils";
 import { confidence } from "../lib/wardrobeValue";
@@ -30,7 +31,13 @@ export function TasteTile({ item, onOpen }: { item: TasteItem; onOpen: () => voi
     <button type="button" onClick={onOpen} className="press block w-full text-left" aria-label={displayName(item)}>
       <div className="relative overflow-hidden rounded-photo bg-fill">
         {item.image ? (
-          <img src={item.image} alt="" loading="lazy" className="aspect-[4/5] w-full object-cover" />
+          <img
+            {...(item.thumb ? thumbSet(item.thumb) : { src: item.image })}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="aspect-[4/5] w-full object-cover"
+          />
         ) : (
           <div className="flex aspect-[4/5] items-center justify-center p-3 text-center text-footnote font-medium">“{displayName(item)}”</div>
         )}

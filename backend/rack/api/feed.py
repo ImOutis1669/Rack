@@ -84,6 +84,7 @@ def to_out(
         size=row.size,
         condition=row.condition,
         images=[i.url for i in row.images],
+        image_ids=[i.id for i in row.images],
         seller=seller,
         listed_at=row.listed_at,
         first_seen_at=row.first_seen_at,

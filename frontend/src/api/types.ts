@@ -29,6 +29,7 @@ export interface Listing {
   size: string | null;
   condition: string | null;
   images: string[];
+  image_ids?: number[]; // same order as images: /api/img/{id}?w=480|960 thumbnails
   seller: Seller | null;
   listed_at: string | null;
   first_seen_at: string;
@@ -144,6 +145,7 @@ export interface TasteItem {
   category?: Exclude<Category, "any"> | null; // set by you
   effective_category?: Category; // yours, else worked out from the name
   image: string | null;
+  thumb?: string | null; // /api/taste/{id}/thumb (add ?w=480|960)
   image_url: string | null;
   embedded: boolean;
   embed_error: string | null;

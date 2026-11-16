@@ -47,6 +47,7 @@ class ListingOut(BaseModel):
     size: str | None
     condition: str | None
     images: list[str]
+    image_ids: list[int] = []  # same order as `images`: /api/img/{id}?w=480|960 thumbnails
     seller: SellerOut | None
     listed_at: datetime | None
     first_seen_at: datetime
