@@ -82,6 +82,8 @@ class SourceHealthOut(BaseModel):
     blocked: bool = False
     last_check_at: datetime | None = None
     status: str  # ok | degraded | down | blocked | not_configured | never_run
+    usage: str | None = None  # e.g. "412 of 5,000 eBay searches today"
+    usage_warning: bool = False  # above 80% of the daily quota
 
 
 class VisitOut(BaseModel):

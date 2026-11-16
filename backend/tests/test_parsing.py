@@ -1,6 +1,6 @@
 import pytest
 
-from rack.parsing.categories import infer_category, size_matches
+from rack.parsing.categories import infer_category, size_from_title, size_matches
 from rack.parsing.measurements import parse_measurements
 from rack.sources.base import Category
 
@@ -56,3 +56,20 @@ def test_size_matches() -> None:
     assert size_matches("XXL", ["2XL"]) is True
     assert size_matches("S", ["L", "XL"]) is False
     assert size_matches(None, ["M"]) is None
+
+
+def test_size_from_title() -> None:
+    cases = {
+        "MAISON MARGIELA S57WS0257 Sneakers EU42 US9 Black": "EU42",
+        "Rick Owens Tee Black Size L": "L",
+        "Levis 501 W32 L34": "W32 L34",
+        "Raf Simons hoodie sz XL": "XL",
+        "Geobasket boots UK 9.5": "UK 9.5",
+        "Jacket size 48 IT": "48",
+        "Prada nylon bag": None,
+        "Mask Usage tee": None,  # 'us' inside a word is not a size
+    }
+    for title, size in cases.items():
+        assert size_from_title(title) == size, title
+    # what it finds still compares with the existing size normalisation
+    assert size_matches(size_from_title("Boots UK 9"), ["9"]) is True

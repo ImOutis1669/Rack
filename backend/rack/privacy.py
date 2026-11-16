@@ -8,7 +8,7 @@ is the second line of defence at the database boundary.
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, or_
+from sqlalchemy import and_, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.models import ListingRow
@@ -38,16 +38,21 @@ def scrub(values: dict[str, object]) -> dict[str, object]:
 
 
 async def purge_ebay(session: AsyncSession, retention_days: float, now: datetime) -> int:
-    """Delete eBay listings that are inactive or unseen for `retention_days`. Caller commits.
+    """Delete eBay listings that are gone (inactive) or unseen for `retention_days`. Caller commits.
 
-    Photos, scores, price history, votes and saves go with them (ON DELETE CASCADE).
+    Excluded listings (inactive on purpose, e.g. women's) are kept while searches still return
+    them, so they aren't re-fetched; they go once unseen. Photos, scores, price history, votes and
+    saves go with them (ON DELETE CASCADE).
     """
     cutoff = now - timedelta(days=retention_days)
     result = await session.execute(
         delete(ListingRow)
         .where(
             ListingRow.source == "ebay",
-            or_(ListingRow.active.is_(False), ListingRow.last_seen_at < cutoff),
+            or_(
+                and_(ListingRow.active.is_(False), ListingRow.excluded.is_(None)),
+                ListingRow.last_seen_at < cutoff,
+            ),
         )
         .returning(ListingRow.id)
     )

@@ -95,6 +95,25 @@ def size_tokens(size: str) -> set[str]:
     return {_norm_size(p) for p in parts if _norm_size(p)} | {_norm_size(size)}
 
 
+_LETTER = r"(?:xxxs|xxs|xs|s|m|l|xl|xxl|xxxl|[2-4]xl)"
+_NUM = r"\d{1,2}(?:\.5)?"
+TITLE_SIZE_PATTERNS = [
+    # "UK 9", "EU42", "US 9.5", "IT 48": keep the system so size normalisation can compare
+    re.compile(rf"\b(?:uk|eu|us|it|fr|jp)\s?{_NUM}\b", re.I),
+    re.compile(r"\bw\s?\d{2}(?:\s?l\s?\d{2})?\b", re.I),  # W32, W32 L34
+    re.compile(rf"\bsize[:\s]+(?:{_LETTER}|{_NUM})\b", re.I),
+    re.compile(rf"\bsz[:\s]*(?:{_LETTER}|{_NUM})\b", re.I),
+]
+
+
+def size_from_title(title: str) -> str | None:
+    """Best-effort size from a listing title, for sources whose search results have no size."""
+    for pattern in TITLE_SIZE_PATTERNS:
+        if m := pattern.search(title):
+            return re.sub(r"^(?:size|sz)[:\s]*", "", m.group(0), flags=re.I).strip()
+    return None
+
+
 def size_matches(listing_size: str | None, wanted: list[str]) -> bool | None:
     """True/False if we can tell, None if the listing has no size."""
     if not listing_size or not wanted:

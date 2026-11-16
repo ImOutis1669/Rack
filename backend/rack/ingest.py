@@ -4,7 +4,7 @@ import hashlib
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,6 +63,11 @@ async def upsert_listings(session: AsyncSession, listings: Sequence[Listing]) ->
         }
         # search results often lack the description we fetched from the item page: keep it
         update_cols["description"] = func.coalesce(ins.excluded.description, ListingRow.description)
+        # item-page lookups know more than search results: keep their size/brand
+        update_cols["size"] = func.coalesce(ListingRow.size, ins.excluded.size)
+        update_cols["brand"] = func.coalesce(ListingRow.brand, ins.excluded.brand)
+        # an excluded listing (e.g. women's) stays hidden however often a search returns it
+        update_cols["active"] = case((ListingRow.excluded.is_(None), True), else_=False)
         upsert = ins.on_conflict_do_update(
             constraint="uq_listing_source", set_=update_cols
         ).returning(ListingRow.id)

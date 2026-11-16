@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     ebay_marketplace: str = "EBAY_GB"
     # "I do not persist eBay data": delete eBay listings inactive or unseen for this long
     rack_ebay_retention_days: float = 7
+    # getItem lookups for new eBay listings (size, brand, department): per eBay day / per run
+    rack_ebay_details_daily_cap: int = 1000
+    rack_ebay_details_batch: int = 20
+    ebay_daily_call_limit: int = 5000  # eBay's Browse quota (search), for the health display
 
     # Grailed: public search-only Algolia key that grailed.com ships to browsers
     grailed_algolia_app_id: str = ""

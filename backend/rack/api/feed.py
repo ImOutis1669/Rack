@@ -34,8 +34,9 @@ from rack.ranking.mmr import interleave_exploration, mmr
 from rack.ranking.vectors import as_matrix
 from rack.schemas import BuyLink, FeedPage, LandedOut, ListingOut, SellerOut, SourceHealthOut
 from rack.sources.base import Category
+from rack.sources.ebay import quota_day
 from rack.sources.registry import SOURCE_NAMES
-from rack.store import load_profile
+from rack.store import get_state, load_profile
 
 router = APIRouter(prefix="/api", tags=["feed"], dependencies=[Depends(require_session)])
 
@@ -336,11 +337,25 @@ def health_status(row: SourceHealthRow | None) -> str:
     return "ok" if row.last_success_at else "never_run"
 
 
+def ebay_usage_text(usage: dict[str, Any], limit: int, today: str) -> tuple[str | None, bool]:
+    """Today's eBay calls against the daily search quota (None before any call today)."""
+    if usage.get("day") != today:
+        return None, False
+    searches, items = int(usage.get("search", 0)), int(usage.get("item", 0))
+    text = f"{searches:,} of {limit:,} searches today"
+    if items:
+        text += f" · {items:,} item lookups"
+    return text, searches >= 0.8 * limit
+
+
 @router.get("/sources/health", response_model=list[SourceHealthOut])
 async def sources_health(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[SourceHealthOut]:
     rows = {r.source: r for r in (await session.execute(select(SourceHealthRow))).scalars()}
+    usage, warn = ebay_usage_text(
+        await get_state(session, "ebay_usage"), get_settings().ebay_daily_call_limit, quota_day()
+    )
     out: list[SourceHealthOut] = []
     for name in SOURCE_NAMES:
         row = rows.get(name)
@@ -357,6 +372,8 @@ async def sources_health(
                 blocked=row.blocked if row else False,
                 last_check_at=row.last_check_at if row else None,
                 status=health_status(row),
+                usage=usage if name == "ebay" else None,
+                usage_warning=warn if name == "ebay" else False,
             )
         )
     return out

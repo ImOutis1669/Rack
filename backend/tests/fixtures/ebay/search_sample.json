@@ -1,56 +1,98 @@
 {
-  "_note": "Hand-built from the documented Browse API item_summary/search response schema (no keys yet). Replace with a live recording via `rack probe ebay \"maison margiela\" --record ...` once EBAY_CLIENT_ID/SECRET are set.",
-  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=maison+margiela&limit=3",
-  "total": 3,
-  "limit": 3,
+  "_note": "Made-up values in the shape of a live EBAY_GB item_summary/search response (probed 2026-11-16). No real eBay data is kept in the repo: search summaries carry seller data, and Rack's eBay exemption is 'I do not persist eBay data'. Summaries have no size, brand or department.",
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=maison+margiela&limit=4",
+  "total": 4,
+  "limit": 4,
   "offset": 0,
   "itemSummaries": [
     {
       "itemId": "v1|186712345678|0",
       "title": "Maison Margiela Replica GAT Sneakers White EU 46 UK 12",
       "leafCategoryIds": ["15709"],
-      "categories": [{"categoryId": "15709", "categoryName": "Trainers"}],
-      "image": {"imageUrl": "https://i.ebayimg.com/images/g/AAA/s-l1600.jpg"},
-      "additionalImages": [
-        {"imageUrl": "https://i.ebayimg.com/images/g/BBB/s-l1600.jpg"},
-        {"imageUrl": "https://i.ebayimg.com/images/g/CCC/s-l1600.jpg"}
+      "categories": [
+        {"categoryId": "93427", "categoryName": "Men's Shoes"},
+        {"categoryId": "260012", "categoryName": "Men"},
+        {"categoryId": "11450", "categoryName": "Clothes, Shoes & Accessories"}
       ],
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/AAA/s-l1600.jpg"},
       "price": {"value": "185.00", "currency": "GBP"},
       "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C186712345678%7C0",
-      "seller": {"username": "archive_finds_uk", "feedbackPercentage": "99.6", "feedbackScore": 1342},
-      "condition": "Pre-owned",
+      "seller": {"username": "example_seller_one", "feedbackPercentage": "99.6", "feedbackScore": 1342, "sellerAccountType": "INDIVIDUAL"},
+      "condition": "Pre-owned - Good",
       "conditionId": "3000",
+      "thumbnailImages": [{"imageUrl": "https://i.ebayimg.com/images/g/AAA/s-l225.jpg"}],
       "shippingOptions": [
         {"shippingCostType": "FIXED", "shippingCost": {"value": "4.99", "currency": "GBP"}},
         {"shippingCostType": "FIXED", "shippingCost": {"value": "9.99", "currency": "GBP"}}
       ],
       "buyingOptions": ["FIXED_PRICE", "BEST_OFFER"],
       "itemWebUrl": "https://www.ebay.co.uk/itm/186712345678",
-      "itemLocation": {"postalCode": "E8***", "country": "GB"},
+      "itemLocation": {"postalCode": "E8****", "country": "GB"},
+      "additionalImages": [
+        {"imageUrl": "https://i.ebayimg.com/images/g/BBB/s-l1600.jpg"},
+        {"imageUrl": "https://i.ebayimg.com/images/g/CCC/s-l1600.jpg"}
+      ],
+      "adultOnly": false,
+      "legacyItemId": "186712345678",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-11-14T18:22:05.000Z",
       "itemCreationDate": "2026-11-14T18:22:05.000Z",
-      "marketplaceId": "EBAY_GB"
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_GB"
     },
     {
       "itemId": "v1|395512345678|0",
       "title": "Rick Owens DRKSHDW Long Sleeve Tee Black Size L",
+      "leafCategoryIds": ["15687"],
+      "categories": [
+        {"categoryId": "15687", "categoryName": "T-Shirts"},
+        {"categoryId": "1059", "categoryName": "Men's Clothing"},
+        {"categoryId": "260012", "categoryName": "Men"}
+      ],
       "image": {"imageUrl": "https://i.ebayimg.com/images/g/DDD/s-l1600.jpg"},
       "price": {"value": "120.00", "currency": "USD"},
-      "seller": {"username": "nyc_archive", "feedbackPercentage": "100.0", "feedbackScore": 87},
-      "condition": "Pre-owned",
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C395512345678%7C0",
+      "seller": {"username": "example_seller_two", "feedbackPercentage": "100.0", "feedbackScore": 87, "sellerAccountType": "BUSINESS"},
+      "condition": "Pre-owned - Excellent",
+      "conditionId": "3000",
       "shippingOptions": [
         {"shippingCostType": "FIXED", "shippingCost": {"value": "25.00", "currency": "USD"}}
       ],
       "buyingOptions": ["FIXED_PRICE"],
       "itemWebUrl": "https://www.ebay.co.uk/itm/395512345678",
       "itemLocation": {"postalCode": "100**", "country": "US"},
+      "adultOnly": false,
+      "legacyItemId": "395512345678",
       "itemCreationDate": "2026-11-13T09:01:44.000Z",
-      "marketplaceId": "EBAY_GB"
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|277712345678|0",
+      "title": "MM6 Maison Margiela Women's Satin Trousers",
+      "categories": [
+        {"categoryId": "63863", "categoryName": "Women's Clothing"},
+        {"categoryId": "260010", "categoryName": "Women"}
+      ],
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/EEE/s-l1600.jpg"},
+      "price": {"value": "140.00", "currency": "GBP"},
+      "seller": {"username": "example_seller_three", "feedbackPercentage": "98.0", "feedbackScore": 12, "sellerAccountType": "INDIVIDUAL"},
+      "condition": "Pre-owned - Good",
+      "buyingOptions": ["FIXED_PRICE"],
+      "itemWebUrl": "https://www.ebay.co.uk/itm/277712345678",
+      "itemLocation": {"postalCode": "M1****", "country": "GB"},
+      "itemCreationDate": "2026-11-12T10:00:00.000Z"
     },
     {
       "itemId": "v1|111111111111|0",
-      "title": "Broken item with no price",
+      "title": "Margiela tabi boots auction",
+      "categories": [{"categoryId": "93427", "categoryName": "Men's Shoes"}],
+      "currentBidPrice": {"value": "50.00", "currency": "GBP"},
+      "bidCount": 1,
+      "buyingOptions": ["AUCTION", "BEST_OFFER"],
       "itemWebUrl": "https://www.ebay.co.uk/itm/111111111111",
-      "condition": "Pre-owned"
+      "itemLocation": {"country": "GB"},
+      "itemEndDate": "2026-11-20T10:00:00.000Z"
     }
   ]
 }

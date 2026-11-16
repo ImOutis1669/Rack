@@ -74,6 +74,15 @@ stack; never bundle Apple font files.
     (`ebay.RAW_KEYS`, so recorded fixtures are clean too), `privacy.scrub` re-checks at ingest, and
     the hourly `ebay_retention` worker job deletes eBay listings that are inactive or unseen for
     `RACK_EBAY_RETENTION_DAYS` (7; votes/saves on them go too). "Hide seller" is disabled for eBay.
+    Live behaviour (probed 2026-11-16): quota 5,000 searches + 5,000 item lookups per eBay day
+    (resets 08:00 UTC). Search summaries have no size/brand/department, so the worker's
+    `ebay_details` job looks each new listing up once with getItem (`RACK_EBAY_DETAILS_DAILY_CAP`
+    1000, 20 per 2-min run); until then size comes from the title (`parsing.size_from_title`).
+    Searches add `deliveryCountry:GB` (imports allowed; most archive stock is JP/US). Women's items
+    are skipped (category names / getItem Department); getItem-detected ones get
+    `listings.excluded='womens'` so searches don't reactivate them. Daily call counts live in
+    `app_state['ebay_usage']` and show in the Sources sheet. Fixtures are made-up values in the
+    real shape: never commit real eBay responses.
   - Vinted: `/api/v2/catalog/items` is gone (404); parse `productItem` objects from the Next.js
     flight data of `/catalog?search_text=…`, men's catalogue ids from the page's own tree.
     price_gbp includes the compulsory buyer-protection fee. DataDome is present.

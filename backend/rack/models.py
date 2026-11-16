@@ -55,6 +55,8 @@ class ListingRow(Base):
     country: Mapped[str | None] = mapped_column(String(2))
     raw: Mapped[dict[str, Any]] = mapped_column(default=dict)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Why the listing is hidden for good (e.g. "womens"); searches don't reactivate it.
+    excluded: Mapped[str | None] = mapped_column(String(32))
     text_embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
     # Same item listed more than once (cross-listed / reposted): id of the cheapest copy.
     cluster_id: Mapped[int | None] = mapped_column(Integer, index=True)

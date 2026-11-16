@@ -83,6 +83,8 @@ export interface SourceHealth {
   last_check_at: string | null;
   blocked: boolean;
   status: "ok" | "degraded" | "down" | "blocked" | "not_configured" | "never_run";
+  usage?: string | null;
+  usage_warning?: boolean;
 }
 
 export type DesignerWeight = "love" | "like" | "curious" | "exclude";

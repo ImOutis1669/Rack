@@ -3,6 +3,11 @@
 Docs: https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search
 Auth: OAuth client-credentials grant, scope https://api.ebay.com/oauth/api_scope.
 
+Real behaviour (live probe 2026-11-16): search summaries have no size, brand or department, so
+`worker/ebay_details.py` looks each new listing up once with getItem (daily cap); until then the
+size comes from the title. Searches only return items that deliver to the UK, and women's items
+are skipped (Rack searches men's, like Vinted).
+
 Privacy: the user registered for eBay's Marketplace Account Deletion exemption ("I do not persist
 eBay data"). So no eBay user data is ever parsed or stored: no seller username, feedback, or item
 city/postcode, and `raw` keeps only the allow-listed item fields below. `ingest.py` re-checks this,
@@ -11,12 +16,13 @@ and the worker deletes eBay listings that are inactive or unseen for RACK_EBAY_R
 
 import re
 import time
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import httpx
 
+from rack.parsing.categories import size_from_title
 from rack.pricing.fx import to_gbp
 from rack.sources.base import (
     Category,
@@ -57,7 +63,18 @@ RAW_KEYS = (
     "brand",
     "itemCreationDate",
 )
-RAW_ASPECTS = ("brand", "size")
+RAW_ASPECTS = ("brand", "size", "uk shoe size", "department")
+SIZE_ASPECTS = ("Size", "UK Shoe Size", "Size (Men's)", "Waist Size")
+WOMENS = ("women", "ladies", "girls")
+
+# eBay's call quotas reset at midnight US Pacific (08:00 UTC in winter).
+QUOTA_DAY_OFFSET = timedelta(hours=8)
+CALL_KINDS = ("token", "search", "item")
+
+
+def quota_day(now: datetime | None = None) -> str:
+    return ((now or datetime.now(UTC)) - QUOTA_DAY_OFFSET).date().isoformat()
+
 
 LEGACY_ID_RE = re.compile(r"/itm/(?:[^/]+/)?(\d{9,15})")
 
@@ -80,6 +97,27 @@ def _aspect(item: dict[str, Any], name: str) -> str | None:
         if str(a.get("name", "")).lower() == name.lower():
             return str(a.get("value"))
     return None
+
+
+def is_womens(item: dict[str, Any]) -> bool:
+    """eBay files it under women's (search: category names; getItem: the Department aspect)."""
+    for c in item.get("categories") or []:
+        if str(c.get("categoryName", "")).lower().startswith(WOMENS):
+            return True
+    path = str(item.get("categoryPath") or "").lower()
+    if any(part.strip().startswith(WOMENS) for part in path.split("|")):
+        return True
+    department = (_aspect(item, "Department") or "").lower()
+    return department.startswith(WOMENS)
+
+
+def _size(item: dict[str, Any]) -> str | None:
+    if item.get("size"):
+        return str(item["size"])
+    for name in SIZE_ASPECTS:
+        if value := _aspect(item, name):
+            return value
+    return size_from_title(str(item.get("title", "")))
 
 
 def safe_raw(item: dict[str, Any]) -> dict[str, Any]:
@@ -106,7 +144,9 @@ def safe_raw(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_item(item: dict[str, Any]) -> Listing | None:
-    """Parse an itemSummary (search) or item (getItem) object into a Listing."""
+    """Parse an itemSummary (search) or item (getItem) object into a Listing (None: skip it)."""
+    if is_womens(item):
+        return None
     price = item.get("price") or {}
     amount = _dec(price.get("value"))
     currency = price.get("currency")
@@ -135,12 +175,13 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
         source_id=item["itemId"],
         url=item.get("itemWebUrl") or "",
         title=item.get("title", ""),
-        description=item.get("shortDescription") or item.get("description"),
+        # getItem's `description` is the seller's raw HTML: keep only the plain short description
+        description=item.get("shortDescription"),
         brand=item.get("brand") or _aspect(item, "Brand"),
         price=amount,
         currency=currency,
         price_gbp=to_gbp(amount, currency),
-        size=item.get("size") or _aspect(item, "Size"),
+        size=_size(item),
         condition=item.get("condition"),
         images=images,
         seller=None,
@@ -162,7 +203,7 @@ def parse_search(payload: dict[str, Any]) -> list[Listing]:
 
 
 def build_search_params(query: SearchQuery) -> dict[str, str]:
-    filters = ["buyingOptions:{FIXED_PRICE|BEST_OFFER}"]
+    filters = ["buyingOptions:{FIXED_PRICE|BEST_OFFER}", "deliveryCountry:GB"]
     if query.max_price_gbp is not None:
         filters.append(f"price:[..{query.max_price_gbp}]")
         filters.append("priceCurrency:GBP")
@@ -195,6 +236,21 @@ class EbayAdapter:
         self._http = RateLimitedClient(min_interval, transport=transport)
         self._token: str | None = None
         self._token_exp = 0.0
+        self.usage: dict[str, object] = {"day": quota_day(), **dict.fromkeys(CALL_KINDS, 0)}
+
+    def _count(self, kind: str) -> None:
+        """Calls made in the current eBay quota day (persisted by the worker)."""
+        today = quota_day()
+        if self.usage.get("day") != today:
+            self.usage = {"day": today, **dict.fromkeys(CALL_KINDS, 0)}
+        self.usage[kind] = int(str(self.usage.get(kind, 0))) + 1
+
+    def calls_today(self, kind: str) -> int:
+        return int(str(self.usage.get(kind, 0))) if self.usage.get("day") == quota_day() else 0
+
+    def restore_usage(self, saved: dict[str, object]) -> None:
+        if saved.get("day") == quota_day():
+            self.usage = {"day": saved["day"], **{k: int(str(saved.get(k, 0))) for k in CALL_KINDS}}
 
     @property
     def configured(self) -> bool:
@@ -204,6 +260,7 @@ class EbayAdapter:
         if not self.configured:
             raise SourceNotConfigured("EBAY_CLIENT_ID / EBAY_CLIENT_SECRET not set")
         if self._token is None or time.time() > self._token_exp - 60:
+            self._count("token")
             resp = await self._http.post(
                 TOKEN_URL,
                 auth=(self._id, self._secret),
@@ -223,13 +280,20 @@ class EbayAdapter:
 
     async def search(self, query: SearchQuery) -> list[Listing]:
         headers = await self._auth_headers()
+        self._count("search")
         resp = await self._http.get(SEARCH_URL, params=build_search_params(query), headers=headers)
         if resp.status_code != 200:
             raise SourceError(f"eBay search failed: {resp.status_code} {resp.text[:200]}")
         return parse_search(resp.json())
 
     async def get_listing(self, url_or_id: str) -> Listing | None:
+        item = await self.fetch_item(url_or_id)
+        return parse_item(item) if item is not None else None
+
+    async def fetch_item(self, url_or_id: str) -> dict[str, Any] | None:
+        """getItem JSON (None: gone). Callers must parse it; it contains seller data."""
         headers = await self._auth_headers()
+        self._count("item")
         if m := LEGACY_ID_RE.search(url_or_id):
             resp = await self._http.get(
                 f"{ITEM_URL}/get_item_by_legacy_id",
@@ -242,7 +306,8 @@ class EbayAdapter:
             return None
         if resp.status_code != 200:
             raise SourceError(f"eBay getItem failed: {resp.status_code} {resp.text[:200]}")
-        return parse_item(resp.json())
+        body: dict[str, Any] = resp.json()
+        return body
 
     async def aclose(self) -> None:
         await self._http.aclose()

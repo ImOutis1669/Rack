@@ -29,11 +29,13 @@ from rack.pricing.fx import fetch_rates, set_live_rates
 from rack.privacy import purge_ebay
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery, SourceError
+from rack.sources.ebay import EbayAdapter
 from rack.sources.http import RateLimitedClient
 from rack.sources.recheck import BLOCKED_SOURCES, check
 from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
 from rack.store import get_state, load_designers, load_profile, set_state
 from rack.worker.adapters import shared_adapters
+from rack.worker.ebay_details import fetch_ebay_details
 from rack.worker.hunts import run_due_hunts
 from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
@@ -239,6 +241,49 @@ async def purge_ebay_listings() -> None:
         log.exception("eBay retention purge failed")
 
 
+def _ebay() -> EbayAdapter | None:
+    adapter = shared_adapters().get("ebay")
+    return adapter if isinstance(adapter, EbayAdapter) and adapter.configured else None
+
+
+async def run_ebay_details() -> None:
+    """Size/brand/department for new eBay listings (search results don't have them)."""
+    adapter = _ebay()
+    if adapter is None:
+        return
+    settings = get_settings()
+    try:
+        n = await fetch_ebay_details(
+            sessionmaker(),
+            adapter,
+            daily_cap=settings.rack_ebay_details_daily_cap,
+            batch=settings.rack_ebay_details_batch,
+            now=_now(),
+        )
+        if n:
+            log.info("eBay details: looked up %d listings", n)
+    except Exception:
+        log.exception("eBay details failed")
+
+
+async def save_ebay_usage() -> None:
+    """Persist today's eBay call counts for the health panel (and across restarts)."""
+    adapter = _ebay()
+    if adapter is None:
+        return
+    async with sessionmaker()() as s:
+        await set_state(s, "ebay_usage", dict(adapter.usage))
+        await s.commit()
+
+
+async def load_ebay_usage() -> None:
+    adapter = _ebay()
+    if adapter is None:
+        return
+    async with sessionmaker()() as s:
+        adapter.restore_usage(await get_state(s, "ebay_usage"))
+
+
 class EmbedAndScore:
     def __init__(self) -> None:
         settings = get_settings()
@@ -337,6 +382,7 @@ async def main() -> None:
     now = _now()
     embed = EmbedAndScore()
     await load_fx()
+    await load_ebay_usage()
     refresh_every = timedelta(minutes=settings.rack_refresh_minutes)
     vestiaire_every = timedelta(hours=settings.vestiaire_refresh_hours)
     jobs: list[tuple[Any, timedelta, str, datetime]] = [
@@ -347,6 +393,8 @@ async def main() -> None:
         (run_hunts, timedelta(minutes=1), "hunts", now),
         (run_price_checks, timedelta(minutes=30), "price_drops", now),
         (purge_ebay_listings, timedelta(hours=1), "ebay_retention", now),
+        (run_ebay_details, timedelta(minutes=2), "ebay_details", now + timedelta(seconds=30)),
+        (save_ebay_usage, timedelta(minutes=1), "ebay_usage", now + timedelta(seconds=45)),
         (
             recheck_blocked,
             timedelta(days=1),

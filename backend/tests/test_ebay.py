@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -6,7 +7,14 @@ import httpx
 import pytest
 
 from rack.sources.base import Category, SearchQuery, SourceError, SourceNotConfigured
-from rack.sources.ebay import EbayAdapter, build_search_params, parse_search
+from rack.sources.ebay import (
+    EbayAdapter,
+    build_search_params,
+    is_womens,
+    parse_item,
+    parse_search,
+    quota_day,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ebay" / "search_sample.json"
 
@@ -17,7 +25,7 @@ def load() -> dict:
 
 def test_parse_search_normalises_items() -> None:
     listings = parse_search(load())
-    assert len(listings) == 2  # broken item without price skipped
+    assert len(listings) == 2  # women's item and the auction without a price skipped
 
     gat = listings[0]
     assert gat.source == "ebay"
@@ -84,3 +92,76 @@ async def test_search_error_raises_source_error() -> None:
     with pytest.raises(SourceError):
         await adapter.search(SearchQuery(text="x"))
     await adapter.aclose()
+
+
+ITEM = Path(__file__).parent / "fixtures" / "ebay" / "item_sample.json"
+
+
+def load_item() -> dict:
+    return json.loads(ITEM.read_text(encoding="utf-8"))
+
+
+def test_search_only_returns_items_that_deliver_to_the_uk() -> None:
+    assert "deliveryCountry:GB" in build_search_params(SearchQuery(text="x"))["filter"]
+
+
+def test_womens_items_are_skipped() -> None:
+    titles = [x.title for x in parse_search(load())]
+    assert not any("Women" in t for t in titles)
+    item = load_item()
+    assert not is_womens(item)
+    assert is_womens({**item, "categoryPath": "Clothes, Shoes & Accessories|Women|Women's Shoes"})
+    assert is_womens(
+        {**item, "categoryPath": "", "localizedAspects": [{"name": "Department", "value": "Women"}]}
+    )
+    assert not is_womens({**item, "localizedAspects": [{"name": "Department", "value": "Unisex"}]})
+
+
+def test_search_summaries_take_size_from_the_title() -> None:
+    gat, tee = parse_search(load())
+    assert gat.size == "EU 46" and tee.size == "L"
+    assert gat.brand is None  # summaries have no brand: getItem fills it in
+
+
+def test_get_item_adds_size_brand_and_short_description_only() -> None:
+    listing = parse_item(load_item())
+    assert listing is not None
+    assert listing.brand == "Maison Margiela" and listing.size == "12"
+    assert listing.description == "Worn a handful of times, original box."  # not seller HTML
+    assert len(listing.images) == 4 and listing.seller is None and listing.location is None
+    assert "description" not in listing.raw and "seller" not in listing.raw
+
+
+def test_shoe_size_aspect_when_there_is_no_size_field() -> None:
+    item = {k: v for k, v in load_item().items() if k != "size"}
+    assert (listing := parse_item(item)) is not None and listing.size == "12"
+
+
+async def test_counts_calls_per_ebay_day() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth2/token"):
+            return httpx.Response(200, json={"access_token": "tok", "expires_in": 7200})
+        if "/item/" in request.url.path:
+            return httpx.Response(200, json=load_item())
+        return httpx.Response(200, json=load())
+
+    adapter = EbayAdapter("id", "secret", min_interval=0, transport=httpx.MockTransport(handler))
+    await adapter.search(SearchQuery(text="a"))
+    await adapter.search(SearchQuery(text="b"))
+    assert (item := await adapter.fetch_item("v1|186712345678|0")) is not None
+    assert item["brand"] == "Maison Margiela"
+    assert (adapter.calls_today("token"), adapter.calls_today("search")) == (1, 2)
+    assert adapter.calls_today("item") == 1
+    await adapter.aclose()
+
+    other = EbayAdapter("id", "secret")
+    other.restore_usage(dict(adapter.usage))
+    assert other.calls_today("search") == 2
+    other.restore_usage({"day": "2020-01-01", "search": 99})  # an old day is ignored
+    assert other.calls_today("search") == 2
+    await other.aclose()
+
+
+def test_quota_day_resets_at_midnight_pacific() -> None:
+    assert quota_day(datetime(2026, 11, 17, 7, 59, tzinfo=UTC)) == "2026-11-16"
+    assert quota_day(datetime(2026, 11, 17, 8, 0, tzinfo=UTC)) == "2026-11-17"

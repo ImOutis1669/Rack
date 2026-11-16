@@ -29,7 +29,7 @@ def _payload() -> dict:
     item["itemLocation"] = {"city": "Hackney", "postalCode": "E8 1AA", "country": "GB"}
     item["localizedAspects"] = [
         {"name": "Brand", "value": "Maison Margiela"},
-        {"name": "Seller notes", "value": "ask for archive_finds_uk on insta"},
+        {"name": "Seller notes", "value": "ask for example_seller_one on insta"},
     ]
     return payload
 
@@ -43,13 +43,13 @@ def test_parse_drops_all_user_data() -> None:
         assert "seller" not in x.raw
         assert x.raw.get("itemLocation", {}).keys() <= {"country"}
         dumped = json.dumps(x.raw)
-        assert "archive_finds_uk" not in dumped and "nyc_archive" not in dumped
+        assert "example_seller_one" not in dumped and "example_seller_two" not in dumped
         assert "Hackney" not in dumped and "E8 1AA" not in dumped
     gat = listings[0]
     # item data is all still there
     assert gat.country == "GB" and gat.brand == "Maison Margiela"
     assert gat.shipping_cost == Decimal("4.99") and len(gat.images) == 3
-    assert gat.condition == "Pre-owned" and gat.url.endswith("/itm/186712345678")
+    assert gat.condition == "Pre-owned - Good" and gat.url.endswith("/itm/186712345678")
 
 
 def test_scrub_is_ebay_only() -> None:
@@ -94,10 +94,10 @@ async def test_ingested_ebay_listing_stores_no_seller_fields(
     # even if an adapter regressed and handed us seller data, none of it reaches the DB
     leaky = _ebay(
         "1",
-        seller=Seller(name="archive_finds_uk", rating=99.6, count=1342),
+        seller=Seller(name="example_seller_one", rating=99.6, count=1342),
         location="Hackney, E8 1AA",
         country="GB",
-        raw={"itemId": "1", "seller": {"username": "archive_finds_uk"}},
+        raw={"itemId": "1", "seller": {"username": "example_seller_one"}},
     )
     async with sessions() as s:
         await upsert_listings(s, parse_search(_payload()) + [leaky])
@@ -109,7 +109,7 @@ async def test_ingested_ebay_listing_stores_no_seller_fields(
         assert r.seller_name is None and r.seller_rating is None and r.seller_count is None
         assert r.location is None
         assert "seller" not in r.raw
-        assert "archive_finds_uk" not in json.dumps(r.raw)
+        assert "example_seller_one" not in json.dumps(r.raw)
     assert {r.country for r in rows} == {"GB", "US"}
 
 
@@ -153,7 +153,7 @@ async def test_migration_0008_cleans_existing_ebay_rows(
         "itemId": "1",
         "title": "GAT",
         "price": {"value": "10", "currency": "GBP"},
-        "seller": {"username": "archive_finds_uk", "feedbackScore": 1342},
+        "seller": {"username": "example_seller_one", "feedbackScore": 1342},
         "itemLocation": {"city": "Hackney", "postalCode": "E8", "country": "GB"},
         "marketplaceId": "EBAY_GB",
     }
@@ -164,7 +164,7 @@ async def test_migration_0008_cleans_existing_ebay_rows(
                     "INSERT INTO listings (source, source_id, url, title, price, currency, "
                     "seller_name, seller_rating, seller_count, location, raw, active, "
                     "first_seen_at, last_seen_at) VALUES (:src, '1', 'https://x/1', 'GAT', 10, "
-                    "'GBP', 'archive_finds_uk', 99.6, 1342, 'Hackney', CAST(:raw AS jsonb), true, "
+                    "'GBP', 'example_seller_one', 99.6, 1342, 'Hackney', CAST(:raw AS jsonb), true, "
                     "now(), now())"
                 ),
                 {"src": source, "raw": json.dumps(raw)},
@@ -187,4 +187,4 @@ async def test_migration_0008_cleans_existing_ebay_rows(
         "price": {"value": "10", "currency": "GBP"},
         "itemLocation": {"country": "GB"},
     }
-    assert rows["vinted"].seller_name == "archive_finds_uk"  # other sources untouched
+    assert rows["vinted"].seller_name == "example_seller_one"  # other sources untouched

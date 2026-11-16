@@ -1,0 +1,33 @@
+{
+  "_note": "Made-up values in the shape of a live getItem response (probed 2026-11-16). getItem adds size, brand, department and the seller's HTML description; Rack keeps only item fields.",
+  "itemId": "v1|186712345678|0",
+  "title": "Maison Margiela Replica GAT Sneakers White EU 46 UK 12",
+  "shortDescription": "Worn a handful of times, original box.",
+  "description": "<div><p>Message me on instagram @example_seller_one</p></div>",
+  "price": {"value": "185.00", "currency": "GBP"},
+  "categoryPath": "Clothes, Shoes & Accessories|Men|Men's Shoes|Trainers",
+  "condition": "Pre-owned - Good",
+  "brand": "Maison Margiela",
+  "size": "12",
+  "sizeType": "REGULAR",
+  "color": "White",
+  "localizedAspects": [
+    {"type": "STRING", "name": "Brand", "value": "Maison Margiela"},
+    {"type": "STRING", "name": "UK Shoe Size", "value": "12"},
+    {"type": "STRING", "name": "Department", "value": "Men"},
+    {"type": "STRING", "name": "Colour", "value": "White"}
+  ],
+  "image": {"imageUrl": "https://i.ebayimg.com/images/g/AAA/s-l1600.jpg"},
+  "additionalImages": [
+    {"imageUrl": "https://i.ebayimg.com/images/g/BBB/s-l1600.jpg"},
+    {"imageUrl": "https://i.ebayimg.com/images/g/CCC/s-l1600.jpg"},
+    {"imageUrl": "https://i.ebayimg.com/images/g/FFF/s-l1600.jpg"}
+  ],
+  "seller": {"username": "example_seller_one", "feedbackPercentage": "99.6", "feedbackScore": 1342, "sellerAccountType": "INDIVIDUAL"},
+  "itemLocation": {"city": "London", "postalCode": "E8****", "country": "GB"},
+  "shippingOptions": [{"shippingCostType": "FIXED", "shippingCost": {"value": "4.99", "currency": "GBP"}}],
+  "buyingOptions": ["FIXED_PRICE", "BEST_OFFER"],
+  "itemWebUrl": "https://www.ebay.co.uk/itm/186712345678",
+  "itemCreationDate": "2026-11-14T18:22:05.000Z",
+  "legacyItemId": "186712345678"
+}
