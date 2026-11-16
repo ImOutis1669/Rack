@@ -164,6 +164,12 @@ class TasteItemRow(Base):
     purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # what you say it's worth now (wardrobe value; overrides any estimate)
     custom_value_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # estimated resale value: median asking price of comparable listings (pricing/resale.py).
+    # estimate_at None = due (new photo or brand); estimate_count = comparables found.
+    estimate_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    estimate_count: Mapped[int | None] = mapped_column(Integer)
+    estimate_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    estimate_basis: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
     # the Saved entry it replaced, so "Undo" can put it back exactly
     saved_snapshot: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
 

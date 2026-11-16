@@ -154,6 +154,20 @@ export interface TasteItem {
   purchased_at?: string | null;
   photo_missing?: boolean;
   custom_value_gbp?: string | null;
+  estimate_gbp?: string | null; // median asking price of similar listings (null: no estimate)
+  estimate_count?: number | null; // similar listings found (null: not estimated)
+  estimate_at?: string | null;
+  estimate_brand?: string | null;
+}
+
+export interface Comparable {
+  id: number;
+  title: string;
+  source: Source;
+  url: string;
+  price_gbp: string | null;
+  image: string | null;
+  similarity: number;
 }
 
 export interface Hidden {

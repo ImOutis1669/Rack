@@ -118,7 +118,12 @@ stack; never bundle Apple font files.
   hunts. `POST /api/taste/{id}/undo-bought` restores Saved exactly. Toasts take an optional action.
 - Wardrobe value (5a): `purchase_price_gbp` + `custom_value_gbp` on wardrobe items, set via
   `PATCH /api/taste/{id}` (no rescore). Totals are computed client-side in pence
-  (`lib/wardrobeValue.ts`): worth = your value, else what you paid; unpriced items aren't counted.
+  (`lib/wardrobeValue.ts`): worth = your value, else the estimate, else what you paid.
+- Resale estimate (5b, `pricing/resale.py`, worker `resale` job every 2 min): brand = item's
+  brand or a listed designer in its label; candidates = 600 nearest listing photos (pgvector),
+  filtered to the same brand and category; closest 15 with cosine >= 0.65 (home photos score lower than shop photos); median asking price;
+  needs >= 3 (confidence: 3-4 low, 5-9 medium, 10+ high). Re-runs every 6 h, or at once when the
+  photo, brand or label changes (`estimate_at = NULL`). Asking prices only: no sold data yet.
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe

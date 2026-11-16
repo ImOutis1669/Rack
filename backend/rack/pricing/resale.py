@@ -1,0 +1,146 @@
+"""Estimated resale value of a wardrobe item from comparable listings Rack has collected (5b).
+
+Comparables: same brand, same category (when the item's label says), and a similar photo (CLIP).
+The estimate is the median £ *asking* price of the closest matches: Rack doesn't know which
+listings sold, so it leans high. Thresholds are educated guesses for CLIP ViT-B-32; tune them.
+"""
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
+from statistics import median
+from typing import Any, Literal
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from rack.models import ListingImageRow, ListingRow, ListingScoreRow, TasteItemRow
+from rack.parsing.categories import infer_category
+from rack.ranking.brands import is_style_reference, match_designer
+from rack.sources.base import Category
+
+# CLIP cosine, your photo vs a listing's best photo. Home photos score lower than shop photos: on
+# a real Gucci belt (2026-11-16) the true matches were 0.64-0.70 and the first wrong item
+# (sunglasses) 0.647, so 0.65. Tune as more wardrobe items get estimates.
+MIN_SIMILARITY = 0.65
+MAX_COMPARABLES = 15
+MIN_COMPARABLES = 3  # below this there's no estimate
+NEAREST_IMAGES = 600  # photos fetched from the vector index before brand/category filtering
+
+Confidence = Literal["high", "medium", "low"]
+
+
+@dataclass(frozen=True)
+class Comparable:
+    listing_id: int
+    similarity: float
+    price_gbp: Decimal
+
+
+@dataclass(frozen=True)
+class Estimate:
+    value_gbp: Decimal | None  # None: not enough comparables
+    count: int
+    comparables: list[Comparable]
+
+
+def confidence(count: int) -> Confidence | None:
+    if count >= 10:
+        return "high"
+    if count >= 5:
+        return "medium"
+    if count >= MIN_COMPARABLES:
+        return "low"
+    return None
+
+
+def estimate_from(candidates: Sequence[Comparable]) -> Estimate:
+    """Closest matches above the similarity bar; their median price (pure, for tests)."""
+    close = sorted(
+        (c for c in candidates if c.similarity >= MIN_SIMILARITY),
+        key=lambda c: c.similarity,
+        reverse=True,
+    )[:MAX_COMPARABLES]
+    if len(close) < MIN_COMPARABLES:
+        return Estimate(None, len(close), close)
+    mid = Decimal(str(median(c.price_gbp for c in close)))
+    return Estimate(mid.quantize(Decimal("0.01"), ROUND_HALF_UP), len(close), close)
+
+
+def item_brand(item: TasteItemRow, designers: Sequence[str]) -> str | None:
+    """The item's brand, else a designer from your list named in its label."""
+    if item.brand and item.brand.strip():
+        return item.brand.strip()
+    label = " ".join(x for x in (item.text, item.note) if x)
+    return match_designer(None, label, list(designers)) if label else None
+
+
+def item_category(item: TasteItemRow) -> Category:
+    return infer_category(" ".join(x for x in (item.text, item.note) if x))
+
+
+def same_brand(brand: str, listing_brand: str | None, title: str) -> bool:
+    return match_designer(listing_brand, title, [brand]) is not None and not (
+        not listing_brand and is_style_reference(title, brand)
+    )
+
+
+async def candidates_for(session: AsyncSession, item: TasteItemRow, brand: str) -> list[Comparable]:
+    """Same-brand, same-category listings near the item's photo, best photo per listing."""
+    if item.embedding is None:
+        return []
+    distance = ListingImageRow.embedding.cosine_distance(item.embedding).label("d")
+    nearest = (
+        select(ListingImageRow.listing_id, distance)
+        .where(ListingImageRow.embedding.is_not(None))
+        .order_by(distance)
+        .limit(NEAREST_IMAGES)
+        .subquery()
+    )
+    rows = (
+        await session.execute(
+            select(
+                ListingRow.id,
+                ListingRow.brand,
+                ListingRow.title,
+                ListingRow.price_gbp,
+                ListingScoreRow.category,
+                func.min(nearest.c.d),
+            )
+            .join(nearest, nearest.c.listing_id == ListingRow.id)
+            .outerjoin(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
+            .where(ListingRow.price_gbp.is_not(None), ListingRow.excluded.is_(None))
+            .group_by(ListingRow.id, ListingScoreRow.category)
+        )
+    ).all()
+    category = item_category(item)
+    out: list[Comparable] = []
+    for lid, lbrand, title, price, cat, dist in rows:
+        if lid == item.listing_id or not same_brand(brand, lbrand, title):
+            continue
+        if category != Category.ANY and cat and cat != category.value:
+            continue
+        out.append(Comparable(lid, round(1.0 - float(dist), 4), Decimal(price)))
+    return out
+
+
+async def estimate_item(
+    session: AsyncSession, item: TasteItemRow, designers: Sequence[str], now: datetime
+) -> Estimate | None:
+    """Recompute and store the item's estimate. None when it can't have one (no photo/brand)."""
+    item.estimate_at = now
+    brand = item_brand(item, designers)
+    if item.embedding is None or not brand:
+        item.estimate_gbp, item.estimate_count, item.estimate_basis = None, None, None
+        return None
+    est = estimate_from(await candidates_for(session, item, brand))
+    item.estimate_gbp = est.value_gbp
+    item.estimate_count = est.count
+    basis: dict[str, Any] = {
+        "brand": brand,
+        "category": item_category(item).value,
+        "comparables": [[c.listing_id, c.similarity] for c in est.comparables],
+    }
+    item.estimate_basis = basis
+    return est

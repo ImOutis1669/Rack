@@ -40,6 +40,7 @@ from rack.worker.hunts import run_due_hunts
 from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
 from rack.worker.refresh import refresh_all
+from rack.worker.resale import refresh_estimates
 from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
 
 log = logging.getLogger("rack.worker")
@@ -266,6 +267,16 @@ async def run_ebay_details() -> None:
         log.exception("eBay details failed")
 
 
+async def run_resale_estimates() -> None:
+    """Wardrobe resale estimates (5b): new photos/brands promptly, everything every 6 h."""
+    try:
+        n = await refresh_estimates(sessionmaker(), _now())
+        if n:
+            log.info("resale estimates: %d wardrobe items", n)
+    except Exception:
+        log.exception("resale estimates failed")
+
+
 async def save_ebay_usage() -> None:
     """Persist today's eBay call counts for the health panel (and across restarts)."""
     adapter = _ebay()
@@ -395,6 +406,7 @@ async def main() -> None:
         (purge_ebay_listings, timedelta(hours=1), "ebay_retention", now),
         (run_ebay_details, timedelta(minutes=2), "ebay_details", now + timedelta(seconds=30)),
         (save_ebay_usage, timedelta(minutes=1), "ebay_usage", now + timedelta(seconds=45)),
+        (run_resale_estimates, timedelta(minutes=2), "resale", now + timedelta(seconds=60)),
         (
             recheck_blocked,
             timedelta(days=1),

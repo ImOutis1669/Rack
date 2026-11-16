@@ -1,20 +1,22 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { TasteItem } from "../api/types";
 import { defaultPrice, parsePrice } from "../lib/bought";
+import { formatGBP, SOURCE_LABEL } from "../lib/format";
+import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
-import { changeLabel, coverageLine, wardrobeTotals } from "../lib/wardrobeValue";
+import { changeLabel, coverageLine, estimateText, wardrobeTotals } from "../lib/wardrobeValue";
 import { NumberTicker } from "./magicui/number-ticker";
 import { Button, Field, Input, Sheet } from "./ui";
 
 /** Wardrobe tab header: what you paid in total and what it's worth now. */
 export function WardrobeSummary({ items }: { items: TasteItem[] }) {
   const t = wardrobeTotals(items);
-  if (t.valued + t.atPaid === 0) {
+  if (t.valued + t.estimated + t.atPaid === 0) {
     return (
       <p className="mb-5 rounded-group bg-surface p-4 text-footnote text-muted dark:bg-elevated">
-        Add what you paid to see your wardrobe's value. Tap “Add price” under an item.
+        Add what you paid, or a brand for an estimate, to see your wardrobe's value. Tap “Add price” under an item.
       </p>
     );
   }
@@ -27,7 +29,7 @@ export function WardrobeSummary({ items }: { items: TasteItem[] }) {
         <div>
           <p className="text-footnote text-muted">Paid</p>
           <p className="font-display text-title font-bold">
-            £<NumberTicker value={Math.round(t.paidPence / 100)} />
+            {t.changePence == null ? <span className="text-muted">–</span> : <>£<NumberTicker value={Math.round(t.paidPence / 100)} /></>}
           </p>
         </div>
         <div>
@@ -70,17 +72,25 @@ function MoneyField({ label, value, onChange, hint }: { label: string; value: st
 export function ValueSheet({ item, open, onClose, onSaved }: { item: TasteItem; open: boolean; onClose: () => void; onSaved: () => void }) {
   const [paid, setPaid] = useState("");
   const [worth, setWorth] = useState("");
+  const [brand, setBrand] = useState("");
   useEffect(() => {
     if (!open) return;
     setPaid(defaultPrice(item.purchase_price_gbp));
     setWorth(defaultPrice(item.custom_value_gbp));
-  }, [open, item.purchase_price_gbp, item.custom_value_gbp]);
+    setBrand(item.brand ?? "");
+  }, [open, item.purchase_price_gbp, item.custom_value_gbp, item.brand]);
+  const comps = useQuery({
+    queryKey: ["comparables", item.id, item.estimate_at],
+    queryFn: () => api.comparables(item.id),
+    enabled: open && item.estimate_gbp != null,
+  });
   const ok = (v: string) => v === "" || parsePrice(v) != null;
   const save = useMutation({
     mutationFn: () =>
       api.patchTaste(item.id, {
         purchase_price_gbp: paid === "" ? null : parsePrice(paid),
         custom_value_gbp: worth === "" ? null : parsePrice(worth),
+        brand: brand.trim() || null,
       }),
     onSuccess: () => {
       onClose();
@@ -106,7 +116,32 @@ export function ValueSheet({ item, open, onClose, onSaved }: { item: TasteItem; 
         }}
       >
         <MoneyField label="Paid" value={paid} onChange={setPaid} />
-        <MoneyField label="Worth now" value={worth} onChange={setWorth} hint="Leave empty to count it at what you paid." />
+        <MoneyField
+          label="Worth now"
+          value={worth}
+          onChange={setWorth}
+          hint={item.estimate_gbp != null ? "Leave empty to use the estimate below." : "Leave empty to count it at what you paid."}
+        />
+        <Field label="Brand" hint={!item.brand && item.estimate_brand ? `Estimated as ${item.estimate_brand} from its label.` : undefined}>
+          {(id) => <Input id={id} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={item.estimate_brand ?? "e.g. Rick Owens"} autoComplete="off" />}
+        </Field>
+        <section aria-label="Estimate" className="space-y-3 rounded-group bg-surface p-3 dark:bg-elevated">
+          <p className="text-footnote">{estimateText(item)}</p>
+          {comps.data && comps.data.length > 0 && (
+            <ul className="grid grid-cols-3 gap-2">
+              {comps.data.map((c) => (
+                <li key={c.id}>
+                  <a href={safeHref(c.url)} target="_blank" rel="noopener noreferrer" className="block">
+                    {c.image && <img src={c.image} alt={c.title} loading="lazy" className="aspect-square w-full rounded-photo bg-fill object-cover" />}
+                    <span className="mt-1 block truncate text-caption">
+                      <span className="tabular font-semibold">{formatGBP(c.price_gbp)}</span> · {SOURCE_LABEL[c.source]}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         {save.isError && <p className="text-footnote text-danger">{String((save.error as Error).message)}</p>}
       </form>
     </Sheet>

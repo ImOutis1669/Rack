@@ -72,6 +72,7 @@ async def embed_taste(
                 img = for_embedding(data)
                 emb = await asyncio.to_thread(embedder.embed_images, [img])
                 it.embedding = emb[0].tolist()
+                it.estimate_at = None  # new photo: re-estimate its resale value
                 it.embed_error = None
                 changed += 1
             except Exception as exc:  # noqa: BLE001 - recorded on the row, shown in the UI

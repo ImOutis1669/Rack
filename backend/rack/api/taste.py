@@ -17,7 +17,7 @@ from rack.api.auth import require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import MAX_BYTES, ImageError, fetch_user_image, sanitize_upload
-from rack.models import TasteItemRow
+from rack.models import ListingRow, TasteItemRow
 from rack.sources.http import USER_AGENT
 from rack.store import bump_version
 
@@ -47,6 +47,10 @@ class TasteItemOut(BaseModel):
     purchase_price_gbp: Decimal | None = None
     purchased_at: datetime | None = None
     custom_value_gbp: Decimal | None = None
+    estimate_gbp: Decimal | None = None  # median asking price of comparables (None: no estimate)
+    estimate_count: int | None = None  # comparables found (None: not estimated)
+    estimate_at: datetime | None = None
+    estimate_brand: str | None = None  # brand the estimate used
     photo_missing: bool = False  # bought, but the listing photo couldn't be copied
 
 
@@ -71,6 +75,7 @@ class PatchIn(BaseModel):
     # wardrobe value (null clears); doesn't affect ranking
     purchase_price_gbp: Money | None = None
     custom_value_gbp: Money | None = None
+    brand: str | None = Field(default=None, max_length=200)
 
 
 def to_out(r: TasteItemRow) -> TasteItemOut:
@@ -92,6 +97,10 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         purchase_price_gbp=r.purchase_price_gbp,
         purchased_at=r.purchased_at,
         custom_value_gbp=r.custom_value_gbp,
+        estimate_gbp=r.estimate_gbp,
+        estimate_count=r.estimate_count,
+        estimate_at=r.estimate_at,
+        estimate_brand=(r.estimate_basis or {}).get("brand"),
         photo_missing=r.purchased_at is not None and not r.image_path,
     )
 
@@ -186,10 +195,13 @@ async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItem
     row = await _get(session, item_id)
     fields = body.model_fields_set
     money = {"purchase_price_gbp", "custom_value_gbp"} & fields
-    if money and row.kind != "wardrobe":
+    if (money or "brand" in fields) and row.kind != "wardrobe":
         raise HTTPException(400, "Only wardrobe items have a price or value")
     for name in money:
         setattr(row, name, getattr(body, name))
+    if "brand" in fields and _clean(body.brand) != row.brand:
+        row.brand = _clean(body.brand)
+        row.estimate_at = None  # the worker re-estimates it within a couple of minutes
     taste_changed = False
     if "note" in fields:
         row.note = _clean(body.note)
@@ -197,6 +209,7 @@ async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItem
     if "text" in fields and _clean(body.text) != row.text:
         row.text = _clean(body.text)
         row.text_embedding = None
+        row.estimate_at = None  # the label can name the brand/category
         taste_changed = True
     if taste_changed:  # prices don't change ranking: no rescore for them
         await bump_version(session)
@@ -212,6 +225,43 @@ async def delete_item(item_id: int, session: Session, settings: Config) -> None:
     await session.delete(row)
     await bump_version(session)
     await session.commit()
+
+
+class ComparableOut(BaseModel):
+    id: int
+    title: str
+    source: str
+    url: str
+    price_gbp: Decimal | None
+    image: str | None
+    similarity: float
+
+
+@router.get("/{item_id}/comparables", response_model=list[ComparableOut])
+async def comparables(item_id: int, session: Session, limit: int = 3) -> list[ComparableOut]:
+    """The listings behind the item's estimate, closest first (gone ones drop out)."""
+    row = await _get(session, item_id)
+    basis = (row.estimate_basis or {}).get("comparables") or []
+    sims = {int(lid): float(sim) for lid, sim in basis}
+    if not sims:
+        return []
+    listings = (
+        (await session.execute(select(ListingRow).where(ListingRow.id.in_(sims)))).scalars().all()
+    )
+    out = [
+        ComparableOut(
+            id=listing.id,
+            title=listing.title,
+            source=listing.source,
+            url=listing.url,
+            price_gbp=listing.price_gbp,
+            image=listing.images[0].url if listing.images else None,
+            similarity=sims[listing.id],
+        )
+        for listing in listings
+    ]
+    out.sort(key=lambda c: c.similarity, reverse=True)
+    return out[: max(1, min(limit, 15))]
 
 
 @router.get("/{item_id}/image")

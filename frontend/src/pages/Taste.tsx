@@ -9,7 +9,7 @@ import { ValueSheet, WardrobeSummary } from "../components/WardrobeValue";
 import { boughtLabel } from "../lib/bought";
 import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
-import { valueLine } from "../lib/wardrobeValue";
+import { confidence, valueLine } from "../lib/wardrobeValue";
 
 const COPY: Record<TasteKind, string> = {
   wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
@@ -170,6 +170,9 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
             )}
           >
             {priceLine}
+            {item.custom_value_gbp == null && item.estimate_gbp != null && confidence(item.estimate_count) === "low" && (
+              <span title="Rough estimate: few similar listings" aria-label="rough estimate" className="ml-1.5 size-1.5 shrink-0 rounded-full bg-subtle" />
+            )}
           </button>
           <ValueSheet item={item} open={editingValue} onClose={() => setEditingValue(false)} onSaved={onChange} />
         </>

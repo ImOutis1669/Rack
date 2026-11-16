@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { changeLabel, coverageLine, toPence, valueLine, wardrobeTotals } from "./wardrobeValue";
+import { changeLabel, confidence, coverageLine, estimateText, toPence, valueLine, wardrobeTotals } from "./wardrobeValue";
 
 const item = (paid: string | null, value: string | null) => ({ purchase_price_gbp: paid, custom_value_gbp: value });
 
@@ -60,5 +60,49 @@ describe("labels", () => {
     expect(toPence("180.50")).toBe(18050);
     expect(toPence(null)).toBeNull();
     expect(toPence("x")).toBeNull();
+  });
+});
+
+describe("estimates (5b)", () => {
+  const est = (paid: string | null, value: string | null, estimate: string | null, count: number | null) => ({
+    purchase_price_gbp: paid,
+    custom_value_gbp: value,
+    estimate_gbp: estimate,
+    estimate_count: count,
+  });
+
+  it("uses your value over the estimate, and the estimate over what you paid", () => {
+    const t = wardrobeTotals([est("100", "150", "999", 12), est("200", null, "260", 8), est("50", null, null, 2)]);
+    expect(t.worthPence).toBe(15_000 + 26_000 + 5_000);
+    expect([t.valued, t.estimated, t.atPaid, t.unpriced]).toEqual([1, 1, 1, 0]);
+    expect(t.changePence).toBe(11_000); // (150 + 260 + 50) - (100 + 200 + 50)
+    expect(coverageLine(t)).toBe("1 valued by you · 1 estimated · 1 counted at what you paid");
+  });
+
+  it("counts an estimated item without a price paid in worth only", () => {
+    const t = wardrobeTotals([est(null, null, "300", 5)]);
+    expect([t.worthPence, t.changePence, t.estimated]).toEqual([30_000, null, 1]);
+  });
+
+  it("writes ≈ for estimates on the tile", () => {
+    expect(valueLine(est("180", null, "240", 10))).toBe("Paid £180 · ≈ £240");
+    expect(valueLine(est(null, null, "240", 3))).toBe("≈ £240");
+    expect(valueLine(est("180", "220", "240", 10))).toBe("Paid £180 · Worth £220");
+  });
+
+  it("has confidence bands matching the backend", () => {
+    expect([2, 3, 4, 5, 9, 10].map(confidence)).toEqual([null, "low", "low", "medium", "medium", "high"]);
+    expect(confidence(null)).toBeNull();
+  });
+
+  it("explains the estimate or why there isn't one", () => {
+    const base = { image: "/x.jpg", estimate_at: "2026-11-16T10:00:00Z" };
+    expect(estimateText({ ...base, estimate_gbp: "700.00", estimate_count: 12 })).toBe(
+      "≈ £700 typical asking price, based on 12 similar listings (high confidence). Asking prices run higher than what things sell for.",
+    );
+    expect(estimateText({ ...base, estimate_gbp: null, estimate_count: 2 })).toMatch(/^Not enough similar listings yet \(2\)/);
+    expect(estimateText({ ...base, estimate_gbp: null, estimate_count: null })).toBe("Add the brand to get an estimate.");
+    expect(estimateText({ ...base, image: null, estimate_gbp: null, estimate_count: null })).toBe("Estimates need a photo.");
+    expect(estimateText({ image: "/x.jpg", estimate_at: null, estimate_gbp: null, estimate_count: null })).toBe("Estimating…");
   });
 });

@@ -38,3 +38,12 @@ describe("WardrobeSummary", () => {
     expect(html).toMatch(/text-danger[^>]*>−£30 \(−30%\)/);
   });
 });
+
+describe("WardrobeSummary with estimates only", () => {
+  it("shows a dash for Paid when nothing has a price paid", () => {
+    const est: TasteItem = { ...item(null, null), estimate_gbp: "266.22", estimate_count: 6 };
+    const html = renderToStaticMarkup(<WardrobeSummary items={[est, item(null, null)]} />);
+    expect(html).toMatch(/Paid<\/p><p[^>]*><span class="text-muted">–<\/span>/);
+    expect(html).toContain("1 estimated · 1 without a price");
+  });
+});

@@ -1,4 +1,5 @@
 import type {
+  Comparable,
   Designer,
   FeedPage,
   FeedParams,
@@ -93,9 +94,11 @@ export const api = {
       text?: string | null;
       purchase_price_gbp?: string | null;
       custom_value_gbp?: string | null;
+      brand?: string | null;
     },
   ) =>
     request<TasteItem>(`/api/taste/${id}`, json("PATCH", patch)),
+  comparables: (id: number) => request<Comparable[]>(`/api/taste/${id}/comparables`),
   deleteTaste: (id: number) => request<void>(`/api/taste/${id}`, json("DELETE")),
 
   feedback: (id: number, value: -1 | 0 | 1) =>
