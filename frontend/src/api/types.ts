@@ -40,7 +40,19 @@ export interface Listing {
   feedback: -1 | 1 | null;
   saved: boolean;
   price_gbp_at_save: string | null;
+  was_price_gbp: string | null;
+  landed: Landed | null;
   buy_links: BuyLink[];
+}
+
+export interface Landed {
+  total_gbp: string;
+  shipping_gbp: string | null;
+  vat_gbp: string;
+  duty_gbp: string;
+  fee_gbp: string;
+  imported: boolean;
+  notes: string[];
 }
 
 export interface FeedPage {

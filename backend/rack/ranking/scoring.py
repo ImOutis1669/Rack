@@ -28,6 +28,7 @@ TEXT_BAND = (0.75, 0.95)  # text ↔ text
 CROSS_BAND = (0.18, 0.32)  # text ↔ image
 FEEDBACK_BAND = (0.45, 0.85)
 
+PRICE_CUT_MIN = 0.05  # 5%
 NEIGHBOURS = 15
 NEIGHBOUR_MIN_SIM = 0.80
 MIN_NEIGHBOURS_FOR_DEAL = 5
@@ -47,6 +48,7 @@ class ListingFeatures:
     size: str | None
     image_embs: Mat  # (k, d), possibly empty
     text_emb: Vec | None
+    first_price_gbp: float | None = None  # price when first seen (price history)
 
 
 @dataclass
@@ -212,6 +214,13 @@ def score_all(listings: list[ListingFeatures], ctx: TasteContext) -> list[ScoreR
             details["median_gbp"] = round(med, 2)
         else:
             comps["deal"] = 0.5
+        # the seller has cut the price since we first saw it: a motivated seller, a better deal
+        orig = f.first_price_gbp
+        if orig and f.price_gbp is not None and orig > 0:
+            cut = (orig - f.price_gbp) / orig
+            if cut >= PRICE_CUT_MIN:
+                comps["deal"] = min(1.0, comps["deal"] + min(cut, 0.5) * 0.5)
+                details["was_gbp"] = round(orig, 2)
 
         fit, gaps = _fit(m, f.size, category, profile)
         comps["fit"] = fit

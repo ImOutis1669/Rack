@@ -269,3 +269,27 @@ class NotificationRow(Base):
     url: Mapped[str | None] = mapped_column(Text)
     channels: Mapped[dict[str, Any]] = mapped_column(default=dict)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# --- Phase 5: price history, web push ---
+
+
+class PriceObservationRow(Base):
+    """A listing's price each time it changed (first row = price when first seen)."""
+
+    __tablename__ = "price_observations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"))
+    price_gbp: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PushSubscriptionRow(Base):
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    keys: Mapped[dict[str, Any]] = mapped_column(default=dict)  # p256dh, auth
+    user_agent: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

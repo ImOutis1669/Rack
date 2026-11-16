@@ -12,6 +12,7 @@ from rack.config import Settings
 from rack.models import ListingRow, SavedRow
 from rack.notify.base import Channel, Notification
 from rack.notify.dispatch import notify_once
+from rack.pricing.history import record_price
 from rack.sources.base import SourceAdapter, SourceError, SourceNotConfigured
 from rack.sources.vinted import VintedAdapter
 
@@ -49,6 +50,10 @@ async def _refresh_price(row: ListingRow, adapter: SourceAdapter | None) -> bool
     return True
 
 
+async def _record(session: AsyncSession, row: ListingRow) -> None:
+    await record_price(session, row.id, row.price_gbp)
+
+
 async def check_saved_prices(
     sessions: async_sessionmaker[AsyncSession],
     adapters: Mapping[str, SourceAdapter],
@@ -80,6 +85,7 @@ async def check_saved_prices(
                     log.info("price check %s failed: %s", row.url, exc)
                     continue
                 row.last_seen_at = now
+                await _record(s, row)
             saved.price_checked_at = now
             await s.commit()
             if not row.active:

@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { Listing } from "../api/types";
 import { formatGBP, sellerLabel, SOURCE_LABEL, timeAgo } from "../lib/format";
 import { huntFromListing } from "../lib/hunts";
+import { landedLabel, landedLines, previousPrice } from "../lib/landed";
 import { Carousel } from "./Carousel";
 import { Gallery } from "./Gallery";
 import { SourceBadge } from "./SourceBadge";
@@ -83,10 +84,8 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
     );
   };
 
-  const drop =
-    item.price_gbp_at_save && item.price_gbp && Number(item.price_gbp) < Number(item.price_gbp_at_save)
-      ? Number(item.price_gbp_at_save)
-      : null;
+  const drop = previousPrice(item);
+  const landed = landedLabel(item.landed);
   const meas = MEAS.filter(([k]) => item.measurements?.[k] != null);
 
   return (
@@ -117,6 +116,11 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
             </span>
           )}
         </div>
+        {landed && (
+          <p className="text-[11px] text-amber-200/80" title={landedLines(item.landed).join("\n")}>
+            {landed} <span className="text-neutral-500">(est.)</span>
+          </p>
+        )}
         <div className="flex flex-wrap gap-x-2 text-[11px] text-neutral-400">
           {item.size && <span>Size {item.size}</span>}
           {meas.map(([k, label]) => (
@@ -125,7 +129,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
             </span>
           ))}
           {item.condition && <span>{item.condition}</span>}
-          {item.shipping_cost_gbp && <span>+{formatGBP(item.shipping_cost_gbp)} post</span>}
+          {item.shipping_cost_gbp && !landed && <span>+{formatGBP(item.shipping_cost_gbp)} post</span>}
           {seller && <span>★ {seller}</span>}
         </div>
         {item.why && (

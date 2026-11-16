@@ -19,6 +19,18 @@ class BuyLink(BaseModel):
     size: str | None = None
 
 
+class LandedOut(BaseModel):
+    """Estimated total cost delivered to the UK."""
+
+    total_gbp: Decimal
+    shipping_gbp: Decimal | None
+    vat_gbp: Decimal
+    duty_gbp: Decimal
+    fee_gbp: Decimal
+    imported: bool
+    notes: list[str]
+
+
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +58,8 @@ class ListingOut(BaseModel):
     feedback: int | None = None
     saved: bool = False
     price_gbp_at_save: Decimal | None = None
+    was_price_gbp: Decimal | None = None  # original price, when the seller has since cut it
+    landed: LandedOut | None = None
     buy_links: list[BuyLink]
 
 

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.models import ListingImageRow, ListingRow, SourceHealthRow, utcnow
 from rack.pricing.fx import to_gbp
+from rack.pricing.history import record_price
 from rack.sources.base import Listing
 
 
@@ -62,6 +63,7 @@ async def upsert_listings(session: AsyncSession, listings: Sequence[Listing]) ->
         ).returning(ListingRow.id)
         listing_id = (await session.execute(upsert)).scalar_one()
         ids.append(listing_id)
+        await record_price(session, listing_id, listing.price_gbp)
 
         existing = (
             (

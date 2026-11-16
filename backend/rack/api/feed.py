@@ -17,6 +17,7 @@ from sqlalchemy import Select, and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import require_session
+from rack.config import get_settings
 from rack.db import get_session
 from rack.models import (
     FeedbackRow,
@@ -27,9 +28,11 @@ from rack.models import (
     SeenRow,
     SourceHealthRow,
 )
+from rack.pricing.history import first_prices, price_cut
+from rack.pricing.landed import estimate
 from rack.ranking.mmr import interleave_exploration, mmr
 from rack.ranking.vectors import as_matrix
-from rack.schemas import BuyLink, FeedPage, ListingOut, SellerOut, SourceHealthOut
+from rack.schemas import BuyLink, FeedPage, LandedOut, ListingOut, SellerOut, SourceHealthOut
 from rack.sources.base import Category
 from rack.sources.registry import SOURCE_NAMES
 from rack.store import load_profile
@@ -48,7 +51,18 @@ def to_out(
     feedback: int | None = None,
     saved: SavedRow | None = None,
     copies: Sequence[ListingRow] = (),
+    first_price: Decimal | None = None,
 ) -> ListingOut:
+    settings = get_settings()
+    landed = estimate(
+        source=row.source,
+        price_gbp=row.price_gbp,
+        shipping_gbp=row.shipping_cost_gbp,
+        country=row.country,
+        location=row.location,
+        duty_rate=Decimal(str(settings.landed_duty_rate)),
+        handling_fee_gbp=Decimal(str(settings.landed_handling_fee_gbp)),
+    )
     seller = (
         SellerOut(name=row.seller_name, rating=row.seller_rating, count=row.seller_count)
         if row.seller_name or row.seller_rating is not None
@@ -79,6 +93,10 @@ def to_out(
         feedback=feedback,
         saved=saved is not None,
         price_gbp_at_save=saved.price_gbp_at_save if saved else None,
+        was_price_gbp=price_cut(first_price, row.price_gbp),
+        landed=LandedOut(**{k: v for k, v in vars(landed).items() if k != "item_gbp"})
+        if landed
+        else None,
         buy_links=[
             BuyLink(source=r.source, url=r.url, price_gbp=r.price_gbp, size=r.size)
             for r in ([row, *copies] if copies else [row])
@@ -114,6 +132,7 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
             await session.execute(select(SavedRow).where(SavedRow.listing_id.in_(ids)))
         ).scalars()
     }
+    firsts = await first_prices(session, ids)
     # other listings of the same item (cross-listed / reposted), cheapest first
     cluster_ids = {r.cluster_id for r in rows if r.cluster_id is not None}
     copies: dict[int, list[ListingRow]] = {}
@@ -134,6 +153,7 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
             votes.get(r.id),
             saved.get(r.id),
             [c for c in copies.get(r.cluster_id or -1, []) if c.id != r.id],
+            firsts.get(r.id),
         )
         for r in rows
     ]

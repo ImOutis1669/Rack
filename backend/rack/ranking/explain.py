@@ -18,6 +18,8 @@ def _reason(key: str, value: float, d: dict[str, Any]) -> str | None:
         return f"{d['designer']} ({d.get('designer_weight')})"
     if key == "feedback" and value >= 0.5:
         return "Similar to things you 👍"
+    if key == "deal" and value >= 0.6 and d.get("was_gbp"):
+        return f"Price cut (was £{d['was_gbp']:.0f})"
     if key == "deal" and value >= 0.6 and d.get("median_gbp"):
         pct = round((value - 0.5) * 200)
         return f"~{pct}% under similar listings (median £{d['median_gbp']:.0f})"

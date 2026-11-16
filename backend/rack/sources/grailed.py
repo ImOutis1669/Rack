@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-from rack.pricing.fx import FALLBACK_TO_GBP, to_gbp
+from rack.pricing.fx import current_rates, to_gbp
 from rack.sources.base import (
     Category,
     Listing,
@@ -123,7 +123,7 @@ def build_body(query: SearchQuery) -> dict[str, Any]:
         "facetFilters": facets,
     }
     if query.max_price_gbp is not None:
-        max_usd = int(query.max_price_gbp / FALLBACK_TO_GBP["USD"]) + 1
+        max_usd = int(query.max_price_gbp / current_rates()["USD"]) + 1
         body["numericFilters"] = [f"price_i<={max_usd}"]
     return body
 

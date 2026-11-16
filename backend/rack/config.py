@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     rack_price_check_hours: float = 6
+    # Landed-cost estimate for imports (see rack/pricing/landed.py)
+    landed_duty_rate: float = 0.12
+    landed_handling_fee_gbp: float = 12.0
     rack_price_drop_min_pct: float = 5.0
     rack_price_drop_min_gbp: float = 5.0
 

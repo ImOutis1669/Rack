@@ -5,6 +5,7 @@ import contextlib
 import logging
 import signal
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -17,6 +18,7 @@ from rack.embeddings.clip import ClipEmbedder
 from rack.ingest import record_check, record_error, record_success, upsert_listings
 from rack.models import AdjacentDesignerRow, TasteItemRow
 from rack.notify.dispatch import build_channels
+from rack.pricing.fx import fetch_rates, set_live_rates
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery, SourceError
 from rack.sources.http import RateLimitedClient
@@ -151,6 +153,37 @@ async def run_vestiaire() -> None:
         await _update_state("vestiaire_run", at=_now().isoformat())
 
 
+async def update_fx() -> None:
+    """Daily ECB rates; conversions fall back to static rates if this fails."""
+    try:
+        date, rates = await fetch_rates()
+    except Exception as exc:  # noqa: BLE001 - static fallbacks keep working
+        log.warning("FX update failed: %s", exc)
+        return
+    set_live_rates(rates)
+    async with sessionmaker()() as s:
+        await set_state(
+            s,
+            "fx",
+            {
+                "date": date,
+                "rates": {k: str(v) for k, v in rates.items()},
+                "at": _now().isoformat(),
+            },
+        )
+        await s.commit()
+    log.info(
+        "FX rates updated (%s): 1 USD = £%s, 1 EUR = £%s", date, rates.get("USD"), rates.get("EUR")
+    )
+
+
+async def load_fx() -> None:
+    async with sessionmaker()() as s:
+        fx = await get_state(s, "fx")
+    if fx.get("rates"):
+        set_live_rates({k: Decimal(v) for k, v in fx["rates"].items()})
+
+
 async def recheck_blocked() -> None:
     settings = get_settings()
     for name, url in BLOCKED_SOURCES.items():
@@ -257,12 +290,14 @@ async def main() -> None:
     scheduler = AsyncIOScheduler(timezone="UTC")
     now = _now()
     embed = EmbedAndScore()
+    await load_fx()
     refresh_every = timedelta(minutes=settings.rack_refresh_minutes)
     vestiaire_every = timedelta(hours=settings.vestiaire_refresh_hours)
     jobs: list[tuple[Any, timedelta, str, datetime]] = [
         (run_refresh, refresh_every, "refresh", await resume_at("refresh", refresh_every)),
         (embed.run, timedelta(seconds=settings.rack_score_seconds), "embed_score", now),
         (ManualRefresh(embed).run, timedelta(seconds=10), "manual_refresh", now),
+        (update_fx, timedelta(hours=24), "fx", await resume_at("fx", timedelta(hours=24))),
         (run_hunts, timedelta(minutes=1), "hunts", now),
         (run_price_checks, timedelta(minutes=30), "price_drops", now),
         (

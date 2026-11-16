@@ -23,6 +23,7 @@ from rack.models import (
     ListingScoreRow,
     TasteItemRow,
 )
+from rack.pricing.history import first_prices
 from rack.ranking.brands import normalize as normalize_name
 from rack.ranking.dedupe import clusters
 from rack.ranking.explain import explain
@@ -327,6 +328,7 @@ async def rescore(
         rows = (
             (await s.execute(select(ListingRow).where(ListingRow.active.is_(True)))).scalars().all()
         )
+        firsts = {k: float(v) for k, v in (await first_prices(s)).items()}
         feats = [
             ListingFeatures(
                 id=r.id,
@@ -339,6 +341,7 @@ async def rescore(
                 image_embs=as_matrix(
                     [list(i.embedding) for i in r.images if i.embedding is not None]
                 ),
+                first_price_gbp=firsts.get(r.id),
                 text_emb=(
                     normalize(np.asarray(r.text_embedding, dtype=np.float32))
                     if r.text_embedding is not None

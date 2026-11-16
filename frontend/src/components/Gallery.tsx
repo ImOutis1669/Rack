@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
 import { formatGBP, SOURCE_LABEL } from "../lib/format";
+import { landedLines } from "../lib/landed";
 
 /** Full-screen photo viewer: swipe / scroll / arrow keys through every photo of a listing. */
 export function Gallery({ item, onClose }: { item: Listing; onClose: () => void }) {
@@ -137,6 +138,13 @@ export function Gallery({ item, onClose }: { item: Listing; onClose: () => void 
             {[item.brand, item.size && `Size ${item.size}`, item.condition].filter(Boolean).join(" · ")}
           </span>
         </div>
+        {item.landed && (item.landed.imported || item.landed.shipping_gbp) && (
+          <p className="text-xs text-neutral-400">
+            <span className="text-neutral-200">≈ {formatGBP(item.landed.total_gbp)} delivered (estimate)</span>
+            {" · "}
+            {landedLines(item.landed).join(" · ")}
+          </p>
+        )}
         {(q.data?.note || extra > 0) && (
           <p className="text-xs text-amber-300/90">
             {q.data?.note}
