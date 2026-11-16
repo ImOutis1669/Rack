@@ -52,3 +52,15 @@ draws no frames, so the browser fires no `scroll` events there; tests dispatch t
 | Tiles in the page after ~430 loaded (15 pages) | ~430 (every tile stays) | **26** | pane, `[data-tile]` count |
 | Coming back to the feed from another tab | top of the feed | **same position** (25,000 px → 25,000 px, same tiles) | pane |
 | Infinite scroll | yes | yes (loads ~4 rows before the end) | pane |
+
+## Step 4: prefetch
+
+- Next feed page: requested ~6 rows (about two phone screens) before the end (was 4 rows).
+- Listing details: prefetched when a tile appears for eBay/Grailed/Vestiaire (served from Rack's
+  database), and on touch for every source; Vinted waits for a touch because its details fetch
+  the item page from vinted.co.uk. A touch also starts loading the full-size first photo.
+
+| Measure | Before | After | How |
+|---|---|---|---|
+| Details request on opening a listing | starts when the sheet opens | **already done** when it opens (started on touch, 40 ms) and not repeated | pane, Resource Timing |
+| Prefetch when a tile appears | | not observable in the pane (no visibility checks without drawing); check on the iPhone | |

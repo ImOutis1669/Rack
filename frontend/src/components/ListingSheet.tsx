@@ -16,6 +16,7 @@ import type { Listing } from "../api/types";
 import { formatGBP, sellerLabel, SOURCE_LABEL, timeAgo } from "../lib/format";
 import { huntFromListing } from "../lib/hunts";
 import { landedLines, previousPrice } from "../lib/landed";
+import { GALLERY_STALE_MS } from "../lib/prefetch";
 import { safeHref } from "../lib/safe";
 import { sellerHide } from "../lib/seller";
 import { cn } from "../lib/utils";
@@ -134,7 +135,7 @@ export function ListingSheet({
   const gallery = useQuery({
     queryKey: ["gallery", item.id],
     queryFn: () => api.gallery(item.id),
-    staleTime: 10 * 60_000,
+    staleTime: GALLERY_STALE_MS,
     enabled: open,
   });
   const images = gallery.data?.images.length ? gallery.data.images : item.images;

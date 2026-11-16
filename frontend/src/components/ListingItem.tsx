@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { prefetchForOpen, prefetchGallery, prefetchOnView } from "../lib/prefetch";
 import type { Listing } from "../api/types";
 import { BoughtSheet } from "./BoughtSheet";
 import { ListingSheet } from "./ListingSheet";
@@ -21,6 +23,14 @@ export function ListingItem({
   showBought?: boolean;
 }) {
   const actions = useListingActions(item, onHidden);
+  const qc = useQueryClient();
+  const onPrefetch = useCallback(
+    (why: "view" | "touch") => {
+      if (why === "touch") prefetchForOpen(qc, item);
+      else if (prefetchOnView(item.source)) prefetchGallery(qc, item.id);
+    },
+    [qc, item],
+  );
   const [open, setOpen] = useState(false);
   const [buying, setBuying] = useState(false);
   const startBuying = () => {
@@ -36,6 +46,7 @@ export function ListingItem({
         onOpen={() => setOpen(true)}
         onSeen={onSeen}
         onBought={showBought ? startBuying : undefined}
+        onPrefetch={onPrefetch}
       />
       <ListingSheet item={item} open={open} onClose={() => setOpen(false)} actions={actions} onBought={startBuying} />
       <BoughtSheet item={item} open={buying} onClose={() => setBuying(false)} onDone={() => onHidden?.(item.id)} />

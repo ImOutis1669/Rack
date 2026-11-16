@@ -35,7 +35,7 @@ export function estimateTileHeight(itemWidth: number): number {
 }
 
 /** Load the next page once the last rendered tile is within ~2 screens (rows) of the end. */
-export function nearEnd(lastRendered: number, count: number, lanes: number, rows = 4): boolean {
+export function nearEnd(lastRendered: number, count: number, lanes: number, rows = 6): boolean {
   return count > 0 && lastRendered >= count - 1 - lanes * rows;
 }
 

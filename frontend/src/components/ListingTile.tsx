@@ -18,6 +18,7 @@ export function ListingTile({
   onOpen,
   onSeen,
   onBought,
+  onPrefetch,
 }: {
   item: Listing;
   actions: ListingActions;
@@ -26,6 +27,8 @@ export function ListingTile({
   onSeen?: (id: number) => void;
   /** Saved page: show an "I bought it" capsule under the price. */
   onBought?: () => void;
+  /** Load details ahead of opening: "view" when the tile appears, "touch" on pointer-down. */
+  onPrefetch?: (why: "view" | "touch") => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const was = previousPrice(item);
@@ -33,6 +36,22 @@ export function ListingTile({
   const copies = item.buy_links.length;
   const photo = listingTileImage(item);
   const meta = [item.size && `Size ${item.size}`, landed, copies > 1 && `${copies} listings`].filter(Boolean).join(" · ");
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !onPrefetch) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e?.isIntersecting) {
+          onPrefetch("view");
+          io.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onPrefetch]);
 
   useEffect(() => {
     const el = ref.current;
@@ -55,7 +74,13 @@ export function ListingTile({
   const tile = (
     <article ref={ref} className="group">
       <div className="relative overflow-hidden rounded-photo bg-fill">
-        <button onClick={onOpen} aria-label={`Open ${item.title}`} className="press block w-full">
+        <button
+          onClick={onOpen}
+          onPointerDown={() => onPrefetch?.("touch")}
+          onFocus={() => onPrefetch?.("touch")}
+          aria-label={`Open ${item.title}`}
+          className="press block w-full"
+        >
           {photo ? (
             <img
               src={photo.src}

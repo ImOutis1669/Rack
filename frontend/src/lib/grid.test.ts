@@ -21,8 +21,8 @@ describe("grid geometry", () => {
   });
 
   it("asks for more within about two screens of the end", () => {
-    expect(nearEnd(21, 30, 2)).toBe(true); // 30 - 1 - 2 * 4 = 21
-    expect(nearEnd(20, 30, 2)).toBe(false);
+    expect(nearEnd(17, 30, 2)).toBe(true); // 30 - 1 - 2 * 6 = 17: about two screens early
+    expect(nearEnd(16, 30, 2)).toBe(false);
     expect(nearEnd(0, 0, 2)).toBe(false);
   });
 
