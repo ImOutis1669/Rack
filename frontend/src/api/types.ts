@@ -139,6 +139,10 @@ export interface TasteItem {
   kind: TasteKind;
   text: string | null;
   note: string | null;
+  name?: string | null;
+  purchase_date?: string | null; // YYYY-MM-DD
+  category?: Exclude<Category, "any"> | null; // set by you
+  effective_category?: Category; // yours, else worked out from the name
   image: string | null;
   image_url: string | null;
   embedded: boolean;

@@ -86,12 +86,22 @@ def item_brand(item: TasteItemRow, designers: Sequence[str]) -> str | None:
     """The item's brand, else a designer from your list named in its label."""
     if item.brand and item.brand.strip():
         return item.brand.strip()
-    label = " ".join(x for x in (item.text, item.note) if x)
+    label = item_label(item)
     return match_designer(None, label, list(designers)) if label else None
 
 
+def item_label(item: TasteItemRow) -> str:
+    return " ".join(x for x in (item.name, item.text, item.note) if x)
+
+
 def item_category(item: TasteItemRow) -> Category:
-    return infer_category(" ".join(x for x in (item.text, item.note) if x))
+    """The category you set, else one worked out from the item's name and label."""
+    if item.category:
+        try:
+            return Category(item.category)
+        except ValueError:
+            pass
+    return infer_category(item_label(item))
 
 
 def same_brand(brand: str, listing_brand: str | None, title: str) -> bool:

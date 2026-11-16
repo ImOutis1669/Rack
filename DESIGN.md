@@ -35,6 +35,7 @@ clothes are the interface, and the chrome stays quiet.
 | Filters | Bottom sheet |
 | New/edit hunt | Sheet |
 | Add to wardrobe | Sheet |
+| Wardrobe / wishlist item | Full-screen sheet like the listing detail; the pencil in its header switches to an edit form (Save/Cancel at the bottom, Delete with an in-app confirmation) |
 | Sources | Sheet, from the status dot in the header |
 
 ## Tokens (`frontend/src/index.css`)
@@ -132,6 +133,6 @@ and ticked off here.
 | 3 | ~~Top bar ends in a 1px hairline~~ | Soft scroll-edge fade | **Done** (Liquid Glass) |
 | 4 | ~~Tab bar is plain glass with a `ring-border` outline~~ | Liquid Glass with a sliding pill | **Done** (Liquid Glass) |
 | 5 | ~~No reduced-transparency / contrast handling~~ | Solid fallbacks | **Done** (Liquid Glass) |
-| 6 | Sheet spring `damping 34, stiffness 380`; menus fade in a 0.12s tween | Springs in Apple terms (`bounce`/`duration`): default `bounce 0, 0.35s`, sheets `bounce 0.2, 0.3s`; menus scale from their trigger | When the sheets are restyled (minimal Wardrobe) |
-| 7 | Wardrobe tiles carry inputs and buttons | Content tiles are photo + text; editing lives in a sheet | Minimal Wardrobe |
+| 6 | ~~Sheet spring `damping 34, stiffness 380`~~ | Sheets use `SHEET_SPRING` (`bounce 0.2, 0.3s`) from `lib/motion.ts` | **Done** (minimal Wardrobe). Menus still use a 0.12s fade from their trigger corner |
+| 7 | ~~Wardrobe tiles carry inputs and buttons~~ | Tiles are photo + brand + name + value; everything else lives in the item sheet | **Done** (minimal Wardrobe) |
 

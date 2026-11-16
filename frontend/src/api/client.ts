@@ -1,4 +1,5 @@
 import type {
+  Category,
   Comparable,
   Designer,
   FeedPage,
@@ -76,15 +77,15 @@ export const api = {
     request<Record<string, string[]>>("/api/adjacent", json("PUT", a)),
 
   taste: (kind?: TasteKind) => request<TasteItem[]>(`/api/taste${kind ? `?kind=${kind}` : ""}`),
-  uploadTaste: (kind: TasteKind, files: File[], note?: string) => {
+  uploadTaste: (kind: TasteKind, files: File[], name?: string) => {
     const form = new FormData();
     form.set("kind", kind);
-    if (note) form.set("note", note);
+    if (name) form.set("name", name);
     for (const f of files) form.append("files", f);
     return request<TasteItem[]>("/api/taste/upload", { method: "POST", body: form });
   },
-  addTasteUrl: (kind: TasteKind, url: string, note?: string) =>
-    request<TasteItem>("/api/taste/url", json("POST", { kind, url, note: note || null })),
+  addTasteUrl: (kind: TasteKind, url: string, name?: string) =>
+    request<TasteItem>("/api/taste/url", json("POST", { kind, url, name: name || null })),
   addTasteText: (kind: TasteKind, text: string) =>
     request<TasteItem>("/api/taste/text", json("POST", { kind, text })),
   patchTaste: (
@@ -95,6 +96,10 @@ export const api = {
       purchase_price_gbp?: string | null;
       custom_value_gbp?: string | null;
       brand?: string | null;
+      name?: string | null;
+      size?: string | null;
+      category?: Exclude<Category, "any"> | null;
+      purchase_date?: string | null;
     },
   ) =>
     request<TasteItem>(`/api/taste/${id}`, json("PATCH", patch)),

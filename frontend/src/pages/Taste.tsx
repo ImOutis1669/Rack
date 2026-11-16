@@ -1,16 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Link2, Plus, Shirt, Trash2, Type } from "lucide-react";
+import { ImagePlus, Link2, Plus, Shirt, Type } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../api/client";
-import type { TasteItem, TasteKind } from "../api/types";
+import type { TasteKind } from "../api/types";
 import { PageShell } from "../components/AppShell";
+import { TasteItemSheet, TasteTile } from "../components/TasteItemView";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
-import { ValueSheet, WardrobeSummary } from "../components/WardrobeValue";
-import { boughtLabel } from "../lib/bought";
-import { safeHref } from "../lib/safe";
-import { cn } from "../lib/utils";
-import { tileBadge } from "../lib/trend";
-import { confidence, valueLine } from "../lib/wardrobeValue";
+import { WardrobeSummary } from "../components/WardrobeValue";
 
 const COPY: Record<TasteKind, string> = {
   wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
@@ -20,12 +16,14 @@ const COPY: Record<TasteKind, string> = {
 export function Taste() {
   const [kind, setKind] = useState<TasteKind>("wardrobe");
   const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState<number | null>(null);
   const qc = useQueryClient();
   const items = useQuery({
     queryKey: ["taste", kind],
     queryFn: () => api.taste(kind),
     refetchInterval: (q) => (q.state.data?.some((i) => !i.embedded && !i.embed_error) ? 5000 : false),
   });
+  const openItem = items.data?.find((i) => i.id === openId);
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["taste"] });
     void qc.invalidateQueries({ queryKey: ["profile"] });
@@ -54,9 +52,9 @@ export function Taste() {
       {kind === "wardrobe" && items.isSuccess && items.data.length > 0 && <WardrobeSummary items={items.data} />}
 
       {items.isPending && (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="aspect-square" />
+            <Skeleton key={i} className="aspect-[4/5]" />
           ))}
         </div>
       )}
@@ -75,9 +73,10 @@ export function Taste() {
         </EmptyState>
       )}
 
-      <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 lg:grid-cols-6">
-        {items.data?.map((it) => <TasteTile key={it.id} item={it} onChange={refresh} />)}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:gap-x-5 lg:grid-cols-5">
+        {items.data?.map((it) => <TasteTile key={it.id} item={it} onOpen={() => setOpenId(it.id)} />)}
       </div>
+      {openItem && <TasteItemSheet item={openItem} open={openId != null} onClose={() => setOpenId(null)} />}
 
       <AddSheet
         open={adding}
@@ -89,110 +88,6 @@ export function Taste() {
         }}
       />
     </PageShell>
-  );
-}
-
-function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }) {
-  const [label, setLabel] = useState(item.text ?? item.note ?? "");
-  const [editingValue, setEditingValue] = useState(false);
-  const priceLine = item.kind === "wardrobe" ? valueLine(item) : null;
-  const badge = item.kind === "wardrobe" ? tileBadge(item.trend) : null;
-  const save = useMutation({
-    mutationFn: () => api.patchTaste(item.id, item.image ? { note: label } : { text: label }),
-    onSuccess: onChange,
-  });
-  const del = useMutation({ mutationFn: () => api.deleteTaste(item.id), onSuccess: onChange });
-  const dirty = label !== (item.text ?? item.note ?? "");
-  const state = item.photo_missing
-    ? "Photo couldn't be copied"
-    : item.embed_error
-      ? "Couldn't read"
-      : item.embedded
-        ? null
-        : "Learning";
-  const bought = boughtLabel(item);
-  const listingHref = item.listing_id != null ? safeHref(item.listing_url) : undefined;
-
-  return (
-    <div className="group">
-      <div className="relative overflow-hidden rounded-photo bg-fill">
-        {item.image ? (
-          <img src={item.image} alt={label} loading="lazy" className="aspect-square w-full object-cover" />
-        ) : (
-          <div className="flex aspect-square items-center justify-center p-3 text-center text-footnote font-medium">“{item.text}”</div>
-        )}
-        <IconButton
-          label="Remove"
-          glass
-          onClick={() => window.confirm("Remove this?") && del.mutate()}
-          className="absolute top-1 right-1 size-8 opacity-100 md:opacity-0 md:group-hover:opacity-100"
-        >
-          <Trash2 size={14} />
-        </IconButton>
-        {state && (
-          <span
-            title={item.embed_error ?? ""}
-            className={cn(
-              "glass absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-caption font-medium",
-              item.embed_error ? "text-danger" : "text-muted",
-            )}
-          >
-            {state}
-          </span>
-        )}
-      </div>
-      <input
-        aria-label="Label"
-        className="mt-1.5 w-full truncate rounded-md bg-transparent px-1 py-0.5 text-footnote outline-none placeholder:text-subtle focus:bg-fill"
-        placeholder="Add a label"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        onBlur={() => dirty && save.mutate()}
-        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      />
-      {bought && (
-        <p className="line-clamp-2 px-1 text-caption text-muted">
-          {listingHref ? (
-            <a href={listingHref} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
-              {bought}
-            </a>
-          ) : (
-            bought
-          )}
-        </p>
-      )}
-      {priceLine && (
-        <>
-          <button
-            type="button"
-            onClick={() => setEditingValue(true)}
-            className={cn(
-              "press -mt-1 flex min-h-11 w-full items-center rounded-md px-1 text-left text-caption font-medium",
-              priceLine === "Add price" ? "text-accent" : "tabular text-foreground",
-            )}
-          >
-            {priceLine}
-            {badge && (
-              <span
-                title={badge.title}
-                className={cn(
-                  "tabular ml-1.5 shrink-0",
-                  badge.direction === "up" && "text-accent",
-                  badge.direction === "down" && "text-danger",
-                  badge.direction === "steady" && "text-muted",
-                )}
-              >
-                {badge.text}
-              </span>
-            )}
-            {item.custom_value_gbp == null && item.estimate_gbp != null && confidence(item.estimate_count) === "low" && (
-              <span title="Rough estimate: few similar listings" aria-label="rough estimate" className="ml-1.5 size-1.5 shrink-0 rounded-full bg-subtle" />
-            )}
-          </button>
-          <ValueSheet item={item} open={editingValue} onClose={() => setEditingValue(false)} onSaved={onChange} />
-        </>
-      )}
-    </div>
   );
 }
 
@@ -236,7 +131,7 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
             <span className="text-body font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} chosen` : "Choose photos"}</span>
             <span className="text-caption text-muted">From your camera roll or files. Up to 20 at once.</span>
           </button>
-          <Input placeholder="Label (optional), e.g. black Margiela derbies" value={note} onChange={(e) => setNote(e.target.value)} />
+          <Input placeholder="Name (optional), e.g. black Margiela derbies" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button variant="primary" className="w-full" disabled={!files.length || upload.isPending} onClick={() => upload.mutate()}>
             {upload.isPending ? "Uploading" : "Add photos"}
           </Button>

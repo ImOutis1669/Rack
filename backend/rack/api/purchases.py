@@ -85,6 +85,8 @@ async def bought(
         image_path=path,
         image_url=photo_url if path else None,
         text=" ".join(listing.title.split())[:300] or None,
+        name=" ".join(listing.title.split())[:300] or None,
+        purchase_date=utcnow().date(),  # the day you tapped "I bought it" (editable)
         listing_id=listing_id,
         source=listing.source,
         listing_url=listing.url,

@@ -14,6 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
+import { INSTANT, SHEET_SPRING } from "../../lib/motion";
 import { settleViewport } from "../../lib/viewport";
 
 /* ---------- buttons ---------- */
@@ -258,6 +259,7 @@ export function Sheet({
   title,
   children,
   footer,
+  actions,
   size = "auto",
   className,
 }: {
@@ -266,6 +268,8 @@ export function Sheet({
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  /** Extra header buttons, before Close (e.g. Edit). */
+  actions?: ReactNode;
   size?: "auto" | "full" | "wide";
   className?: string;
 }) {
@@ -307,7 +311,7 @@ export function Sheet({
             initial={reduce ? { opacity: 0 } : { y: "100%" }}
             animate={reduce ? { opacity: 1 } : { y: 0 }}
             exit={reduce ? { opacity: 0 } : { y: "100%" }}
-            transition={reduce ? { duration: 0 } : { type: "spring", damping: 34, stiffness: 380 }}
+            transition={reduce ? INSTANT : SHEET_SPRING}
             className={cn(
               "relative flex w-full flex-col overflow-hidden bg-background outline-none dark:bg-surface",
               "rounded-t-sheet md:rounded-sheet md:shadow-2xl",
@@ -319,6 +323,7 @@ export function Sheet({
             <div className="flex items-center gap-2 px-4 pt-3 pb-2">
               <div aria-hidden className="absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full bg-fill-strong md:hidden" />
               <div className="min-w-0 flex-1 truncate text-headline font-semibold">{title}</div>
+              {actions}
               <IconButton label="Close" onClick={onClose} className="-mr-2 bg-fill size-9">
                 <X size={18} strokeWidth={2} />
               </IconButton>

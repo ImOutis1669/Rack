@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from rack.embeddings.clip import Embedder
 from rack.embeddings.images import for_embedding
 from rack.models import SoldListingRow, TasteItemRow
-from rack.pricing.resale import item_brand, item_category
+from rack.pricing.resale import item_brand, item_category, item_label
 from rack.sources.base import SourceError
 from rack.sources.grailed import GrailedAdapter
 from rack.store import load_designers
@@ -36,7 +36,7 @@ STOPWORDS = {"and", "the", "with", "for", "size", "new", "used", "mens", "men", 
 
 def label_words(item: TasteItemRow, brand: str) -> list[str]:
     """Words from the item's label that help find similar sales (not the brand itself)."""
-    text = " ".join(x for x in (item.text, item.note) if x).lower()
+    text = item_label(item).lower()
     brand_words = set(re.findall(r"[a-z0-9]+", brand.lower()))
     out: list[str] = []
     for w in re.findall(r"[a-z][a-z0-9]+", text):

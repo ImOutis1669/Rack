@@ -118,6 +118,11 @@ stack; never bundle Apple font files.
   `purchase_price_gbp`, `purchased_at` and a `saved_snapshot`; deletes the Saved row (so price
   checks stop). The listing row is never deleted; bought listings are hidden from the feed and
   hunts. `POST /api/taste/{id}/undo-bought` restores Saved exactly. Toasts take an optional action.
+- Wardrobe items (minimal Wardrobe, migration 0015): `name` (display; photo labels moved here from
+  `note`), `purchase_date`, `category` (else inferred from the name: `effective_category`).
+  `text` stays the feed's taste text. Bought items keep their own `listing_url` after the listing
+  is deleted. Tiles (`components/TasteItemView.tsx`) are photo + brand + name + value; the item
+  sheet shows only fields with values and has an edit mode with delete / move back to Saved.
 - Wardrobe value (5a): `purchase_price_gbp` + `custom_value_gbp` on wardrobe items, set via
   `PATCH /api/taste/{id}` (no rescore). Totals are computed client-side in pence
   (`lib/wardrobeValue.ts`): worth = your value, else the estimate, else what you paid.

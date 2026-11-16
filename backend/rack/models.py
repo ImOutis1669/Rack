@@ -146,8 +146,11 @@ class TasteItemRow(Base):
     kind: Mapped[str] = mapped_column(String(16), index=True)  # wardrobe | wishlist
     image_path: Mapped[str | None] = mapped_column(Text)  # uploaded file under /data/uploads
     image_url: Mapped[str | None] = mapped_column(Text)  # pasted URL (wishlist)
-    text: Mapped[str | None] = mapped_column(Text)
+    text: Mapped[str | None] = mapped_column(Text)  # text the feed's taste matching reads
     note: Mapped[str | None] = mapped_column(Text)
+    name: Mapped[str | None] = mapped_column(String(300))  # what the item is called (display)
+    purchase_date: Mapped[date | None] = mapped_column(Date)
+    category: Mapped[str | None] = mapped_column(String(16))  # tops|trousers|shoes|outerwear
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
     text_embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
     embed_error: Mapped[str | None] = mapped_column(Text)

@@ -19,9 +19,9 @@ const item = (paid: string | null, value: string | null): TasteItem => ({
 });
 
 describe("WardrobeSummary", () => {
-  it("asks for prices when there are none", () => {
+  it("points to the item sheet when nothing has a price", () => {
     const html = renderToStaticMarkup(<WardrobeSummary items={[item(null, null)]} />);
-    expect(html).toContain("Add what you paid");
+    expect(html).toContain("Open an item to add what you paid");
     expect(html).not.toContain("Worth now");
   });
 
@@ -40,10 +40,10 @@ describe("WardrobeSummary", () => {
 });
 
 describe("WardrobeSummary with estimates only", () => {
-  it("shows a dash for Paid when nothing has a price paid", () => {
+  it("leaves out Paid when nothing has a price paid", () => {
     const est: TasteItem = { ...item(null, null), estimate_gbp: "266.22", estimate_count: 6 };
     const html = renderToStaticMarkup(<WardrobeSummary items={[est, item(null, null)]} />);
-    expect(html).toMatch(/Paid<\/p><p[^>]*><span class="text-muted">–<\/span>/);
+    expect(html).not.toContain("Paid");
     expect(html).toContain("1 estimated · 1 without a price");
   });
 });

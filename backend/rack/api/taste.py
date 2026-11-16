@@ -2,14 +2,14 @@
 
 import asyncio
 import secrets
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import MAX_BYTES, ImageError, fetch_user_image, sanitize_upload
 from rack.models import ListingRow, SoldListingRow, TasteItemRow
+from rack.pricing.resale import item_category
 from rack.sources.http import USER_AGENT
 from rack.store import bump_version
 
@@ -33,6 +34,10 @@ class TasteItemOut(BaseModel):
     kind: str
     text: str | None
     note: str | None
+    name: str | None = None  # what the item is called (display)
+    purchase_date: date | None = None
+    category: str | None = None  # set by you; else worked out from the name (see effective)
+    effective_category: str = "any"
     image: str | None  # authenticated URL to the stored image
     image_url: str | None  # where it was fetched from, if pasted
     embedded: bool
@@ -61,6 +66,7 @@ class UrlIn(BaseModel):
     url: str = Field(max_length=2000)
     note: str | None = Field(default=None, max_length=500)
     text: str | None = Field(default=None, max_length=300)
+    name: str | None = Field(default=None, max_length=300)
 
 
 class TextIn(BaseModel):
@@ -69,6 +75,7 @@ class TextIn(BaseModel):
 
 
 Money = Annotated[Decimal, Field(ge=0, le=100_000, decimal_places=2)]
+ItemCategory = Literal["tops", "trousers", "shoes", "outerwear"]
 
 
 class PatchIn(BaseModel):
@@ -78,6 +85,17 @@ class PatchIn(BaseModel):
     purchase_price_gbp: Money | None = None
     custom_value_gbp: Money | None = None
     brand: str | None = Field(default=None, max_length=200)
+    name: str | None = Field(default=None, max_length=300)
+    size: str | None = Field(default=None, max_length=64)
+    category: ItemCategory | None = None
+    purchase_date: date | None = None
+
+    @field_validator("purchase_date")
+    @classmethod
+    def _sane_date(cls, v: date | None) -> date | None:
+        if v is not None and not (date(1950, 1, 1) <= v <= date.today() + timedelta(days=1)):
+            raise ValueError("purchase date must be between 1950 and today")
+        return v
 
 
 def to_out(r: TasteItemRow) -> TasteItemOut:
@@ -86,6 +104,10 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         kind=r.kind,
         text=r.text,
         note=r.note,
+        name=r.name,
+        purchase_date=r.purchase_date,
+        category=r.category,
+        effective_category=item_category(r).value,
         image=f"/api/taste/{r.id}/image" if r.image_path else None,
         image_url=r.image_url,
         embedded=r.embedding is not None if r.image_path else r.text_embedding is not None,
@@ -139,6 +161,7 @@ async def upload(
     files: Annotated[list[UploadFile], File()],
     note: Annotated[str | None, Form(max_length=500)] = None,
     text: Annotated[str | None, Form(max_length=300)] = None,
+    name: Annotated[str | None, Form(max_length=300)] = None,
 ) -> list[TasteItemOut]:
     if len(files) > MAX_FILES:
         raise HTTPException(400, f"at most {MAX_FILES} files at once")
@@ -149,7 +172,9 @@ async def upload(
             path = await store_image(data, settings)
         except ImageError as exc:
             raise HTTPException(400, f"{f.filename}: {exc}") from exc
-        row = TasteItemRow(kind=kind, image_path=path, note=_clean(note), text=_clean(text))
+        row = TasteItemRow(
+            kind=kind, image_path=path, note=_clean(note), text=_clean(text), name=_clean(name)
+        )
         session.add(row)
         rows.append(row)
     await bump_version(session)
@@ -171,6 +196,7 @@ async def add_url(body: UrlIn, session: Session, settings: Config) -> TasteItemO
         image_url=body.url,
         note=_clean(body.note),
         text=_clean(body.text),
+        name=_clean(body.name),
     )
     session.add(row)
     await bump_version(session)
@@ -180,7 +206,7 @@ async def add_url(body: UrlIn, session: Session, settings: Config) -> TasteItemO
 
 @router.post("/text", response_model=TasteItemOut)
 async def add_text(body: TextIn, session: Session) -> TasteItemOut:
-    row = TasteItemRow(kind=body.kind, text=_clean(body.text))
+    row = TasteItemRow(kind=body.kind, text=_clean(body.text), name=_clean(body.text))
     session.add(row)
     await bump_version(session)
     await session.commit()
@@ -198,14 +224,21 @@ async def _get(session: AsyncSession, item_id: int) -> TasteItemRow:
 async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItemOut:
     row = await _get(session, item_id)
     fields = body.model_fields_set
-    money = {"purchase_price_gbp", "custom_value_gbp"} & fields
-    if (money or "brand" in fields) and row.kind != "wardrobe":
-        raise HTTPException(400, "Only wardrobe items have a price or value")
-    for name in money:
-        setattr(row, name, getattr(body, name))
-    if "brand" in fields and _clean(body.brand) != row.brand:
-        row.brand = _clean(body.brand)
-        row.estimate_at = None  # the worker re-estimates it within a couple of minutes
+    money = {"purchase_price_gbp", "custom_value_gbp", "purchase_date"} & fields
+    if money and row.kind != "wardrobe":
+        raise HTTPException(400, "Only wardrobe items have a price, value or purchase date")
+    for field in money:
+        setattr(row, field, getattr(body, field))
+    if "size" in fields:
+        row.size = _clean(body.size)
+    # brand, name and category feed the resale estimate: re-estimate within a couple of minutes
+    for field in ("brand", "name"):
+        if field in fields and _clean(getattr(body, field)) != getattr(row, field):
+            setattr(row, field, _clean(getattr(body, field)))
+            row.estimate_at = None
+    if "category" in fields and body.category != row.category:
+        row.category = body.category
+        row.estimate_at = None
     taste_changed = False
     if "note" in fields:
         row.note = _clean(body.note)
