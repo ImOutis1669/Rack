@@ -1,5 +1,6 @@
 """Source refresh: run queries against every adapter, isolating failures per source."""
 
+import asyncio
 import logging
 from collections.abc import Sequence
 
@@ -41,8 +42,13 @@ async def refresh_all(
     queries: Sequence[SearchQuery],
     sessions: async_sessionmaker[AsyncSession],
 ) -> dict[str, int]:
-    results: dict[str, int] = {}
-    for adapter in adapters:
+    """Sources run side by side, each with its own session. Every adapter still sends one request
+    at a time at its own rate limit, so no single site sees more traffic than before; a refresh
+    just takes as long as the slowest source instead of the sum of all of them."""
+
+    async def one(adapter: SourceAdapter) -> int:
         async with sessions() as session:
-            results[adapter.name] = await refresh_source(adapter, queries, session)
-    return results
+            return await refresh_source(adapter, queries, session)
+
+    counts = await asyncio.gather(*(one(a) for a in adapters))
+    return {a.name: n for a, n in zip(adapters, counts, strict=True)}

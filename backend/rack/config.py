@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     rate_vinted: float = 10.0
     rate_grailed: float = 10.0
     rate_vestiaire: float = 15.0
-    rate_images: float = 1.0  # listing thumbnails from marketplace CDNs (embedding only)
+    rate_images: float = 0.25  # listing thumbnails from marketplace image CDNs (embedding only)
 
     # Embeddings (worker only)
     clip_model: str = "ViT-B-32"
@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     # Worker
     rack_refresh_minutes: int = 30
     rack_queries_per_refresh: int = 12
+    # The Refresh button runs a shorter batch so results land in about a minute; the planner
+    # cursor carries on from there, so the background refreshes still cover everything.
+    rack_manual_queries: int = 6
     rack_score_seconds: int = 60
     rack_manual_refresh_cooldown_minutes: int = 5
     # Used only until you've added designers / wishlist text.

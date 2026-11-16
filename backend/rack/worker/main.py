@@ -87,7 +87,7 @@ async def _update_state(key: str, **values: Any) -> None:
         await s.commit()
 
 
-async def run_refresh() -> None:
+async def run_refresh(size: int | None = None) -> None:
     """Search every free source with the next batch of planned queries (one run at a time)."""
     if _refresh_lock.locked():
         log.info("refresh already running; skipped")
@@ -97,7 +97,7 @@ async def run_refresh() -> None:
         await _update_state("refresh", running=True, started_at=_now().isoformat())
         results: dict[str, int] = {}
         try:
-            queries = await plan_queries()
+            queries = await plan_queries(size=size)
             log.info("refresh: %d queries (%s)", len(queries), ", ".join(q.text for q in queries))
             results = await refresh_all(adapters, queries, sessionmaker())
             log.info("refresh done: %s", results)
@@ -259,14 +259,16 @@ class EmbedAndScore:
             raise ImageError("image larger than 10 MB")
         return resp.content
 
-    async def run(self) -> None:
+    async def run(self) -> int:
+        """Returns how many listing photos were embedded (0 when idle or already running)."""
         if self._lock.locked():
-            return
+            return 0
         async with self._lock:
             sessions = sessionmaker()
+            n = 0
             try:
                 await embed_taste(sessions, self.embedder, self.settings.uploads_dir)
-                await embed_listings(
+                n = await embed_listings(
                     sessions,
                     self.embedder,
                     self.fetch,
@@ -278,6 +280,7 @@ class EmbedAndScore:
                     await llm_rerank(sessions, self.settings, self.llm)
             except Exception:
                 log.exception("embed/score run failed")
+            return n
 
 
 class ManualRefresh:
@@ -295,8 +298,12 @@ class ManualRefresh:
         if not asked or (started and started >= asked) or _refresh_lock.locked():
             return
         log.info("manual refresh requested at %s", asked)
-        await run_refresh()
-        await self.embed.run()
+        await run_refresh(get_settings().rack_manual_queries)
+        # A run embeds up to 200 photos; go straight on to the next batch rather than waiting
+        # for the scheduled pass, so new results show up as soon as possible.
+        for _ in range(4):
+            if not await self.embed.run():
+                break
 
 
 async def resume_at(state_key: str, every: timedelta) -> datetime:
