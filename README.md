@@ -45,7 +45,7 @@ list only ever *adds* to a score: unbranded or unknown items are not pushed down
 | eBay UK | Official Browse API | Needs your keys (below). |
 | Vinted UK | Its public search page | Price shown includes Vinted's compulsory buyer-protection fee (postage extra). |
 | Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env`). If Grailed rotates it, source health shows the error; update the key. No descriptions, so measurements come from titles only. |
-| Vestiaire | — | Blocked by Cloudflare's human check. Rack checks once a day and says so in source health; it won't try to get around it. |
+| Vestiaire | — | Blocked by Cloudflare's human check. Rack checks once a day and says so in source health; it won't try to get around it. Paid scraping services (e.g. an Apify actor at ~$25 per 1,000 results, using residential proxies) were considered and not used. |
 
 Tap the middle of a listing's photo to open every photo full-screen (swipe, arrow keys or
 thumbnails), with the full description. Vinted's extra photos are fetched when you open the listing;
