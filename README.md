@@ -25,15 +25,23 @@ Windows 10/11 with **Docker Desktop** (WSL 2 backend) and a few GB of disk for t
 and data. The image model runs on the CPU, so no GPU is needed.
 
 ## Setup
+Settings live in `.env`. Secrets are split so each container only gets what it needs:
+`.env.api` (password hash, session secret), `.env.worker` (marketplace, Apify and Anthropic keys)
+and `.env.tunnel` (Cloudflare token).
 ```powershell
 cd C:\dev\rack
 copy .env.example .env
+copy .env.api.example .env.api
+copy .env.worker.example .env.worker
 docker compose build
-docker compose run --rm api rack hash-password      # paste into RACK_PASSWORD_HASH='...'
-docker compose run --rm api rack vapid-keys          # paste both lines (Web Push)
-python -c "import secrets;print(secrets.token_urlsafe(48))"   # -> RACK_SESSION_SECRET
+docker compose run --rm api rack hash-password      # paste into .env.api: RACK_PASSWORD_HASH='...'
+python -c "import secrets;print(secrets.token_urlsafe(48))"   # -> .env.api: RACK_SESSION_SECRET
+docker compose run --rm api rack vapid-keys          # paste both lines into .env (Web Push)
 docker compose up -d
 ```
+Use a long passphrase, not a short number: the app is reachable from the internet once the tunnel
+is on. The API logs a warning at startup if a setting is unsafe (short secret, plain-text hash,
+https without secure cookies).
 Open http://localhost:8000 and log in. For plain-http testing on this PC set
 `RACK_COOKIE_SECURE=false`; set it back to `true` before going public.
 
@@ -46,8 +54,8 @@ running across reboots. For alerts to arrive, the PC must not sleep (Windows Set
 |---|---|---|
 | eBay UK | Official Browse API | Create a production keyset at developer.ebay.com → *Application Keys*; set `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET`. |
 | Vinted UK | Its public search page | Price includes Vinted's compulsory buyer-protection fee (postage extra). Opening a listing fetches all its photos and the description. |
-| Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*`). If Grailed rotates it, source health shows the error; update the key. Cover photo only, no descriptions. |
-| Vestiaire | Optional, paid: Apify actor on residential proxies | vestiairecollective.com blocks Rack with a Cloudflare human check, even from a home connection. Add `APIFY_TOKEN` to run `b2b_leads/vestiaire-collective-real-time-data-scraper`: billed per result (~$25 / 1,000; free Apify plans return 2 per run). Defaults: 3 searches × 10 results a day, hard stop at 300 results a month (~$7.50). Without a token Rack checks daily and shows "Blocked". |
+| Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env.worker`). If Grailed rotates it, source health shows the error; update the key. Cover photo only, no descriptions. |
+| Vestiaire | Optional, paid: Apify actor on residential proxies | vestiairecollective.com blocks Rack with a Cloudflare human check, even from a home connection. Add `APIFY_TOKEN` (in `.env.worker`) to run `b2b_leads/vestiaire-collective-real-time-data-scraper`: billed per result (~$25 / 1,000; free Apify plans return 2 per run). Defaults: 3 searches × 10 results a day, hard stop at 300 results a month (~$7.50). Without a token Rack checks daily and shows "Blocked". |
 
 Tap the coloured dots under the header for each source's status, last run and last error.
 **Refresh** re-ranks now and searches the free sources (at most every 5 minutes).
@@ -73,22 +81,25 @@ checks them all. Each alert is sent once.
 Rack listens only on this PC by default. To reach it from anywhere over HTTPS without opening router
 ports:
 1. Cloudflare dashboard → Zero Trust → Networks → Tunnels → *Create a tunnel* (Cloudflared).
-   Copy the token into `CLOUDFLARE_TUNNEL_TOKEN`.
+   Copy the token into `.env.tunnel` as `TUNNEL_TOKEN`.
 2. Add a *public hostname* (e.g. `rack.yourdomain.com`) with service `http://api:8000`.
 3. In `.env`: `RACK_PUBLIC_URL=https://rack.yourdomain.com` and `RACK_COOKIE_SECURE=true`.
 4. `docker compose --profile tunnel up -d`
 5. **Strongly recommended**: Zero Trust → Access → Applications → add the hostname with a policy that
    allows only your email (one-time code). The app then sits behind two logins.
 
-Before going public: use a long, unique password (`rack hash-password`), keep `.env` private (it
-holds every key), and keep `RACK_COOKIE_SECURE=true`. Login is rate-limited (5 attempts per 15 minutes).
+Before going public: use a long, unique password (`rack hash-password`), keep the `.env*` files
+private, and keep `RACK_COOKIE_SECURE=true`. Login is rate-limited (5 attempts per IP and 30 in
+total per 15 minutes). **Settings → Security → Log out all devices** ends every session (do it if a
+device is lost); changing your password does the same automatically. A security review lives in
+`docs/security-audit-2026-11-16.md`; `scripts/audit.sh` checks dependencies for known issues.
 
 **LAN only instead?** Set `RACK_BIND=0.0.0.0` and open `http://<pc-ip>:8000`. Push notifications and
 app install need HTTPS, so they won't work this way. [Tailscale](https://tailscale.com) with
 `tailscale serve` is another option for private HTTPS.
 
 ## Optional: Claude second opinion
-With `LLM_ENABLED=true` and an Anthropic API key (`ANTHROPIC_API_KEY`), Claude (Opus 5.5 by default,
+With `LLM_ENABLED=true` and an Anthropic API key (`ANTHROPIC_API_KEY` in `.env.worker`), Claude (Opus 5.5 by default,
 `LLM_MODEL`) looks at the top of your feed, photos included, against your taste profile. It gives
 each listing a 0-10 verdict and a short reason, which leads the *Why this?* line. Each listing is
 judged at most every 3 days, and calls are capped at 12 a day (roughly $0.10-0.20 each). The app is
@@ -96,7 +107,7 @@ complete without it.
 
 ## Data, backups, updates
 - Data lives in two Docker volumes: `pg_data` (database) and `rack_data` (uploads, model cache).
-- Backup: `docker compose exec db pg_dump -U rack rack > rack-backup.sql`, plus copy your `.env`.
+- Backup: `docker compose exec db pg_dump -U rack rack > rack-backup.sql`, plus copy your `.env*` files.
   Restore with `psql` into a fresh `db`. Uploaded photos are in `rack_data:/data/uploads`.
 - Update: `git pull`, then `docker compose build && docker compose up -d` (migrations run automatically).
 - Logs: `docker compose logs -f worker`.

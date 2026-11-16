@@ -42,6 +42,7 @@ On this Windows dev box uv lives at
 - Live probe + record fixture: `python -m rack.cli probe vinted "query" --record tests/fixtures/vinted/x.html`
   (Vinted fixtures are trimmed to the result objects; Grailed drops `_highlightResult`)
 - Lint/types: `cd backend && uv run ruff check . && uv run mypy rack`
+- Dependency audit: `sh scripts/audit.sh`
 - Frontend tests: `cd frontend && npm test`
 - Whole stack: `docker compose up --build`
 - Migrations: `cd backend && uv run alembic upgrade head`
@@ -93,7 +94,24 @@ On this Windows dev box uv lives at
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 5 done (FX, price history, landed cost, PWA, Web Push, optional Claude re-rank,
+Status: security phase done (docs/security-audit-2026-11-16.md, all 11 findings fixed and
+covered by tests/test_security.py). Before going public the user still needs a strong password
+and the tunnel + Cloudflare Access.
+Security notes:
+- Secrets are split: `.env` (shared), `.env.api`, `.env.worker`, `.env.tunnel` (see compose).
+- Auth: CF-Connecting-IP is trusted only from `RACK_TRUSTED_PROXIES` (cloudflared; lookup capped
+  at 1 s, failures cached 10 min); global login cap; sessions carry an epoch
+  (`app_state['auth']`) + password fingerprint (logout-all, password change). Session secret
+  must be >= 32 chars. uvicorn runs with `--no-proxy-headers`.
+- Worker image downloads: https marketplace CDNs only (`embeddings/images.py`
+  `IMAGE_HOST_SUFFIXES`), public IPs, connection pinned to the checked IP (Host + SNI), no
+  redirects. Security headers + body-size limits in `api/main.py`.
+- Tests: newer FastAPI caches dependency resolution for module-level routers shared across
+  test apps, so overrides can be skipped intermittently; the `client` fixture therefore also
+  sets the test settings as env vars and points the default engine at the test DB.
+- Dev servers for the preview pane: `.claude/launch.json` in the session folder (`rack` =
+  docker compose up --build on :8000; `frontend-dev` = Vite on :5173).
+Phase 5 done (FX, price history, landed cost, PWA, Web Push, optional Claude re-rank,
 mobile pass, Cloudflare Tunnel profile, deploy README). All planned phases complete.
 Next: security phase using `docs/security-audit-prompt.md` (user's prompt), when the user asks.
 Phase 5 notes:

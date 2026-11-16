@@ -1,7 +1,20 @@
 # Rack security audit (2026-11-16)
 
-Run against commit `e242a1b` using `docs/security-audit-prompt.md`. The fixes below are **proposed,
-not applied**.
+Run against commit `e242a1b` using `docs/security-audit-prompt.md`.
+
+**Status: all 11 findings fixed** (commits `f4ae9e8`, `75a5b07`), each covered by a regression
+test in `backend/tests/test_security.py` and checked on the running stack:
+- The headers are live.
+- Spoofed client-IP headers no longer bypass the login limit.
+- "Log out all devices" ends copied sessions.
+- The worker refuses internal image URLs and still downloads marketplace photos.
+- `npm audit` reports 0 issues.
+
+Deviations from the proposals:
+- **RACK-01:** the trusted-proxy lookup is capped at 1 s and a failed lookup is cached for
+  10 minutes, so logins aren't slowed when the tunnel isn't running.
+- **RACK-07:** the notification keys (ntfy, Telegram, VAPID) stay shared, because both
+  containers send alerts.
 
 ## Phase 0: scope and threat model
 The prompt asks scoping questions first. They were already answered while building Rack, so here
