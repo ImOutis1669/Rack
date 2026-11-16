@@ -1,5 +1,5 @@
 /* Rack service worker: app-shell caching (never API data) + Web Push. */
-const SHELL = "rack-shell-v2";
+const SHELL = "rack-shell-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

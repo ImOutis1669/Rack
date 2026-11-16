@@ -22,6 +22,7 @@ from rack.models import (
     ListingImageRow,
     ListingRow,
     ListingScoreRow,
+    SavedRow,
     TasteItemRow,
 )
 from rack.pricing.history import first_prices
@@ -302,13 +303,25 @@ async def rescore(
 
         votes = (
             await s.execute(
-                select(FeedbackRow.value, ListingImageRow.embedding)
+                select(FeedbackRow.listing_id, FeedbackRow.value, ListingImageRow.embedding)
                 .join(ListingImageRow, ListingImageRow.listing_id == FeedbackRow.listing_id)
                 .where(ListingImageRow.position == 0, ListingImageRow.embedding.is_not(None))
             )
         ).all()
-        liked = as_matrix([list(e) for v, e in votes if v > 0 and e is not None])
-        disliked = as_matrix([list(e) for v, e in votes if v < 0 and e is not None])
+        # Saving counts as a like, unless that listing has an explicit 👍/👎 (which wins).
+        voted = {lid for lid, _, _ in votes}
+        saves = (
+            await s.execute(
+                select(SavedRow.listing_id, ListingImageRow.embedding)
+                .join(ListingImageRow, ListingImageRow.listing_id == SavedRow.listing_id)
+                .where(ListingImageRow.position == 0, ListingImageRow.embedding.is_not(None))
+            )
+        ).all()
+        liked = as_matrix(
+            [list(e) for _, v, e in votes if v > 0 and e is not None]
+            + [list(e) for lid, e in saves if lid not in voted and e is not None]
+        )
+        disliked = as_matrix([list(e) for _, v, e in votes if v < 0 and e is not None])
         centroid = normalize(taste_images.mean(axis=0)) if len(taste_images) else None
         pref = rocchio(centroid, liked, disliked)
 

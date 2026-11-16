@@ -14,6 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
+import { settleViewport } from "../../lib/viewport";
 
 /* ---------- buttons ---------- */
 
@@ -281,6 +282,7 @@ export function Sheet({
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      requestAnimationFrame(settleViewport);
     };
   }, [open, onClose]);
 

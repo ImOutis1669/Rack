@@ -67,12 +67,14 @@ async def save(listing_id: int, session: Session) -> None:
     row = await _listing(session, listing_id)
     ins = insert(SavedRow).values(listing_id=listing_id, price_gbp_at_save=row.price_gbp)
     await session.execute(ins.on_conflict_do_nothing())
+    await bump_version(session)  # saves train the preference vector, so rescore
     await session.commit()
 
 
 @router.delete("/listings/{listing_id}/saved", status_code=204)
 async def unsave(listing_id: int, session: Session) -> None:
     await session.execute(delete(SavedRow).where(SavedRow.listing_id == listing_id))
+    await bump_version(session)
     await session.commit()
 
 

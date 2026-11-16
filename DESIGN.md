@@ -71,7 +71,9 @@ Use tabular figures for prices and numbers.
 ## Glass
 Glass is for the navigation layer only (top bar, tab bar, overlay buttons on photos), never on
 content. It's built from `backdrop-filter: blur(20px) saturate(180%)` over a translucent
-`background`, plus a Magic UI `ProgressiveBlur` scroll-edge effect on phones.
+`background`. On phones the floating tab bar sits on a solid-to-transparent gradient of the page
+background that runs to the bottom edge, so content fades out under it. No blur band: a partial
+blur strip with sharp content below it looked messy on iPhone.
 
 ## Motion
 - **Press feedback:** `active:scale-[0.97]` on everything tappable.
@@ -79,7 +81,7 @@ content. It's built from `backdrop-filter: blur(20px) saturate(180%)` over a tra
   replay while scrolling.
 - **Score:** Magic UI `AnimatedCircularProgressBar` in the listing detail.
 - **Hunt counts:** Magic UI `NumberTicker`.
-- **Login:** Magic UI `MagicCard` and `AnimatedShinyText`. This is the one expressive screen.
+- **Login:** Magic UI `MagicCard`, with just the name: no slogan anywhere in the app.
 - **Reduced motion:** everything respects `prefers-reduced-motion`.
 
 ## Icons

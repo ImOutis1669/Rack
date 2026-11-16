@@ -1,7 +1,6 @@
 {
   "name": "Rack",
   "short_name": "Rack",
-  "description": "Second-hand, ranked by your taste",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

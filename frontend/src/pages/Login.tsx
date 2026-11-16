@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { api } from "../api/client";
-import { AnimatedShinyText } from "../components/magicui/animated-shiny-text";
 import { MagicCard } from "../components/magicui/magic-card";
 import { Button, Input } from "../components/ui";
 
@@ -30,7 +29,6 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           <form onSubmit={submit} className="flex flex-col gap-4 p-7">
             <div className="mb-2 text-center">
               <h1 className="font-display text-largetitle font-bold">Rack</h1>
-              <AnimatedShinyText className="mt-1 inline-block text-footnote">Second-hand, ranked by your taste</AnimatedShinyText>
             </div>
             <Input
               type="password"

@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
 import { Toaster } from "./components/Toast";
 import "./index.css";
+import { installViewportFix } from "./lib/viewport";
 import { Feed } from "./pages/Feed";
 import { Hunts } from "./pages/Hunts";
 import { Login } from "./pages/Login";
@@ -48,6 +49,8 @@ function App() {
     </>
   );
 }
+
+installViewportFix();
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {

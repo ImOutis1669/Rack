@@ -2,7 +2,6 @@ import { Bookmark, Crosshair, LayoutGrid, Settings as SettingsIcon, Shirt } from
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { cn } from "../lib/utils";
-import { ProgressiveBlur } from "./magicui/progressive-blur";
 
 export const TABS = [
   { to: "/", label: "Feed", icon: LayoutGrid },
@@ -39,10 +38,14 @@ function TabBar() {
   return (
     <nav
       aria-label="Tabs"
-      className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),12px)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 px-4 pt-6 pb-[max(calc(env(safe-area-inset-bottom)-6px),12px)] md:hidden"
     >
-      <ProgressiveBlur position="bottom" height="48px" className="-mb-px" />
-      <div className="glass relative mx-auto flex max-w-md items-stretch justify-around rounded-full p-1 shadow-lg ring-1 ring-border">
+      {/* soft fade from the page into the bar, all the way down past the home indicator */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-35% via-background/75 via-60% to-transparent"
+      />
+      <div className="glass relative mx-auto flex max-w-md items-stretch justify-around rounded-full p-1 shadow-[0_6px_24px_rgb(0_0_0/0.18)] ring-1 ring-border">
         {TABS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -103,7 +106,6 @@ export function PageShell({
         </div>
         {below && <div className={cn("mx-auto px-4 pb-2.5 md:px-6", wide ? "max-w-7xl" : "max-w-3xl")}>{below}</div>}
         <div className="h-px bg-border" />
-        <ProgressiveBlur position="top" height="24px" className="md:hidden" />
       </header>
       <main
         className={cn(

@@ -151,3 +151,39 @@ async def test_rank_feedback_hide_save_and_seen(
     later = (datetime.now(UTC) + timedelta(minutes=1)).isoformat()
     r = await client.get("/api/feed", params={"hide_seen_before": later})
     assert r.json()["items"] == []
+
+
+async def test_saving_trains_the_preference_vector(
+    client: httpx.AsyncClient, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+) -> None:
+    from sqlalchemy import select
+
+    from rack.models import ListingScoreRow
+
+    await login(client)
+    await seed(sessions)
+    await client.post(
+        "/api/taste/upload",
+        data={"kind": "wardrobe", "note": "black tee"},
+        files=[("files", ("a.png", png("black"), "image/png"))],
+        headers=H,
+    )
+    assert await pipeline(sessions, tmp_path / "data" / "uploads") == 2
+
+    async def components() -> list[dict[str, float]]:
+        async with sessions() as s:
+            return [r.components for r in (await s.execute(select(ListingScoreRow))).scalars()]
+
+    assert all("feedback" not in c for c in await components())
+
+    feed = (await client.get("/api/feed")).json()["items"]
+    r = await client.put(f"/api/listings/{feed[-1]['id']}/saved", headers=H)
+    assert r.status_code == 204
+    # saving bumps the profile version, and the saved item now counts as a like
+    assert await rescore(sessions, FakeEmbedder()) == 2
+    assert all("feedback" in c for c in await components())
+
+    # unsaving takes it back out
+    await client.delete(f"/api/listings/{feed[-1]['id']}/saved", headers=H)
+    assert await rescore(sessions, FakeEmbedder()) == 2
+    assert all("feedback" not in c for c in await components())
