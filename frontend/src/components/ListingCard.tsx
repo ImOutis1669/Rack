@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { safeHref } from "../lib/safe";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
@@ -196,7 +197,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
         </div>
         {item.buy_links.length === 1 && (
           <a
-            href={item.url}
+            href={safeHref(item.url)}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full rounded bg-white py-1.5 text-center text-xs font-semibold text-black active:bg-neutral-300"
@@ -210,7 +211,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
             {item.buy_links.map((link) => (
               <a
                 key={link.url}
-                href={link.url}
+                href={safeHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex justify-between rounded bg-white px-2 py-1.5 text-xs font-semibold text-black active:bg-neutral-300"

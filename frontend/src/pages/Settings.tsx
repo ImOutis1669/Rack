@@ -43,6 +43,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       )}
       <Notifications />
       <HiddenList />
+      <Security />
     </PageShell>
   );
 }
@@ -315,6 +316,31 @@ function SettingsForm(props: { profile: Profile; designers: Designer[]; adjacent
         {save.error && <span className="text-xs text-red-400">{String((save.error as Error).message)}</span>}
       </div>
     </div>
+  );
+}
+
+function Security() {
+  const qc = useQueryClient();
+  const logoutAll = useMutation({
+    mutationFn: api.logoutAll,
+    onSuccess: () => {
+      qc.clear();
+      void qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+  return (
+    <Section
+      title="Security"
+      hint="Ends every session on every device, including this one. Use it if a phone or computer you were logged in on is lost or shared. Changing your password does the same automatically."
+    >
+      <button
+        className="rounded bg-neutral-800 px-3 py-1.5 text-xs text-red-300 disabled:opacity-40"
+        disabled={logoutAll.isPending}
+        onClick={() => window.confirm("Log out on every device?") && logoutAll.mutate()}
+      >
+        Log out all devices
+      </button>
+    </Section>
   );
 }
 

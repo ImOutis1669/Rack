@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 
 from rack.pricing.fx import to_gbp
-from rack.sources.base import Category, Listing, SearchQuery, Seller, SourceError
+from rack.sources.base import Category, Listing, SearchQuery, Seller, SourceError, build_listing
 from rack.sources.http import RateLimitedClient
 
 BASE = "https://www.vinted.co.uk"
@@ -90,7 +90,7 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
 
     user = item.get("user") or {}
     path = str(item.get("url") or f"/items/{item['id']}")
-    return Listing(
+    return build_listing(
         source="vinted",
         source_id=str(item["id"]),
         url=path if path.startswith("http") else f"{BASE}{path}",

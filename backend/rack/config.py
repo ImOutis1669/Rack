@@ -9,7 +9,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
+        # Docker gives each container only its own secrets file; local dev reads them all.
+        env_file=(
+            ".env",
+            "../.env",
+            "../.env.api",
+            "../.env.worker",
+        ),
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     database_url: str = "postgresql+asyncpg://rack:rack@localhost:5432/rack"
@@ -20,6 +28,8 @@ class Settings(BaseSettings):
     rack_cookie_secure: bool = True
     rack_session_days: int = 30
     rack_public_url: str = "http://localhost:8000"
+    # Only these hosts may tell us the real client IP (CF-Connecting-IP): the tunnel container.
+    rack_trusted_proxies: str = "cloudflared"
 
     # eBay
     ebay_client_id: str = ""

@@ -4,8 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 
 class Category(StrEnum):
@@ -50,6 +51,28 @@ class Listing(BaseModel):
     country: str | None = None  # ISO 3166-1 alpha-2
     shipping_cost: Decimal | None = None  # in `currency`
     raw: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("url")
+    @classmethod
+    def _http_url(cls, v: str) -> str:
+        # third-party data ends up in <a href>: never allow javascript:, data:, etc.
+        parts = urlsplit(v)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ValueError("listing URL must be an absolute http(s) URL")
+        return v
+
+    @field_validator("images")
+    @classmethod
+    def _http_images(cls, v: list[str]) -> list[str]:
+        return [u for u in v if urlsplit(u).scheme in ("http", "https")]
+
+
+def build_listing(**fields: Any) -> "Listing | None":
+    """Listing, or None if the source data is invalid (e.g. a non-http URL)."""
+    try:
+        return Listing(**fields)
+    except ValidationError:
+        return None
 
 
 class SourceError(Exception):

@@ -15,6 +15,13 @@ from sqlalchemy import select
 from rack.config import get_settings
 from rack.db import sessionmaker
 from rack.embeddings.clip import ClipEmbedder
+from rack.embeddings.images import (
+    MAX_BYTES,
+    ImageError,
+    is_listing_image_host,
+    pinned_request,
+    resolve_public,
+)
 from rack.ingest import record_check, record_error, record_success, upsert_listings
 from rack.models import AdjacentDesignerRow, TasteItemRow
 from rack.notify.dispatch import build_channels
@@ -229,14 +236,27 @@ class EmbedAndScore:
         self.llm = make_client(settings) if settings.llm_enabled else None
 
     async def fetch(self, url: str) -> bytes:
-        """One request in flight per image host, RATE_IMAGES seconds apart."""
+        """One request in flight per image host, RATE_IMAGES seconds apart.
+
+        Listing photo URLs are third-party data: only https marketplace CDNs on public addresses,
+        connected to the address we checked, and no redirects.
+        """
+        if not is_listing_image_host(url):
+            raise ImageError(f"refusing image host {urlsplit(url).hostname!r}")
+        ip = await resolve_public(url)
+        pinned, headers, ext = pinned_request(url, ip)
         host = urlsplit(url).hostname or ""
         if host not in self.images:
             self.images[host] = RateLimitedClient(
                 min_interval=self.settings.rate_images, jitter=0.3
             )
-        resp = await self.images[host].get(url)
-        resp.raise_for_status()
+        resp = await self.images[host].get(
+            pinned, headers=headers, extensions=ext, follow_redirects=False
+        )
+        if resp.status_code != 200:
+            raise ImageError(f"image fetch HTTP {resp.status_code}")
+        if len(resp.content) > MAX_BYTES:
+            raise ImageError("image larger than 10 MB")
         return resp.content
 
     async def run(self) -> None:

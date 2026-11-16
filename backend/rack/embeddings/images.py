@@ -5,7 +5,7 @@ import io
 import ipaddress
 import re
 import socket
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -54,32 +54,71 @@ def for_embedding(data: bytes) -> Image.Image:
     return img
 
 
+# Marketplace image CDNs. Listing photo URLs come from third-party data, so the worker only
+# fetches from these (https, public addresses, no redirects).
+IMAGE_HOST_SUFFIXES = ("ebayimg.com", "vinted.net", "grailed.com", "vestiairecollective.com")
+
+
 def _is_public_ip(addr: str) -> bool:
     ip = ipaddress.ip_address(addr)
     return ip.is_global and not ip.is_multicast
 
 
-async def assert_public_url(url: str) -> None:
-    """Reject non-http(s) URLs and hosts that resolve to private/loopback/link-local addresses."""
+def is_listing_image_host(url: str) -> bool:
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    return parts.scheme == "https" and any(
+        host == s or host.endswith("." + s) for s in IMAGE_HOST_SUFFIXES
+    )
+
+
+async def resolve_public(url: str) -> str:
+    """Resolve the URL's host and return one public IP, or raise if any address is private.
+
+    Callers connect to this exact IP, so DNS can't answer differently between check and connect.
+    """
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise ImageError("only http(s) URLs are allowed")
     try:
         infos = await asyncio.to_thread(
-            socket.getaddrinfo, parts.hostname, parts.port or 443, type=socket.SOCK_STREAM
+            socket.getaddrinfo,
+            parts.hostname,
+            parts.port or (443 if parts.scheme == "https" else 80),
+            type=socket.SOCK_STREAM,
         )
     except socket.gaierror as exc:
         raise ImageError(f"cannot resolve {parts.hostname}") from exc
-    addrs = {str(info[4][0]) for info in infos}
+    addrs = [str(info[4][0]) for info in infos]
     if not addrs or not all(_is_public_ip(a) for a in addrs):
         raise ImageError("URL points at a private or local address")
+    return addrs[0]
+
+
+async def assert_public_url(url: str) -> None:
+    """Reject non-http(s) URLs and hosts that resolve to private/loopback/link-local addresses."""
+    await resolve_public(url)
+
+
+def pinned_request(url: str, ip: str) -> tuple[str, dict[str, str], dict[str, str]]:
+    """URL rewritten to the checked IP, plus the Host header and TLS SNI name to keep."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    ip_host = f"[{ip}]" if ":" in ip else ip
+    netloc = f"{ip_host}:{parts.port}" if parts.port else ip_host
+    pinned = urlunsplit((parts.scheme, netloc, parts.path, parts.query, ""))
+    host_header = f"{host}:{parts.port}" if parts.port else host
+    return pinned, {"Host": host_header}, {"sni_hostname": host}
 
 
 async def _get_limited(client: httpx.AsyncClient, url: str) -> tuple[bytes, str]:
-    """GET with manual redirects (each hop re-checked) and a body size cap."""
+    """GET with manual redirects (each hop re-checked and pinned) and a body size cap."""
     for _ in range(4):
-        await assert_public_url(url)
-        async with client.stream("GET", url, follow_redirects=False) as resp:
+        ip = await resolve_public(url)
+        pinned, headers, ext = pinned_request(url, ip)
+        async with client.stream(
+            "GET", pinned, headers=headers, extensions=ext, follow_redirects=False
+        ) as resp:
             if resp.is_redirect and "location" in resp.headers:
                 url = urljoin(url, resp.headers["location"])
                 continue

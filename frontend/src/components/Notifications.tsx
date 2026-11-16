@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { safeHref } from "../lib/safe";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { timeAgo } from "../lib/format";
@@ -88,7 +89,7 @@ export function Notifications() {
               <li key={i}>
                 <span className="text-neutral-500">{timeAgo(n.sent_at)}</span>{" "}
                 {n.url ? (
-                  <a href={n.url} target="_blank" rel="noopener noreferrer" className="underline">
+                  <a href={safeHref(n.url)} target="_blank" rel="noopener noreferrer" className="underline">
                     {n.title}
                   </a>
                 ) : (

@@ -60,6 +60,7 @@ export function feedQueryString(params: FeedParams, cursor?: string | null): str
 export const api = {
   login: (password: string) => request<void>("/api/auth/login", json("POST", { password })),
   logout: () => request<void>("/api/auth/logout", json("POST")),
+  logoutAll: () => request<void>("/api/auth/logout-all", json("POST")),
   me: () => request<{ authenticated: boolean }>("/api/auth/me"),
   feed: (params: FeedParams, cursor?: string | null) =>
     request<FeedPage>(`/api/feed?${feedQueryString(params, cursor)}`),

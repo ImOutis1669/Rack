@@ -17,7 +17,7 @@ x-app: &app
 
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:484e838076e04939d27d3e176e91c86eea96236126023be8d3059761122e579f
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rack}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rack}
@@ -33,6 +33,10 @@ services:
 
   api:
     <<: *app
+    env_file:  # shared settings + API-only secrets (password hash, session secret)
+      - path: .env
+      - path: .env.api
+        required: false
     ports:
       # Only this PC by default. Set RACK_BIND=0.0.0.0 to open it to your LAN (plain http).
       - "${RACK_BIND:-127.0.0.1}:${RACK_PORT:-8000}:8000"
@@ -44,6 +48,10 @@ services:
 
   worker:
     <<: *app
+    env_file:  # shared settings + worker-only secrets (marketplace, Apify, Anthropic keys)
+      - path: .env
+      - path: .env.worker
+        required: false
     command: ["python", "-m", "rack.worker.main"]
     depends_on:
       api:
@@ -52,10 +60,11 @@ services:
   # Public HTTPS access without opening ports: `docker compose --profile tunnel up -d`
   # (create the tunnel in Cloudflare Zero Trust; route your hostname to http://api:8000).
   cloudflared:
-    image: cloudflare/cloudflared:2026.10.0
+    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
     command: ["tunnel", "--no-autoupdate", "run"]
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    env_file:  # TUNNEL_TOKEN only
+      - path: .env.tunnel
+        required: false
     depends_on:
       api:
         condition: service_healthy

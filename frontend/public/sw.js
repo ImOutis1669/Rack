@@ -72,7 +72,9 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
+  const raw = (event.notification.data && event.notification.data.url) || "/";
+  // only open our own pages or http(s) listing links
+  const url = /^https?:\/\//i.test(raw) || raw.startsWith("/") ? raw : "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
       const internal = url.startsWith(self.location.origin) || url.startsWith("/");

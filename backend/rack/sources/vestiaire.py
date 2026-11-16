@@ -19,7 +19,14 @@ from typing import Any
 import httpx
 
 from rack.pricing.fx import to_gbp
-from rack.sources.base import Listing, SearchQuery, Seller, SourceError, SourceNotConfigured
+from rack.sources.base import (
+    Listing,
+    SearchQuery,
+    Seller,
+    SourceError,
+    SourceNotConfigured,
+    build_listing,
+)
 from rack.sources.http import RateLimitedClient
 
 ACTOR = "b2b_leads~vestiaire-collective-real-time-data-scraper"
@@ -65,7 +72,7 @@ def parse_item(d: dict[str, Any]) -> Listing | None:
         return None  # same men's-only scope as the other sources
     images = [u for u in [d.get("main_image_url"), *(d.get("additional_image_urls") or [])] if u]
     url = d.get("item_url") or d.get("url") or ""
-    return Listing(
+    return build_listing(
         source="vestiaire",
         source_id=str(item_id),
         url=url if str(url).startswith("http") else f"{BASE}{url}",

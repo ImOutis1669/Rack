@@ -62,14 +62,15 @@ def password_hash() -> str:
 async def client(
     sessions: async_sessionmaker[AsyncSession], tmp_path: Path
 ) -> AsyncIterator[httpx.AsyncClient]:
-    from rack.api.auth import attempts, require_session
+    from rack.api.auth import attempts, require_session, reset_caches
     from rack.api.main import create_app
     from rack.config import Settings, get_settings
     from rack.db import get_session
 
     settings = Settings(
         rack_password_hash=password_hash(),
-        rack_session_secret="test-secret",
+        rack_session_secret="test-secret-that-is-long-enough-1234567890",
+        rack_trusted_proxies="",
         rack_cookie_secure=False,
         rack_data_dir=tmp_path / "data",
     )
@@ -88,7 +89,8 @@ async def client(
 
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_session] = _session
-    attempts._hits.clear()
+    attempts.clear()
+    reset_caches()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c

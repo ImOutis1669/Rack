@@ -24,6 +24,7 @@ from rack.sources.base import (
     Seller,
     SourceError,
     SourceNotConfigured,
+    build_listing,
 )
 from rack.sources.http import RateLimitedClient
 
@@ -79,7 +80,7 @@ def parse_hit(hit: dict[str, Any]) -> Listing | None:
     rating = score.get("rating_average")
     designers = [d.get("name") for d in hit.get("designers") or [] if d.get("name")]
 
-    return Listing(
+    return build_listing(
         source="grailed",
         source_id=str(hit["id"]),
         url=f"{BASE}/listings/{hit['id']}",

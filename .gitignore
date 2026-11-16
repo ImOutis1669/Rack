@@ -1,4 +1,7 @@
 .env
+.env.api
+.env.worker
+.env.tunnel
 .venv/
 __pycache__/
 *.pyc

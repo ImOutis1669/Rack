@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { safeHref } from "../lib/safe";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
@@ -159,7 +160,7 @@ export function Gallery({ item, onClose }: { item: Listing; onClose: () => void 
           {item.buy_links.map((link) => (
             <a
               key={link.url}
-              href={link.url}
+              href={safeHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded bg-white px-3 py-1.5 text-xs font-semibold text-black"

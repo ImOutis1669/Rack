@@ -20,6 +20,7 @@ from rack.sources.base import (
     Seller,
     SourceError,
     SourceNotConfigured,
+    build_listing,
 )
 from rack.sources.http import RateLimitedClient
 
@@ -95,7 +96,7 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
     loc = item.get("itemLocation") or {}
     location = ", ".join(p for p in (loc.get("city"), loc.get("postalCode")) if p) or None
 
-    return Listing(
+    return build_listing(
         source="ebay",
         source_id=item["itemId"],
         url=item.get("itemWebUrl") or "",
