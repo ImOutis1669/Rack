@@ -110,6 +110,10 @@ blur strip with sharp content below it looked messy on iPhone.
 - **Score:** Magic UI `AnimatedCircularProgressBar` in the listing detail.
 - **Hunt counts:** Magic UI `NumberTicker`.
 - **Login:** Magic UI `MagicCard`, with just the name: no slogan anywhere in the app.
+- **Springs** (`lib/motion.ts`): `SPRING` (bounce 0, 0.35 s) by default and for the sliding tab
+  pill, `SHEET_SPRING` (bounce 0.2, 0.3 s) for sheets, `INSTANT` with reduced motion.
+- **Implementation:** Motion runs under `LazyMotion` (strict), so components use `m.*` elements.
+- **Tiles:** photos are 4:5 WebP thumbnails (`lib/thumbs.ts` srcsets); the full photo only in sheets.
 - **Reduced motion:** everything respects `prefers-reduced-motion`.
 
 ## Icons

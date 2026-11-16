@@ -145,7 +145,28 @@ stack; never bundle Apple font files.
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: security phase done (docs/security-audit-2026-11-16.md, all 11 findings fixed and
+Status: v1.1 done (2026-11-16), tagged `v1.1`: docs/v1.1-brief.md features 1-6 plus the
+docs/v1.2-brief.md features the user folded into v1.1 (design skill, Liquid Glass, feed title,
+minimal Wardrobe, performance). OLED mode was dropped by the user. Release notes:
+docs/release-notes-v1.1.md; performance numbers: docs/perf-v1.1.md.
+Performance notes (v1.1):
+- Tiles use `/api/img/{image_id}?w=480|640|960` (api/thumbs.py, rack/thumbs.py): WebP, fetched with
+  `embeddings.images.fetch_listing_image` (allowlist, pinned IP, no redirects, 10 MB), cached in
+  RACK_DATA_DIR/thumbs, pruned hourly by age (7 d) and size (1 GB). Wardrobe: /api/taste/{id}/thumb.
+- Instant start: `lib/snapshot.ts` keeps the default feed's first page and Saved in localStorage
+  (24 h) as placeholder data; cleared on logout / logout-all / any 401. Not TanStack persistence:
+  the feed key includes the visit start, which changes every open.
+- `components/VirtualGrid.tsx` (@tanstack/react-virtual, window scroll, masonry lanes from
+  `lib/grid.ts`) for feed and Saved; scroll position remembered per view while scrolling.
+- Prefetch (`lib/prefetch.ts`): gallery on touch for all, on view except Vinted (its details fetch
+  vinted.co.uk). Next page ~6 rows early.
+- Pages except Feed and the listing/bought sheets are `React.lazy`. Motion runs under `LazyMotion`
+  (`strict`) with async `domMax`: use `m.*` elements, never `motion.*`.
+- The API gzips text (not images); `/assets/*` immutable, the shell `no-cache`.
+- `?perf=1` shows an on-device readout (components/PerfHud.tsx). The Claude browser pane draws no
+  frames when idle, so it fires no scroll events / rAF / IntersectionObserver: tests dispatch
+  `scroll` by hand, and smoothness is measured on the iPhone.
+Earlier status: security phase done (docs/security-audit-2026-11-16.md, all 11 findings fixed and
 covered by tests/test_security.py). Before going public the user still needs a strong password
 and the tunnel + Cloudflare Access.
 Security notes:

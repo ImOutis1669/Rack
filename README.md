@@ -23,10 +23,21 @@ It's for a single user, and it runs in Docker on your own PC.
   from similar items (same brand, similar photo, same category): the median Grailed sold price when
   there are enough recent sales, else the median asking price, with how many it's based on. Items
   get a rising/falling sold-price trend over 30/90 days with a sparkline when there's enough data.
+- **Wardrobe and wishlist** as clean photo tiles; tap one for everything about it (size, category,
+  price paid, value, purchase date, a link to the original listing) and edit it there.
+- **Share** a listing's marketplace link from its sheet (the iOS share sheet, or copy).
 - **Price drops** on saved items, **deal score** from similar listings and the item's own price cuts.
 - **Duplicates merged**: the same item listed twice (another site, a repost, or one listing per size)
   becomes one card with a buy button per copy.
-- **Installable app** (PWA) with push notifications, a full-screen photo gallery and a mobile layout.
+- **Installable app** (PWA) with push notifications, a full-screen photo gallery and an iOS-style
+  layout: a Liquid Glass tab dock and top bar, upvote/downvote arrows, sheets that spring.
+- **Fast on the phone**: small cached WebP thumbnails for tiles, the last feed shown instantly on
+  open, only the tiles near the screen kept in the page, details prefetched on touch, compressed
+  and split JavaScript. Add `?perf=1` to the address to see timings on the device.
+- **eBay without storing eBay users' data**: listings come from eBay's official API; seller names
+  and locations are never stored, and eBay listings are deleted a week after they go.
+
+What's new in v1.1: [docs/release-notes-v1.1.md](docs/release-notes-v1.1.md).
 
 ## Requirements
 Windows 10/11 with **Docker Desktop** (WSL 2 backend) and a few GB of disk for the images, the model
