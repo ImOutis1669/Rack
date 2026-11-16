@@ -158,6 +158,30 @@ export interface TasteItem {
   estimate_count?: number | null; // similar listings found (null: not estimated)
   estimate_at?: string | null;
   estimate_brand?: string | null;
+  estimate_kind?: "sold" | "asking" | null;
+  trend?: Trend | null;
+}
+
+export interface TrendWindow {
+  pct: number;
+  direction: "up" | "down" | "steady";
+  recent_median: string;
+  prior_median: string;
+  recent_sales: number;
+  prior_sales: number;
+}
+
+export interface TrendPoint {
+  end: string; // ISO date the 30-day bucket ends
+  median: string | null; // null: too few sales that month
+  sales: number;
+}
+
+export interface Trend {
+  "30": TrendWindow | null;
+  "90": TrendWindow | null;
+  points: TrendPoint[];
+  sales: number;
 }
 
 export interface Comparable {
@@ -168,6 +192,7 @@ export interface Comparable {
   price_gbp: string | null;
   image: string | null;
   similarity: number;
+  sold_at?: string | null;
 }
 
 export interface Hidden {

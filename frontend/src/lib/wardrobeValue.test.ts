@@ -106,3 +106,19 @@ describe("estimates (5b)", () => {
     expect(estimateText({ image: "/x.jpg", estimate_at: null, estimate_gbp: null, estimate_count: null })).toBe("Estimating…");
   });
 });
+
+describe("sold estimates (5c)", () => {
+  it("says sold price when the estimate comes from sales", () => {
+    expect(
+      estimateText({ image: "/x.jpg", estimate_at: "2026-11-16T10:00:00Z", estimate_gbp: "520.00", estimate_count: 9, estimate_kind: "sold" }),
+    ).toBe("≈ £520 typical sold price, based on 9 similar sales on Grailed in the last 90 days (medium confidence).");
+  });
+});
+
+describe("estimate refreshes", () => {
+  it("keeps showing the current estimate while a refresh is pending", () => {
+    expect(
+      estimateText({ image: "/x.jpg", estimate_at: null, estimate_gbp: "136.09", estimate_count: 15, estimate_kind: "sold" }),
+    ).toMatch(/^≈ £136 typical sold price/);
+  });
+});

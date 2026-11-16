@@ -9,6 +9,7 @@ import { ValueSheet, WardrobeSummary } from "../components/WardrobeValue";
 import { boughtLabel } from "../lib/bought";
 import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
+import { tileBadge } from "../lib/trend";
 import { confidence, valueLine } from "../lib/wardrobeValue";
 
 const COPY: Record<TasteKind, string> = {
@@ -95,6 +96,7 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
   const [label, setLabel] = useState(item.text ?? item.note ?? "");
   const [editingValue, setEditingValue] = useState(false);
   const priceLine = item.kind === "wardrobe" ? valueLine(item) : null;
+  const badge = item.kind === "wardrobe" ? tileBadge(item.trend) : null;
   const save = useMutation({
     mutationFn: () => api.patchTaste(item.id, item.image ? { note: label } : { text: label }),
     onSuccess: onChange,
@@ -170,6 +172,19 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
             )}
           >
             {priceLine}
+            {badge && (
+              <span
+                title={badge.title}
+                className={cn(
+                  "tabular ml-1.5 shrink-0",
+                  badge.direction === "up" && "text-accent",
+                  badge.direction === "down" && "text-danger",
+                  badge.direction === "steady" && "text-muted",
+                )}
+              >
+                {badge.text}
+              </span>
+            )}
             {item.custom_value_gbp == null && item.estimate_gbp != null && confidence(item.estimate_count) === "low" && (
               <span title="Rough estimate: few similar listings" aria-label="rough estimate" className="ml-1.5 size-1.5 shrink-0 rounded-full bg-subtle" />
             )}

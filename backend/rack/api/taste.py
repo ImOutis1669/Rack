@@ -4,7 +4,7 @@ import asyncio
 import secrets
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -17,7 +17,7 @@ from rack.api.auth import require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import MAX_BYTES, ImageError, fetch_user_image, sanitize_upload
-from rack.models import ListingRow, TasteItemRow
+from rack.models import ListingRow, SoldListingRow, TasteItemRow
 from rack.sources.http import USER_AGENT
 from rack.store import bump_version
 
@@ -51,6 +51,8 @@ class TasteItemOut(BaseModel):
     estimate_count: int | None = None  # comparables found (None: not estimated)
     estimate_at: datetime | None = None
     estimate_brand: str | None = None  # brand the estimate used
+    estimate_kind: str | None = None  # sold (median sold price) | asking (median asking price)
+    trend: dict[str, Any] | None = None  # sold-price trend: {"30": {...}|None, "90": ..., "points"}
     photo_missing: bool = False  # bought, but the listing photo couldn't be copied
 
 
@@ -101,6 +103,8 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         estimate_count=r.estimate_count,
         estimate_at=r.estimate_at,
         estimate_brand=(r.estimate_basis or {}).get("brand"),
+        estimate_kind=r.estimate_kind,
+        trend=r.trend,
         photo_missing=r.purchased_at is not None and not r.image_path,
     )
 
@@ -235,6 +239,7 @@ class ComparableOut(BaseModel):
     price_gbp: Decimal | None
     image: str | None
     similarity: float
+    sold_at: datetime | None = None  # set for sold comparables
 
 
 @router.get("/{item_id}/comparables", response_model=list[ComparableOut])
@@ -245,6 +250,28 @@ async def comparables(item_id: int, session: Session, limit: int = 3) -> list[Co
     sims = {int(lid): float(sim) for lid, sim in basis}
     if not sims:
         return []
+    n = max(1, min(limit, 15))
+    if (row.estimate_basis or {}).get("kind") == "sold":
+        sold = (
+            (await session.execute(select(SoldListingRow).where(SoldListingRow.id.in_(sims))))
+            .scalars()
+            .all()
+        )
+        out_sold = [
+            ComparableOut(
+                id=x.id,
+                title=x.title,
+                source=x.source,
+                url=f"https://www.grailed.com/listings/{x.source_id}",
+                price_gbp=x.sold_price_gbp,
+                image=x.image_url,
+                similarity=sims[x.id],
+                sold_at=x.sold_at,
+            )
+            for x in sold
+        ]
+        out_sold.sort(key=lambda c: c.similarity, reverse=True)
+        return out_sold[:n]
     listings = (
         (await session.execute(select(ListingRow).where(ListingRow.id.in_(sims)))).scalars().all()
     )
@@ -261,7 +288,7 @@ async def comparables(item_id: int, session: Session, limit: int = 3) -> list[Co
         for listing in listings
     ]
     out.sort(key=lambda c: c.similarity, reverse=True)
-    return out[: max(1, min(limit, 15))]
+    return out[:n]
 
 
 @router.get("/{item_id}/image")

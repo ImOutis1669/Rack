@@ -123,7 +123,16 @@ stack; never bundle Apple font files.
   brand or a listed designer in its label; candidates = 600 nearest listing photos (pgvector),
   filtered to the same brand and category; closest 15 with cosine >= 0.65 (home photos score lower than shop photos); median asking price;
   needs >= 3 (confidence: 3-4 low, 5-9 medium, 10+ high). Re-runs every 6 h, or at once when the
-  photo, brand or label changes (`estimate_at = NULL`). Asking prices only: no sold data yet.
+  photo, brand or label changes (`estimate_at = NULL`).
+- Sold prices (5c, user's choice 2026-11-16): Grailed's public sold index `Listing_sold_production`
+  (same key; probed live: sold_price, sold_shipping_price, sold_at). Worker `sold_prices` job: one
+  6 queries (one per 30-day slice of the last 180 days, 40 hits, label words as optionalWords)
+  per branded wardrobe item per day into
+  `sold_listings` (item data only, `parse_sold` never reads `user`; kept 200 days); cover photos
+  embedded in the embed/score loop. Estimate = median sold price of >= 5 similar sales in 90 days,
+  else asking. Trend (`pricing/trend.py`): median of the last 30/90 days vs the period before,
+  >= 5 sales each side, |change| < 5% = steady; monthly medians for the sparkline. Daily estimate
+  snapshots in `estimate_snapshots`. eBay sold data needs Marketplace Insights (not available).
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe

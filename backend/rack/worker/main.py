@@ -30,6 +30,7 @@ from rack.privacy import purge_ebay
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery, SourceError
 from rack.sources.ebay import EbayAdapter
+from rack.sources.grailed import GrailedAdapter
 from rack.sources.http import RateLimitedClient
 from rack.sources.recheck import BLOCKED_SOURCES, check
 from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
@@ -41,6 +42,7 @@ from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
 from rack.worker.refresh import refresh_all
 from rack.worker.resale import refresh_estimates
+from rack.worker.sold import embed_sold, fetch_sold
 from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
 
 log = logging.getLogger("rack.worker")
@@ -267,6 +269,19 @@ async def run_ebay_details() -> None:
         log.exception("eBay details failed")
 
 
+async def run_sold_prices() -> None:
+    """Grailed sold prices for branded wardrobe items, once a day each (5c)."""
+    adapter = shared_adapters().get("grailed")
+    if not isinstance(adapter, GrailedAdapter):
+        return
+    try:
+        n = await fetch_sold(sessionmaker(), adapter, _now())
+        if n:
+            log.info("sold prices: %d new Grailed sales", n)
+    except Exception:
+        log.exception("sold prices failed")
+
+
 async def run_resale_estimates() -> None:
     """Wardrobe resale estimates (5b): new photos/brands promptly, everything every 6 h."""
     try:
@@ -343,6 +358,7 @@ class EmbedAndScore:
                     self.fetch,
                     images_per_listing=self.settings.rack_embed_images_per_listing,
                 )
+                await embed_sold(sessions, self.embedder, self.fetch)
                 await assign_clusters(sessions)
                 await rescore(sessions, self.embedder)
                 if self.llm is not None:
@@ -407,6 +423,7 @@ async def main() -> None:
         (run_ebay_details, timedelta(minutes=2), "ebay_details", now + timedelta(seconds=30)),
         (save_ebay_usage, timedelta(minutes=1), "ebay_usage", now + timedelta(seconds=45)),
         (run_resale_estimates, timedelta(minutes=2), "resale", now + timedelta(seconds=60)),
+        (run_sold_prices, timedelta(minutes=10), "sold_prices", now + timedelta(seconds=90)),
         (
             recheck_blocked,
             timedelta(days=1),

@@ -8,8 +8,15 @@ Rack sends its honest User-Agent and no browser-impersonation headers. App id an
 so they can be updated if Grailed rotates them; a refused key shows up in source health.
 
 Search only: the index has no item descriptions, and grailed.com item pages are blocked.
+
+Sold prices (v1.1, user's choice 2026-11-16): the sold index `Listing_sold_production` (same key,
+probed live) has `sold_price`, `sold_shipping_price` and `sold_at` per sale. Rack reads it for
+wardrobe resale estimates and trends (pricing/resale.py, pricing/trend.py), keeping item data only:
+`parse_sold` never reads the `user` (seller) object.
 """
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -31,6 +38,7 @@ from rack.sources.http import RateLimitedClient
 BASE = "https://www.grailed.com"
 RELEVANCE_INDEX = "Listing_production"
 NEWEST_INDEX = "Listing_by_date_added_production"
+SOLD_INDEX = "Listing_sold_production"
 
 CATEGORY_FACETS: dict[Category, list[str]] = {
     Category.ANY: [],
@@ -45,6 +53,14 @@ CONDITIONS = {
     "is_used": "Used",
     "is_worn": "Very worn",
     "is_not_specified": None,
+}
+# Grailed category -> Rack category (for sold comparables)
+GRAILED_CATEGORIES: dict[str, Category] = {
+    "tops": Category.TOPS,
+    "bottoms": Category.TROUSERS,
+    "footwear": Category.SHOES,
+    "outerwear": Category.OUTERWEAR,
+    "tailoring": Category.OUTERWEAR,
 }
 COUNTRIES = {"United States": "US", "United Kingdom": "GB", "Canada": "CA"}
 
@@ -114,6 +130,79 @@ def parse_results(payload: dict[str, Any]) -> list[Listing]:
     return out
 
 
+@dataclass(frozen=True)
+class SoldItem:
+    source_id: str
+    title: str
+    brand: str | None
+    category: Category
+    size: str | None
+    sold_price_gbp: Decimal
+    shipping_gbp: Decimal | None
+    sold_at: datetime
+    image_url: str | None
+
+
+def parse_sold(hit: dict[str, Any]) -> SoldItem | None:
+    """A sale from the sold index, item fields only (never the `user`/seller object)."""
+    price = _dec(hit.get("sold_price"))
+    sold_at = _dt(hit.get("sold_at"))
+    if not hit.get("sold") or price is None or price <= 0 or sold_at is None:
+        return None
+    if not hit.get("id") or not hit.get("title"):
+        return None
+    if str(hit.get("department") or "menswear") != "menswear":
+        return None
+    shipping = _dec(hit.get("sold_shipping_price"))
+    if hit.get("sold_price_includes_shipping") and shipping is not None and shipping < price:
+        price -= shipping  # compare item prices with item prices
+    photo = hit.get("cover_photo") or {}
+    image = photo.get("url") or photo.get("image_url")
+    designers = [d.get("name") for d in hit.get("designers") or [] if d.get("name")]
+    gbp = to_gbp(price, "USD")
+    if gbp is None:
+        return None
+    return SoldItem(
+        source_id=str(hit["id"]),
+        title=str(hit["title"])[:500],
+        brand=" × ".join(designers) or hit.get("designer_names"),
+        category=GRAILED_CATEGORIES.get(str(hit.get("category")), Category.ANY),
+        size=str(hit["size"])[:64] if hit.get("size") is not None else None,
+        sold_price_gbp=gbp,
+        shipping_gbp=to_gbp(shipping, "USD") if shipping is not None else None,
+        sold_at=sold_at,
+        image_url=str(image) if image and str(image).startswith("https://") else None,
+    )
+
+
+def build_sold_body(
+    brand: str,
+    category: Category,
+    since: datetime,
+    until: datetime,
+    limit: int,
+    words: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Sales of `brand` between `since` and `until`. `words` (from the item's label) rank similar
+    items first without being required (Algolia optionalWords)."""
+    facets: list[list[str]] = [["department:menswear"]]
+    if CATEGORY_FACETS[category]:
+        facets.append(CATEGORY_FACETS[category])
+    extra = [w for w in words if w.lower() not in brand.lower()]
+    body: dict[str, Any] = {
+        "query": " ".join([brand, *extra]),
+        "hitsPerPage": min(limit, 200),
+        "facetFilters": facets,
+        "numericFilters": [
+            f"sold_at_i>={int(since.timestamp())}",
+            f"sold_at_i<{int(until.timestamp())}",
+        ],
+    }
+    if extra:
+        body["optionalWords"] = extra
+    return body
+
+
 def build_body(query: SearchQuery) -> dict[str, Any]:
     facets: list[list[str]] = [["department:menswear"]]
     if CATEGORY_FACETS[query.category]:
@@ -167,6 +256,28 @@ class GrailedAdapter:
 
     async def search(self, query: SearchQuery) -> list[Listing]:
         return parse_results(await self.fetch(query))
+
+    async def search_sold(
+        self,
+        brand: str,
+        category: Category,
+        since: datetime,
+        until: datetime,
+        limit: int = 40,
+        words: Sequence[str] = (),
+    ) -> list[SoldItem]:
+        """Sales of `brand` in one time slice (one request, through the shared rate limit)."""
+        if not (self._app and self._key):
+            raise SourceNotConfigured("GRAILED_ALGOLIA_APP_ID / GRAILED_ALGOLIA_API_KEY not set")
+        resp = await self._http.post(
+            self._url(SOLD_INDEX),
+            json=build_sold_body(brand, category, since, until, limit, words),
+            headers={"X-Algolia-Application-Id": self._app, "X-Algolia-API-Key": self._key},
+        )
+        if resp.status_code != 200:
+            raise SourceError(f"Grailed sold search failed: HTTP {resp.status_code}")
+        hits = resp.json().get("hits") or []
+        return [s for s in (parse_sold(h) for h in hits) if s is not None]
 
     async def get_listing(self, url_or_id: str) -> Listing | None:
         """Current state of one listing, from the search index (grailed.com pages are blocked).

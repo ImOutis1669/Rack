@@ -8,7 +8,9 @@ import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
 import { changeLabel, coverageLine, estimateText, wardrobeTotals } from "../lib/wardrobeValue";
 import { NumberTicker } from "./magicui/number-ticker";
-import { Button, Field, Input, Sheet } from "./ui";
+import { signedPct, type WindowDays, windowText } from "../lib/trend";
+import { Sparkline } from "./Sparkline";
+import { Button, Field, Input, Segmented, Sheet } from "./ui";
 
 /** Wardrobe tab header: what you paid in total and what it's worth now. */
 export function WardrobeSummary({ items }: { items: TasteItem[] }) {
@@ -73,6 +75,7 @@ export function ValueSheet({ item, open, onClose, onSaved }: { item: TasteItem; 
   const [paid, setPaid] = useState("");
   const [worth, setWorth] = useState("");
   const [brand, setBrand] = useState("");
+  const [days, setDays] = useState<WindowDays>("30");
   useEffect(() => {
     if (!open) return;
     setPaid(defaultPrice(item.purchase_price_gbp));
@@ -134,7 +137,10 @@ export function ValueSheet({ item, open, onClose, onSaved }: { item: TasteItem; 
                   <a href={safeHref(c.url)} target="_blank" rel="noopener noreferrer" className="block">
                     {c.image && <img src={c.image} alt={c.title} loading="lazy" className="aspect-square w-full rounded-photo bg-fill object-cover" />}
                     <span className="mt-1 block truncate text-caption">
-                      <span className="tabular font-semibold">{formatGBP(c.price_gbp)}</span> · {SOURCE_LABEL[c.source]}
+                      <span className="tabular font-semibold">{formatGBP(c.price_gbp)}</span> ·{" "}
+                      {c.sold_at
+                        ? `sold ${new Date(c.sold_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                        : SOURCE_LABEL[c.source]}
                     </span>
                   </a>
                 </li>
@@ -142,6 +148,35 @@ export function ValueSheet({ item, open, onClose, onSaved }: { item: TasteItem; 
             </ul>
           )}
         </section>
+        {item.trend && (
+          <section aria-label="Sold-price trend" className="space-y-3 rounded-group bg-surface p-3 dark:bg-elevated">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-footnote font-semibold">Sold-price trend</p>
+              <Segmented
+                value={days}
+                onChange={setDays}
+                options={[
+                  ["30", "30 days"],
+                  ["90", "90 days"],
+                ]}
+              />
+            </div>
+            {item.trend[days] && (
+              <p
+                className={cn(
+                  "tabular font-display text-title font-bold",
+                  item.trend[days]!.direction === "up" && "text-accent",
+                  item.trend[days]!.direction === "down" && "text-danger",
+                )}
+              >
+                {signedPct(item.trend[days]!.pct)}
+              </p>
+            )}
+            <p className="text-footnote text-muted">{windowText(item.trend, days)}</p>
+            <Sparkline points={item.trend.points} />
+            <p className="text-caption text-muted">Grailed sales, mostly in the US, converted to £. Treat it as a rough signal.</p>
+          </section>
+        )}
         {save.isError && <p className="text-footnote text-danger">{String((save.error as Error).message)}</p>}
       </form>
     </Sheet>

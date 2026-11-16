@@ -119,15 +119,23 @@ export function valueLine(it: Priced): string {
 }
 
 /** Sheet text for the estimate, or why there isn't one. */
-export function estimateText(it: Pick<TasteItem, "estimate_gbp" | "estimate_count" | "estimate_at" | "image">): string {
+export function estimateText(
+  it: Pick<TasteItem, "estimate_gbp" | "estimate_count" | "estimate_at" | "image" | "estimate_kind">,
+): string {
   if (!it.image) return "Estimates need a photo.";
-  if (!it.estimate_at) return "Estimating…";
+  if (!it.estimate_at && it.estimate_gbp == null && it.estimate_count == null) return "Estimating…";
   if (it.estimate_count == null) return "Add the brand to get an estimate.";
   if (it.estimate_gbp == null) {
     return `Not enough similar listings yet (${it.estimate_count}). Rack keeps looking as new listings come in.`;
   }
   const c = confidence(it.estimate_count);
+  const conf = c ? ` (${c} confidence)` : "";
+  if (it.estimate_kind === "sold") {
+    return `≈ ${formatGBP(it.estimate_gbp)} typical sold price, based on ${it.estimate_count} similar sale${
+      it.estimate_count === 1 ? "" : "s"
+    } on Grailed in the last 90 days${conf}.`;
+  }
   return `≈ ${formatGBP(it.estimate_gbp)} typical asking price, based on ${it.estimate_count} similar listing${
     it.estimate_count === 1 ? "" : "s"
-  }${c ? ` (${c} confidence)` : ""}. Asking prices run higher than what things sell for.`;
+  }${conf}. Asking prices run higher than what things sell for.`;
 }

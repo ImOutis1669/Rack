@@ -1,22 +1,33 @@
 """Estimated resale value of a wardrobe item from comparable listings Rack has collected (5b).
 
 Comparables: same brand, same category (when the item's label says), and a similar photo (CLIP).
-The estimate is the median £ *asking* price of the closest matches: Rack doesn't know which
-listings sold, so it leans high. Thresholds are educated guesses for CLIP ViT-B-32; tune them.
+Sold first (5c): when there are at least MIN_SOLD similar Grailed sales in the last 90 days, the
+estimate is their median *sold* price. Otherwise it falls back to the median *asking* price of
+live listings, which leans high. The sold-price trend comes from the same comparable sales.
+Thresholds are educated guesses for CLIP ViT-B-32; tune them.
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from statistics import median
 from typing import Any, Literal
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.models import ListingImageRow, ListingRow, ListingScoreRow, TasteItemRow
+from rack.models import (
+    EstimateSnapshotRow,
+    ListingImageRow,
+    ListingRow,
+    ListingScoreRow,
+    SoldListingRow,
+    TasteItemRow,
+)
 from rack.parsing.categories import infer_category
+from rack.pricing.trend import compute_trend
 from rack.ranking.brands import is_style_reference, match_designer
 from rack.sources.base import Category
 
@@ -27,6 +38,9 @@ MIN_SIMILARITY = 0.65
 MAX_COMPARABLES = 15
 MIN_COMPARABLES = 3  # below this there's no estimate
 NEAREST_IMAGES = 600  # photos fetched from the vector index before brand/category filtering
+MIN_SOLD = 5  # similar sales in the last 90 days needed for a sold-price estimate
+SOLD_WINDOW = timedelta(days=90)
+TREND_HISTORY = timedelta(days=180)
 
 Confidence = Literal["high", "medium", "low"]
 
@@ -125,6 +139,55 @@ async def candidates_for(session: AsyncSession, item: TasteItemRow, brand: str) 
     return out
 
 
+async def sold_candidates_for(
+    session: AsyncSession, item: TasteItemRow, brand: str, now: datetime
+) -> list[tuple[Comparable, datetime]]:
+    """Same-brand, same-category sales from the last 180 days whose photo is close to the item's."""
+    if item.embedding is None:
+        return []
+    distance = SoldListingRow.embedding.cosine_distance(item.embedding).label("d")
+    rows = (
+        await session.execute(
+            select(SoldListingRow, distance)
+            .where(
+                SoldListingRow.embedding.is_not(None),
+                SoldListingRow.sold_at > now - TREND_HISTORY,
+            )
+            .order_by(distance)
+            .limit(NEAREST_IMAGES)
+        )
+    ).all()
+    category = item_category(item)
+    out: list[tuple[Comparable, datetime]] = []
+    for sold, dist in rows:
+        sim = round(1.0 - float(dist), 4)
+        if sim < MIN_SIMILARITY or not same_brand(brand, sold.brand, sold.title):
+            continue
+        if category != Category.ANY and sold.category not in ("any", category.value):
+            continue
+        out.append((Comparable(sold.id, sim, Decimal(sold.sold_price_gbp)), sold.sold_at))
+    return out
+
+
+async def _snapshot(session: AsyncSession, item: TasteItemRow, now: datetime) -> None:
+    if item.estimate_gbp is None or item.estimate_count is None or not item.estimate_kind:
+        return
+    values = {
+        "taste_item_id": item.id,
+        "day": now.date(),
+        "estimate_gbp": item.estimate_gbp,
+        "count": item.estimate_count,
+        "kind": item.estimate_kind,
+    }
+    ins = insert(EstimateSnapshotRow).values(**values)
+    await session.execute(
+        ins.on_conflict_do_update(
+            constraint="uq_snapshot_day",
+            set_={k: ins.excluded[k] for k in ("estimate_gbp", "count", "kind")},
+        )
+    )
+
+
 async def estimate_item(
     session: AsyncSession, item: TasteItemRow, designers: Sequence[str], now: datetime
 ) -> Estimate | None:
@@ -133,14 +196,25 @@ async def estimate_item(
     brand = item_brand(item, designers)
     if item.embedding is None or not brand:
         item.estimate_gbp, item.estimate_count, item.estimate_basis = None, None, None
+        item.estimate_kind, item.trend = None, None
         return None
-    est = estimate_from(await candidates_for(session, item, brand))
+    sold = await sold_candidates_for(session, item, brand, now)
+    recent = [c for c, at in sold if at > now - SOLD_WINDOW]
+    sold_est = estimate_from(recent)
+    if sold_est.value_gbp is not None and sold_est.count >= MIN_SOLD:
+        est, kind = sold_est, "sold"
+    else:
+        est, kind = estimate_from(await candidates_for(session, item, brand)), "asking"
     item.estimate_gbp = est.value_gbp
     item.estimate_count = est.count
+    item.estimate_kind = kind if est.value_gbp is not None else None
     basis: dict[str, Any] = {
         "brand": brand,
         "category": item_category(item).value,
+        "kind": kind,
         "comparables": [[c.listing_id, c.similarity] for c in est.comparables],
     }
     item.estimate_basis = basis
+    item.trend = compute_trend([(at, c.price_gbp) for c, at in sold], now) if sold else None
+    await _snapshot(session, item, now)
     return est
