@@ -73,6 +73,7 @@ async def run_hunt(
         category=Category(hunt.category),
         max_price_gbp=float(hunt.max_price_gbp) if hunt.max_price_gbp is not None else None,
         sizes=list(hunt.sizes or []),
+        strict_size=hunt.strict_size,
         min_score=hunt.min_score,
     )
     q = SearchQuery(

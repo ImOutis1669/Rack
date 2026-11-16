@@ -16,6 +16,7 @@ export function emptyHunt(): HuntInput {
     category: "any",
     max_price_gbp: null,
     sizes: [],
+    strict_size: false,
     sources: [],
     min_score: null,
     interval_minutes: 30,
@@ -44,11 +45,19 @@ export function huntFromListing(item: Pick<Listing, "brand" | "title" | "categor
   };
 }
 
+/** Hint under the Sizes field. */
+export function sizesHint(strict: boolean, hasSizes: boolean): string {
+  if (!hasSizes) return "Add sizes to filter by size. Listings with no size still match.";
+  return strict
+    ? "Only listings with one of these sizes. UK, EU and US shoe sizes are compared (UK 9 = EU 43)."
+    : "Listings with no size still match. UK, EU and US shoe sizes are compared (UK 9 = EU 43).";
+}
+
 export function huntSummary(h: HuntInput): string {
   const bits = [`“${h.query}”`];
   if (h.category !== "any") bits.push(h.category);
   if (h.max_price_gbp != null) bits.push(`≤ £${Number(h.max_price_gbp)}`);
-  if (h.sizes.length) bits.push(`size ${h.sizes.join("/")}`);
+  if (h.sizes.length) bits.push(`size ${h.sizes.join("/")}${h.strict_size ? " (must match)" : ""}`);
   bits.push(h.sources.length ? h.sources.join(", ") : "all free sources");
   bits.push(INTERVALS.find(([m]) => m === h.interval_minutes)?.[1] ?? `every ${h.interval_minutes} min`);
   return bits.join(" · ");

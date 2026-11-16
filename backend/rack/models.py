@@ -263,6 +263,8 @@ class HuntRow(Base):
     category: Mapped[str] = mapped_column(String(16), default="any")
     max_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     sizes: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    # "Size must match": listings without a size, or with another size, are skipped
+    strict_size: Mapped[bool] = mapped_column(Boolean, default=False)
     sources: Mapped[list[str]] = mapped_column(JSONB, default=list)  # empty = all free sources
     min_score: Mapped[float | None]
     interval_minutes: Mapped[int] = mapped_column(Integer, default=30)

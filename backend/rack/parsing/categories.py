@@ -92,7 +92,47 @@ def _norm_size(s: str) -> str:
 
 def size_tokens(size: str) -> set[str]:
     parts = re.split(r"[\s/,|()\-]+", size)
-    return {_norm_size(p) for p in parts if _norm_size(p)} | {_norm_size(size)}
+    tokens = {_norm_size(p) for p in parts if _norm_size(p)} | {_norm_size(size)}
+    # waist: "W32" / "W32 L34" also match a plain "32"
+    tokens |= {m.group(1) for t in tokens if (m := re.fullmatch(r"w(\d{2})", t))}
+    return tokens
+
+
+# Men's shoe sizes across systems, Rick Owens / Margiela / Converse convention: EU = UK + 34
+# (UK 9 = EU 43), US = UK + 1. Brands differ by up to half a size, so UK/US vs EU readings match
+# within 0.5; readings in the same family must be equal (UK 9 is not UK 9.5).
+_SHOE_PREFIXED = re.compile(r"\b(uk|eu|us)\s?(\d{1,2}(?:\.5)?)\b", re.I)
+_SHOE_BARE = re.compile(r"(?<![a-z0-9.])(\d{1,2}(?:\.5)?)(?![0-9.])", re.I)
+ShoeReading = tuple[str, float]  # (family "uk" | "eu", size as EU)
+
+
+def shoe_sizes(size: str) -> set[ShoeReading]:
+    """Shoe readings in a size string, as EU sizes. Bare 3-15 reads as UK, 35-50 as EU."""
+    out: set[ShoeReading] = set()
+    for system, value in _SHOE_PREFIXED.findall(size):
+        n = float(value)
+        if system.lower() == "eu" and 35 <= n <= 50:
+            out.add(("eu", n))
+        elif system.lower() == "uk" and 3 <= n <= 15:
+            out.add(("uk", n + 34))
+        elif system.lower() == "us" and 4 <= n <= 16:
+            out.add(("uk", n + 33))
+    rest = _SHOE_PREFIXED.sub(" ", size)
+    for value in _SHOE_BARE.findall(rest):
+        n = float(value)
+        if 35 <= n <= 50:
+            out.add(("eu", n))
+        elif 3 <= n <= 15:
+            out.add(("uk", n + 34))
+    return out
+
+
+def _shoes_match(a: set[ShoeReading], b: set[ShoeReading]) -> bool:
+    for fa, va in a:
+        for fb, vb in b:
+            if va == vb or (fa != fb and abs(va - vb) <= 0.5):
+                return True
+    return False
 
 
 _LETTER = r"(?:xxxs|xxs|xs|s|m|l|xl|xxl|xxxl|[2-4]xl)"
@@ -119,4 +159,7 @@ def size_matches(listing_size: str | None, wanted: list[str]) -> bool | None:
     if not listing_size or not wanted:
         return None
     have = size_tokens(listing_size)
-    return any(size_tokens(w) & have for w in wanted)
+    if any(size_tokens(w) & have for w in wanted):
+        return True
+    shoes = shoe_sizes(listing_size)
+    return bool(shoes) and any(_shoes_match(shoes, shoe_sizes(w)) for w in wanted)

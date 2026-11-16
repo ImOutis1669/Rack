@@ -14,7 +14,9 @@ It's for a single user, and it runs in Docker on your own PC.
   pushed down.
 - **Fit for a tall frame**: inseam, sleeve, pit-to-pit and length are read from listing text (cm or
   inches, "W32 L34"). Listings that are too short are hidden; listings with no measurements never are.
-- **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches.
+- **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches. Turn on
+  "Size must match" to skip listings without your size; UK, EU and US shoe sizes are compared
+  (UK 9 = EU 43) and W32 matches 32.
 - **I bought it**: move a saved item into your wardrobe with the price you paid (its photo then
   shapes the feed, and its price alerts stop). Undo puts it back in Saved.
 - **Wardrobe value**: add what you paid and what each item is worth now, or let Rack estimate it

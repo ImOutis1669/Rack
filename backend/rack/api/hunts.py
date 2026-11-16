@@ -28,6 +28,7 @@ class HuntIn(BaseModel):
     category: Category = Category.ANY
     max_price_gbp: Decimal | None = Field(default=None, ge=0)
     sizes: list[str] = Field(default_factory=list, max_length=20)
+    strict_size: bool = False  # "Size must match"; needs at least one size
     sources: list[SourceName] = Field(default_factory=list)  # empty = all free sources
     min_score: float | None = Field(default=None, ge=0, le=1.5)
     interval_minutes: int = Field(default=30, ge=MIN_INTERVAL_MINUTES, le=24 * 60)
@@ -53,6 +54,7 @@ def _out(h: HuntRow, counts: dict[int, tuple[int, int]]) -> HuntOut:
         category=Category(h.category),
         max_price_gbp=h.max_price_gbp,
         sizes=list(h.sizes or []),
+        strict_size=h.strict_size,
         sources=[s for s in (h.sources or []) if s in FREE_SOURCES],
         min_score=h.min_score,
         interval_minutes=h.interval_minutes,
@@ -90,6 +92,7 @@ def _apply(hunt: HuntRow, body: HuntIn) -> None:
     hunt.category = body.category.value
     hunt.max_price_gbp = body.max_price_gbp
     hunt.sizes = [s.strip() for s in body.sizes if s.strip()]
+    hunt.strict_size = body.strict_size and bool(hunt.sizes)  # nothing to match without sizes
     hunt.sources = list(dict.fromkeys(body.sources))
     hunt.min_score = body.min_score
     hunt.interval_minutes = body.interval_minutes

@@ -180,7 +180,10 @@ so visual matches on fixture data are meaningless. Replace with a live recording
 Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
 Phase 4 notes:
 - Hunts (`worker/hunts.py`, `ranking/hunt_match.py`): every query word must appear in brand+title+
-  description; unknown size/category/score never excludes. First run (and after editing the search)
+  description; unknown size/category/score never excludes, except with `hunts.strict_size`
+  ("Size must match": no size or another size is skipped). Sizes: `parsing.size_matches`
+  compares tokens, W32 = 32, and men's shoes across systems (EU = UK + 34, US = UK + 1; UK/US vs
+  EU within half a size, same system exact; bare 3-15 = UK, 35-50 = EU). First run (and after editing the search)
   is a silent baseline. Global hard filters (hidden, banned words, fit, excluded designers) apply.
   Free sources only (Vestiaire is paid). Min interval 5 min; worker checks due hunts every minute.
 - All worker jobs share one adapter per source (`worker/adapters.py`) so rate limits hold across jobs.

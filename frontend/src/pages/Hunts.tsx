@@ -21,7 +21,7 @@ import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { NumberTicker } from "../components/magicui/number-ticker";
 import { Button, Chip, EmptyState, Field, IconButton, Input, Menu, Select, Sheet, Switch } from "../components/ui";
 import { SOURCE_LABEL, timeAgo } from "../lib/format";
-import { emptyHunt, huntSummary, INTERVALS } from "../lib/hunts";
+import { emptyHunt, huntSummary, INTERVALS, sizesHint } from "../lib/hunts";
 import { splitList } from "../lib/units";
 import { cn } from "../lib/utils";
 
@@ -178,12 +178,14 @@ function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput;
   const [sizes, setSizes] = useState(props.initial.sizes.join(", "));
   const save = useMutation({
     mutationFn: () => {
-      const body: HuntInput = { ...h, name: h.name.trim() || h.query.trim(), sizes: splitList(sizes) };
+      const list = splitList(sizes);
+      const body: HuntInput = { ...h, name: h.name.trim() || h.query.trim(), sizes: list, strict_size: h.strict_size && list.length > 0 };
       return props.id == null ? api.createHunt(body) : api.updateHunt(props.id, body);
     },
     onSuccess: props.onDone,
   });
   const set = <K extends keyof HuntInput>(k: K, v: HuntInput[K]) => setH((x) => ({ ...x, [k]: v }));
+  const hasSizes = splitList(sizes).length > 0;
 
   return (
     <Sheet
@@ -231,7 +233,7 @@ function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput;
               />
             )}
           </Field>
-          <Field label="Sizes" hint="Listings with no size still match.">
+          <Field label="Sizes" hint={sizesHint(h.strict_size && hasSizes, hasSizes)}>
             {(id) => <Input id={id} value={sizes} placeholder="43, UK 9" onChange={(e) => setSizes(e.target.value)} />}
           </Field>
           <Field label="Check">
@@ -245,6 +247,16 @@ function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput;
               </Select>
             )}
           </Field>
+          <div className={cn("col-span-2 flex min-h-11 items-center justify-between gap-3", !hasSizes && "opacity-40")}>
+            <span className="text-body">
+              Size must match
+            </span>
+            <Switch
+              checked={h.strict_size && hasSizes}
+              onChange={(v) => hasSizes && set("strict_size", v)}
+              label="Size must match"
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <p className="text-footnote font-medium text-muted">Sources</p>

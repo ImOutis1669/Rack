@@ -225,6 +225,7 @@ export interface HuntInput {
   category: Category;
   max_price_gbp: number | null;
   sizes: string[];
+  strict_size: boolean; // "Size must match"
   sources: FreeSource[];
   min_score: number | null;
   interval_minutes: number;
