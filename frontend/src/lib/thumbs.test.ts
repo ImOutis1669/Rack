@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { listingTileImage, thumbSet, TILE_SIZES } from "./thumbs";
 
 describe("thumbnails", () => {
-  it("offers 480 and 960 px versions", () => {
+  it("offers 480, 640 and 960 px versions", () => {
     expect(thumbSet("/api/img/12")).toEqual({
       src: "/api/img/12?w=480",
-      srcSet: "/api/img/12?w=480 480w, /api/img/12?w=960 960w",
+      srcSet: "/api/img/12?w=480 480w, /api/img/12?w=640 640w, /api/img/12?w=960 960w",
       sizes: TILE_SIZES,
     });
   });

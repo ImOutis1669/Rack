@@ -9,9 +9,9 @@ export interface TileImage {
   sizes?: string;
 }
 
-/** `base` is a thumbnail route (`/api/img/12`, `/api/taste/3/thumb`); 480 and 960 px wide. */
+/** `base` is a thumbnail route (`/api/img/12`, `/api/taste/3/thumb`); 480, 640 and 960 px wide. */
 export function thumbSet(base: string): TileImage {
-  return { src: `${base}?w=480`, srcSet: `${base}?w=480 480w, ${base}?w=960 960w`, sizes: TILE_SIZES };
+  return { src: `${base}?w=480`, srcSet: `${base}?w=480 480w, ${base}?w=640 640w, ${base}?w=960 960w`, sizes: TILE_SIZES };
 }
 
 /** A listing tile's first photo as a thumbnail; the original URL if Rack has no id for it. */

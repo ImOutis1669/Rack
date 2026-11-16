@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 
 from rack.embeddings.images import open_image
 
-WIDTHS = (480, 960)
+WIDTHS = (480, 640, 960)  # 640: a 2-column iPhone tile at 3x
 QUALITY = 78
 
 

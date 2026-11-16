@@ -14,5 +14,17 @@ doesn't draw frames, so scroll smoothness is measured on the iPhone with `?perf=
 | First photo loaded (warm, photos cached) | 210 ms | pane, `?perf=1` |
 | Photos requested for the first screen | 8 | pane |
 | Bytes of those 8 photos | **1.96 MB** (78–813 kB each; full-size eBay `s-l1600` and Grailed originals for ~180 px tiles) | downloaded from the worker container |
-| iPhone: first tile / first photo (cold) | to measure | `?perf=1` on the phone |
-| iPhone: scroll after ~300 tiles | to measure | `?perf=1`, scroll 10 s |
+| iPhone: first tile (cold, Safari over Tailscale) | **439 ms** | `?perf=1` on the phone |
+| iPhone: first photo (cold) | **1,061 ms** | `?perf=1` |
+| iPhone: scroll with 120 tiles loaded | **62 fps**, median 17 ms, p95 23 ms, 1 of 114 frames dropped | `?perf=1`, steady scroll |
+
+## Step 1: thumbnails (382f56a + 640 px size)
+
+| Measure | Before | After | How |
+|---|---|---|---|
+| First-screen photos, 1× screen (480 px) | 1.96 MB | **310 kB (−84%)** | pane, Resource Timing |
+| First-screen photos, 3× iPhone (640 px) | 1.96 MB | **506 kB (−74%)** | same 8 photos at w=640 |
+| (960 px versions, for comparison) | | 713 kB | before the 640 px size was added |
+| First photo, warm (thumbnails cached) | 210 ms | 154 ms | pane, `?perf=1` |
+| First photo, first ever view of a photo | | 330–1,250 ms | the thumbnail is made on that request, then cached |
+| iPhone: first tile / first photo / scroll | 439 / 1,061 ms, 62 fps | to measure | `?perf=1` |
