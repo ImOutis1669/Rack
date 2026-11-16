@@ -14,7 +14,7 @@ export function PerfHud() {
 
   useEffect(() => {
     const count = () => {
-      const n = document.querySelectorAll("main article, main [data-tile]").length;
+      const n = document.querySelectorAll("main [data-tile]").length || document.querySelectorAll("main article").length;
       setTiles(n);
       if (n > 0) setFirstTile((t) => t ?? Math.round(performance.now()));
     };

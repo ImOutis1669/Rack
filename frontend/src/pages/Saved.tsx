@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { Listing } from "../api/types";
 import { loadSnapshot, saveSnapshot } from "../lib/snapshot";
 import { PageShell } from "../components/AppShell";
+import { VirtualGrid } from "../components/VirtualGrid";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { EmptyState, Skeleton } from "../components/ui";
 
@@ -32,9 +33,12 @@ export function Saved() {
           Tap the bookmark on a listing to keep it here. You'll get an alert if its price drops.
         </EmptyState>
       )}
-      <ListingGrid>
-        {q.data?.map((item, i) => <ListingItem key={item.id} item={item} index={i} showBought />)}
-      </ListingGrid>
+      <VirtualGrid
+        items={q.data ?? []}
+        getKey={(item) => item.id}
+        memoryKey="saved"
+        renderItem={(item, i) => <ListingItem item={item} index={i} showBought />}
+      />
     </PageShell>
   );
 }

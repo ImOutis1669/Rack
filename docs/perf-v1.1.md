@@ -40,3 +40,15 @@ everywhere / any 401) and shown as placeholder data while fresh results load. No
 |---|---|---|---|
 | First tile, warm reload | 152–207 ms | **71 ms** (fresh feed arrives at 206 ms) | pane, `?perf=1` |
 | Snapshot size | | 35 kB | localStorage |
+
+## Step 3: virtualized masonry grid
+
+`components/VirtualGrid.tsx` (`@tanstack/react-virtual` 3.14.24, window scrolling, shortest-column
+masonry, tiles measured once rendered) for the feed and Saved. Note for testing in the pane: it
+draws no frames, so the browser fires no `scroll` events there; tests dispatch them by hand.
+
+| Measure | Before | After | How |
+|---|---|---|---|
+| Tiles in the page after ~430 loaded (15 pages) | ~430 (every tile stays) | **26** | pane, `[data-tile]` count |
+| Coming back to the feed from another tab | top of the feed | **same position** (25,000 px → 25,000 px, same tiles) | pane |
+| Infinite scroll | yes | yes (loads ~4 rows before the end) | pane |

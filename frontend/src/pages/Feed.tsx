@@ -1,12 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowDownWideNarrow, Check, ChevronDown, SearchX, SlidersHorizontal, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { CATEGORIES, type Category, type FeedPage, type FeedParams, type Sort, type Source } from "../api/types";
 import { PageShell } from "../components/AppShell";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { RefreshButton } from "../components/RefreshButton";
+import { VirtualGrid } from "../components/VirtualGrid";
 import { SourcesButton } from "../components/SourcesButton";
 import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton, Switch } from "../components/ui";
 import { SOURCE_LABEL } from "../lib/format";
@@ -77,18 +78,8 @@ export function Feed() {
   const onSeen = useCallback((id: number) => batcher.add(id), [batcher]);
   const onHidden = useCallback((id: number) => setHiddenIds((s) => new Set(s).add(id)), []);
 
-  const sentinel = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
-      },
-      { rootMargin: "1200px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+  const loadMore = useCallback(() => {
+    if (query.hasNextPage && !query.isFetchingNextPage && !query.isPlaceholderData) void query.fetchNextPage();
   }, [query]);
 
   const items = (query.data?.pages.flatMap((p) => p.items) ?? []).filter((i) => !hiddenIds.has(i.id));
@@ -188,12 +179,13 @@ export function Feed() {
         </EmptyState>
       )}
 
-      <ListingGrid>
-        {items.map((item, i) => (
-          <ListingItem key={item.id} item={item} index={i} onSeen={onSeen} onHidden={onHidden} />
-        ))}
-      </ListingGrid>
-      <div ref={sentinel} className="h-10" />
+      <VirtualGrid
+        items={items}
+        getKey={(item) => item.id}
+        memoryKey={`feed:${JSON.stringify(params)}:${newOnly}`}
+        onNearEnd={loadMore}
+        renderItem={(item, i) => <ListingItem item={item} index={i} onSeen={onSeen} onHidden={onHidden} />}
+      />
       {query.isFetchingNextPage && <p className="py-4 text-center text-footnote text-muted">Loading more</p>}
 
       <Sheet
