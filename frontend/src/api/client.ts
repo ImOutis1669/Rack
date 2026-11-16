@@ -86,7 +86,15 @@ export const api = {
     request<TasteItem>("/api/taste/url", json("POST", { kind, url, note: note || null })),
   addTasteText: (kind: TasteKind, text: string) =>
     request<TasteItem>("/api/taste/text", json("POST", { kind, text })),
-  patchTaste: (id: number, patch: { note?: string | null; text?: string | null }) =>
+  patchTaste: (
+    id: number,
+    patch: {
+      note?: string | null;
+      text?: string | null;
+      purchase_price_gbp?: string | null;
+      custom_value_gbp?: string | null;
+    },
+  ) =>
     request<TasteItem>(`/api/taste/${id}`, json("PATCH", patch)),
   deleteTaste: (id: number) => request<void>(`/api/taste/${id}`, json("DELETE")),
 

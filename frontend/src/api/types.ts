@@ -153,6 +153,7 @@ export interface TasteItem {
   purchase_price_gbp?: string | null;
   purchased_at?: string | null;
   photo_missing?: boolean;
+  custom_value_gbp?: string | null;
 }
 
 export interface Hidden {

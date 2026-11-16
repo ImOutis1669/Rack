@@ -1,5 +1,5 @@
 import type { TasteItem } from "../api/types";
-import { formatGBP, SOURCE_LABEL } from "./format";
+import { SOURCE_LABEL } from "./format";
 
 export const MAX_PRICE_GBP = 100_000;
 
@@ -19,14 +19,10 @@ export function parsePrice(input: string): string | null {
   return n <= MAX_PRICE_GBP ? n.toFixed(2) : null;
 }
 
-/** "Bought on Vinted · £180 · L" for a wardrobe item that came from a listing. */
-export function boughtLabel(item: Pick<TasteItem, "source" | "purchase_price_gbp" | "size" | "purchased_at">): string | null {
+/** "Bought on Vinted · L" for a wardrobe item that came from a listing (the price has its own line). */
+export function boughtLabel(item: Pick<TasteItem, "source" | "size" | "purchased_at">): string | null {
   if (!item.purchased_at) return null;
-  return [
-    item.source ? `Bought on ${SOURCE_LABEL[item.source]}` : "Bought",
-    item.purchase_price_gbp != null ? formatGBP(item.purchase_price_gbp) : null,
-    item.size,
-  ]
+  return [item.source ? `Bought on ${SOURCE_LABEL[item.source]}` : "Bought", item.size]
     .filter(Boolean)
     .join(" · ");
 }

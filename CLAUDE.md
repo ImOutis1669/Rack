@@ -116,6 +116,9 @@ stack; never bundle Apple font files.
   `purchase_price_gbp`, `purchased_at` and a `saved_snapshot`; deletes the Saved row (so price
   checks stop). The listing row is never deleted; bought listings are hidden from the feed and
   hunts. `POST /api/taste/{id}/undo-bought` restores Saved exactly. Toasts take an optional action.
+- Wardrobe value (5a): `purchase_price_gbp` + `custom_value_gbp` on wardrobe items, set via
+  `PATCH /api/taste/{id}` (no rescore). Totals are computed client-side in pence
+  (`lib/wardrobeValue.ts`): worth = your value, else what you paid; unpriced items aren't counted.
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe

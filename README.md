@@ -17,6 +17,8 @@ It's for a single user, and it runs in Docker on your own PC.
 - **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches.
 - **I bought it**: move a saved item into your wardrobe with the price you paid (its photo then
   shapes the feed, and its price alerts stop). Undo puts it back in Saved.
+- **Wardrobe value**: add what you paid and what each item is worth now; the Wardrobe shows the
+  totals and the change (items without a value count at what you paid).
 - **Price drops** on saved items, **deal score** from similar listings and the item's own price cuts.
 - **Duplicates merged**: the same item listed twice (another site, a repost, or one listing per size)
   becomes one card with a buy button per copy.

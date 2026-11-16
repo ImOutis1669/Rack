@@ -5,9 +5,11 @@ import { api } from "../api/client";
 import type { TasteItem, TasteKind } from "../api/types";
 import { PageShell } from "../components/AppShell";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
+import { ValueSheet, WardrobeSummary } from "../components/WardrobeValue";
 import { boughtLabel } from "../lib/bought";
 import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
+import { valueLine } from "../lib/wardrobeValue";
 
 const COPY: Record<TasteKind, string> = {
   wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
@@ -48,6 +50,7 @@ export function Taste() {
       }
     >
       <p className="-mt-1 mb-5 max-w-xl text-footnote text-muted">{COPY[kind]}</p>
+      {kind === "wardrobe" && items.isSuccess && items.data.length > 0 && <WardrobeSummary items={items.data} />}
 
       {items.isPending && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -90,6 +93,8 @@ export function Taste() {
 
 function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }) {
   const [label, setLabel] = useState(item.text ?? item.note ?? "");
+  const [editingValue, setEditingValue] = useState(false);
+  const priceLine = item.kind === "wardrobe" ? valueLine(item) : null;
   const save = useMutation({
     mutationFn: () => api.patchTaste(item.id, item.image ? { note: label } : { text: label }),
     onSuccess: onChange,
@@ -153,6 +158,21 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
             bought
           )}
         </p>
+      )}
+      {priceLine && (
+        <>
+          <button
+            type="button"
+            onClick={() => setEditingValue(true)}
+            className={cn(
+              "press -mt-1 flex min-h-11 w-full items-center rounded-md px-1 text-left text-caption font-medium",
+              priceLine === "Add price" ? "text-accent" : "tabular text-foreground",
+            )}
+          >
+            {priceLine}
+          </button>
+          <ValueSheet item={item} open={editingValue} onClose={() => setEditingValue(false)} onSaved={onChange} />
+        </>
       )}
     </div>
   );

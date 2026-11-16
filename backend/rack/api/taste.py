@@ -46,6 +46,7 @@ class TasteItemOut(BaseModel):
     size: str | None = None
     purchase_price_gbp: Decimal | None = None
     purchased_at: datetime | None = None
+    custom_value_gbp: Decimal | None = None
     photo_missing: bool = False  # bought, but the listing photo couldn't be copied
 
 
@@ -61,9 +62,15 @@ class TextIn(BaseModel):
     text: str = Field(min_length=1, max_length=300)
 
 
+Money = Annotated[Decimal, Field(ge=0, le=100_000, decimal_places=2)]
+
+
 class PatchIn(BaseModel):
     note: str | None = Field(default=None, max_length=500)
     text: str | None = Field(default=None, max_length=300)
+    # wardrobe value (null clears); doesn't affect ranking
+    purchase_price_gbp: Money | None = None
+    custom_value_gbp: Money | None = None
 
 
 def to_out(r: TasteItemRow) -> TasteItemOut:
@@ -84,6 +91,7 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         size=r.size,
         purchase_price_gbp=r.purchase_price_gbp,
         purchased_at=r.purchased_at,
+        custom_value_gbp=r.custom_value_gbp,
         photo_missing=r.purchased_at is not None and not r.image_path,
     )
 
@@ -176,12 +184,22 @@ async def _get(session: AsyncSession, item_id: int) -> TasteItemRow:
 @router.patch("/{item_id}", response_model=TasteItemOut)
 async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItemOut:
     row = await _get(session, item_id)
-    if "note" in body.model_fields_set:
+    fields = body.model_fields_set
+    money = {"purchase_price_gbp", "custom_value_gbp"} & fields
+    if money and row.kind != "wardrobe":
+        raise HTTPException(400, "Only wardrobe items have a price or value")
+    for name in money:
+        setattr(row, name, getattr(body, name))
+    taste_changed = False
+    if "note" in fields:
         row.note = _clean(body.note)
-    if "text" in body.model_fields_set and _clean(body.text) != row.text:
+        taste_changed = True
+    if "text" in fields and _clean(body.text) != row.text:
         row.text = _clean(body.text)
         row.text_embedding = None
-    await bump_version(session)
+        taste_changed = True
+    if taste_changed:  # prices don't change ranking: no rescore for them
+        await bump_version(session)
     await session.commit()
     return to_out(row)
 

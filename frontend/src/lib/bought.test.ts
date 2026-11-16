@@ -27,13 +27,11 @@ describe("parsePrice", () => {
 
 describe("boughtLabel", () => {
   it("describes where it came from", () => {
-    expect(
-      boughtLabel({ source: "vinted", purchase_price_gbp: "180.00", size: "L", purchased_at: "2026-11-16T10:00:00Z" }),
-    ).toBe("Bought on Vinted · £180 · L");
-    expect(boughtLabel({ source: null, purchase_price_gbp: null, size: null, purchased_at: "2026-11-16T10:00:00Z" })).toBe("Bought");
+    expect(boughtLabel({ source: "vinted", size: "L", purchased_at: "2026-11-16T10:00:00Z" })).toBe("Bought on Vinted · L");
+    expect(boughtLabel({ source: null, size: null, purchased_at: "2026-11-16T10:00:00Z" })).toBe("Bought");
   });
 
   it("is nothing for items added by hand", () => {
-    expect(boughtLabel({ source: null, purchase_price_gbp: null, size: null, purchased_at: null })).toBeNull();
+    expect(boughtLabel({ source: null, size: null, purchased_at: null })).toBeNull();
   });
 });

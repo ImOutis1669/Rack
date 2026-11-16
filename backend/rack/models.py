@@ -162,6 +162,8 @@ class TasteItemRow(Base):
     size: Mapped[str | None] = mapped_column(String(64))
     purchase_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # what you say it's worth now (wardrobe value; overrides any estimate)
+    custom_value_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     # the Saved entry it replaced, so "Undo" can put it back exactly
     saved_snapshot: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
 
