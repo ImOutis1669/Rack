@@ -3,8 +3,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
+import { PerfHud } from "./components/PerfHud";
 import { Toaster } from "./components/Toast";
 import "./index.css";
+import { perfEnabled } from "./lib/perf";
 import { installViewportFix } from "./lib/viewport";
 import { Feed } from "./pages/Feed";
 import { Hunts } from "./pages/Hunts";
@@ -46,9 +48,18 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
+      {SHOW_PERF && <PerfHud />}
     </>
   );
 }
+
+const SHOW_PERF = perfEnabled(window.location.search, (() => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+})());
 
 installViewportFix();
 
