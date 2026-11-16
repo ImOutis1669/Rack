@@ -50,7 +50,7 @@ export function RefreshButton() {
   }, [message, busy]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <button
         onClick={() => request.mutate()}
         disabled={request.isPending}
@@ -61,7 +61,7 @@ export function RefreshButton() {
         <span className={busy ? "inline-block animate-spin" : "inline-block"}>↻</span>
         {busy ? "Searching…" : "Refresh"}
       </button>
-      {message && <span className="text-[11px] text-neutral-400">{message}</span>}
+      {message && <span className="max-w-[16rem] truncate text-[11px] text-neutral-400 sm:max-w-none">{message}</span>}
     </div>
   );
 }

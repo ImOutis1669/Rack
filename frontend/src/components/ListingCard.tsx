@@ -139,7 +139,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
           </p>
         )}
         {error && <p className="text-[11px] text-red-400">{error}</p>}
-        <div className="flex items-center gap-1 pt-1 text-sm">
+        <div className="flex items-center justify-between gap-1 pt-1 text-sm">
           <button
             aria-label="More like this"
             aria-pressed={vote === 1}
@@ -193,17 +193,17 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
               </div>
             )}
           </div>
-          {item.buy_links.length === 1 && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex-1 rounded bg-white py-1.5 text-center text-xs font-semibold text-black active:bg-neutral-300"
-            >
-              Buy
-            </a>
-          )}
         </div>
+        {item.buy_links.length === 1 && (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full rounded bg-white py-1.5 text-center text-xs font-semibold text-black active:bg-neutral-300"
+          >
+            Buy on {SOURCE_LABEL[item.source]}
+          </a>
+        )}
         {item.buy_links.length > 1 && (
           <div className="space-y-1 pt-0.5">
             <p className="text-[11px] text-neutral-400">Listed {item.buy_links.length} times</p>

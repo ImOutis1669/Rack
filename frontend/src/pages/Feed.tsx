@@ -85,7 +85,7 @@ export function Feed({ onLogout }: { onLogout: () => void }) {
       <header className="sticky top-0 z-10 -mx-3 space-y-2 bg-neutral-950/90 px-3 pb-2 pt-[max(env(safe-area-inset-top),0.75rem)] backdrop-blur">
         <Nav onLogout={onLogout} />
         <HealthPill />
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <div className="-mx-3 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap px-3 text-xs [scrollbar-width:none] [&>*]:shrink-0 sm:mx-0 sm:flex-wrap sm:px-0">
           <RefreshButton />
           <select
             aria-label="Sort"
