@@ -1,4 +1,4 @@
-import { Bookmark } from "lucide-react";
+import { Bookmark, PackageCheck } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Listing } from "../api/types";
 import { formatGBP } from "../lib/format";
@@ -16,12 +16,15 @@ export function ListingTile({
   index,
   onOpen,
   onSeen,
+  onBought,
 }: {
   item: Listing;
   actions: ListingActions;
   index: number;
   onOpen: () => void;
   onSeen?: (id: number) => void;
+  /** Saved page: show an "I bought it" capsule under the price. */
+  onBought?: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const was = previousPrice(item);
@@ -92,6 +95,16 @@ export function ListingTile({
         </p>
         {meta && <p className="truncate text-caption text-muted">{meta}</p>}
       </button>
+      {onBought && (
+        <button
+          type="button"
+          onClick={onBought}
+          className="press mt-1.5 inline-flex h-11 items-center gap-1.5 rounded-full bg-fill px-3.5 text-footnote font-semibold"
+        >
+          <PackageCheck size={15} strokeWidth={2} />
+          I bought it
+        </button>
+      )}
     </article>
   );
 

@@ -6,6 +6,7 @@ import {
   Crosshair,
   EyeOff,
   MoreHorizontal,
+  PackageCheck,
   ShoppingBag,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -120,11 +121,14 @@ export function ListingSheet({
   open,
   onClose,
   actions,
+  onBought,
 }: {
   item: Listing;
   open: boolean;
   onClose: () => void;
   actions: ListingActions;
+  /** Offered in the ⋯ menu while the listing is saved. */
+  onBought?: () => void;
 }) {
   const navigate = useNavigate();
   const gallery = useQuery({
@@ -214,6 +218,7 @@ export function ListingSheet({
                 </IconButton>
               )}
               items={[
+                ...(actions.saved && onBought ? [{ label: "I bought it", icon: <PackageCheck size={16} />, onSelect: onBought }] : []),
                 ...(hideSeller?.available
                   ? [{ label: `Hide seller ${hideSeller.name}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("seller", hideSeller.name); onClose(); } }]
                   : hideSeller

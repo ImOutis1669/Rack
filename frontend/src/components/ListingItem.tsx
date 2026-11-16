@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Listing } from "../api/types";
+import { BoughtSheet } from "./BoughtSheet";
 import { ListingSheet } from "./ListingSheet";
 import { ListingTile } from "./ListingTile";
 import { useListingActions } from "./useListingActions";
@@ -10,18 +11,34 @@ export function ListingItem({
   index,
   onSeen,
   onHidden,
+  showBought = false,
 }: {
   item: Listing;
   index: number;
   onSeen?: (id: number) => void;
   onHidden?: (id: number) => void;
+  /** Saved page: an "I bought it" button on the tile. */
+  showBought?: boolean;
 }) {
   const actions = useListingActions(item, onHidden);
   const [open, setOpen] = useState(false);
+  const [buying, setBuying] = useState(false);
+  const startBuying = () => {
+    setOpen(false);
+    setBuying(true);
+  };
   return (
     <>
-      <ListingTile item={item} actions={actions} index={index} onOpen={() => setOpen(true)} onSeen={onSeen} />
-      <ListingSheet item={item} open={open} onClose={() => setOpen(false)} actions={actions} />
+      <ListingTile
+        item={item}
+        actions={actions}
+        index={index}
+        onOpen={() => setOpen(true)}
+        onSeen={onSeen}
+        onBought={showBought ? startBuying : undefined}
+      />
+      <ListingSheet item={item} open={open} onClose={() => setOpen(false)} actions={actions} onBought={startBuying} />
+      <BoughtSheet item={item} open={buying} onClose={() => setBuying(false)} onDone={() => onHidden?.(item.id)} />
     </>
   );
 }

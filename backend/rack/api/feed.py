@@ -27,6 +27,7 @@ from rack.models import (
     SavedRow,
     SeenRow,
     SourceHealthRow,
+    TasteItemRow,
 )
 from rack.pricing.history import first_prices, price_cut
 from rack.pricing.landed import estimate
@@ -202,6 +203,11 @@ def best_order(
     return out
 
 
+def bought_listing() -> Any:
+    """You bought this listing ("I bought it"): keep it out of the feed."""
+    return exists().where(TasteItemRow.listing_id == ListingRow.id)
+
+
 @router.get("/feed", response_model=FeedPage)
 async def feed(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -224,6 +230,7 @@ async def feed(
             ListingScoreRow.filtered_reason.is_(None),
             # one card per cluster: only its representative (cheapest copy)
             or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
+            ~bought_listing(),
         )
     )
     if source:

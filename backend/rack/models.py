@@ -152,6 +152,18 @@ class TasteItemRow(Base):
     embed_error: Mapped[str | None] = mapped_column(Text)
     embed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # "I bought it": where the item came from (the listing itself is kept, never deleted)
+    listing_id: Mapped[int | None] = mapped_column(
+        ForeignKey("listings.id", ondelete="SET NULL"), index=True
+    )
+    source: Mapped[str | None] = mapped_column(String(32))
+    listing_url: Mapped[str | None] = mapped_column(Text)
+    brand: Mapped[str | None] = mapped_column(String(200))
+    size: Mapped[str | None] = mapped_column(String(64))
+    purchase_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # the Saved entry it replaced, so "Undo" can put it back exactly
+    saved_snapshot: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
 
 
 class ListingScoreRow(Base):

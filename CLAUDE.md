@@ -111,6 +111,12 @@ stack; never bundle Apple font files.
 - Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs) and the Apify
   "Vestiaire Collective Real-Time Data Scraper" actor (later adopted at the user's request).
 
+- "I bought it" (`api/purchases.py`): copies the listing's first photo (marketplace CDNs only,
+  SSRF-checked) and title into a wardrobe `taste_items` row with source, URL, brand, size,
+  `purchase_price_gbp`, `purchased_at` and a `saved_snapshot`; deletes the Saved row (so price
+  checks stop). The listing row is never deleted; bought listings are hidden from the feed and
+  hunts. `POST /api/taste/{id}/undo-bought` restores Saved exactly. Toasts take an optional action.
+
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)

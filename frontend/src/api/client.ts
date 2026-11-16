@@ -94,6 +94,10 @@ export const api = {
     request<void>(`/api/listings/${id}/feedback`, json("POST", { value })),
   save: (id: number) => request<void>(`/api/listings/${id}/saved`, json("PUT")),
   unsave: (id: number) => request<void>(`/api/listings/${id}/saved`, json("DELETE")),
+  bought: (id: number, priceGbp: string) =>
+    request<TasteItem>(`/api/listings/${id}/bought`, json("POST", { price_gbp: priceGbp })),
+  undoBought: (tasteId: number) =>
+    request<{ restored_to_saved: boolean }>(`/api/taste/${tasteId}/undo-bought`, json("POST")),
   saved: () => request<Listing[]>("/api/saved"),
   hunts: () => request<Hunt[]>("/api/hunts"),
   createHunt: (h: HuntInput) => request<Hunt>("/api/hunts", json("POST", h)),

@@ -3,6 +3,7 @@
 import asyncio
 import secrets
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 import httpx
@@ -37,6 +38,15 @@ class TasteItemOut(BaseModel):
     embedded: bool
     embed_error: str | None
     created_at: datetime
+    # "I bought it" details (None for items added by hand)
+    listing_id: int | None = None
+    source: str | None = None
+    listing_url: str | None = None
+    brand: str | None = None
+    size: str | None = None
+    purchase_price_gbp: Decimal | None = None
+    purchased_at: datetime | None = None
+    photo_missing: bool = False  # bought, but the listing photo couldn't be copied
 
 
 class UrlIn(BaseModel):
@@ -67,10 +77,18 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
         embedded=r.embedding is not None if r.image_path else r.text_embedding is not None,
         embed_error=r.embed_error,
         created_at=r.created_at,
+        listing_id=r.listing_id,
+        source=r.source,
+        listing_url=r.listing_url,
+        brand=r.brand,
+        size=r.size,
+        purchase_price_gbp=r.purchase_price_gbp,
+        purchased_at=r.purchased_at,
+        photo_missing=r.purchased_at is not None and not r.image_path,
     )
 
 
-async def _store_image(data: bytes, settings: Settings) -> str:
+async def store_image(data: bytes, settings: Settings) -> str:
     clean = await asyncio.to_thread(sanitize_upload, data)
     d = settings.uploads_dir
     d.mkdir(parents=True, exist_ok=True)
@@ -107,7 +125,7 @@ async def upload(
     for f in files:
         data = await f.read(MAX_BYTES + 1)
         try:
-            path = await _store_image(data, settings)
+            path = await store_image(data, settings)
         except ImageError as exc:
             raise HTTPException(400, f"{f.filename}: {exc}") from exc
         row = TasteItemRow(kind=kind, image_path=path, note=_clean(note), text=_clean(text))
@@ -123,7 +141,7 @@ async def add_url(body: UrlIn, session: Session, settings: Config) -> TasteItemO
     try:
         async with httpx.AsyncClient(timeout=15, headers={"User-Agent": USER_AGENT}) as client:
             data = await fetch_user_image(body.url, client)
-        path = await _store_image(data, settings)
+        path = await store_image(data, settings)
     except (ImageError, httpx.HTTPError) as exc:
         raise HTTPException(400, f"Couldn't use that link: {exc}") from exc
     row = TasteItemRow(

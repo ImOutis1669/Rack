@@ -22,7 +22,7 @@ export function Saved() {
         </EmptyState>
       )}
       <ListingGrid>
-        {q.data?.map((item, i) => <ListingItem key={item.id} item={item} index={i} />)}
+        {q.data?.map((item, i) => <ListingItem key={item.id} item={item} index={i} showBought />)}
       </ListingGrid>
     </PageShell>
   );

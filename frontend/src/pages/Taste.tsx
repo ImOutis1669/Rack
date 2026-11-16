@@ -5,6 +5,8 @@ import { api } from "../api/client";
 import type { TasteItem, TasteKind } from "../api/types";
 import { PageShell } from "../components/AppShell";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
+import { boughtLabel } from "../lib/bought";
+import { safeHref } from "../lib/safe";
 import { cn } from "../lib/utils";
 
 const COPY: Record<TasteKind, string> = {
@@ -94,7 +96,15 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
   });
   const del = useMutation({ mutationFn: () => api.deleteTaste(item.id), onSuccess: onChange });
   const dirty = label !== (item.text ?? item.note ?? "");
-  const state = item.embed_error ? "Couldn't read" : item.embedded ? null : "Learning";
+  const state = item.photo_missing
+    ? "Photo couldn't be copied"
+    : item.embed_error
+      ? "Couldn't read"
+      : item.embedded
+        ? null
+        : "Learning";
+  const bought = boughtLabel(item);
+  const listingHref = item.listing_id != null ? safeHref(item.listing_url) : undefined;
 
   return (
     <div className="group">
@@ -133,6 +143,17 @@ function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }
         onBlur={() => dirty && save.mutate()}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
       />
+      {bought && (
+        <p className="line-clamp-2 px-1 text-caption text-muted">
+          {listingHref ? (
+            <a href={listingHref} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+              {bought}
+            </a>
+          ) : (
+            bought
+          )}
+        </p>
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ from rack.api import (
     hunts,
     notify,
     profile,
+    purchases,
     push,
     refresh,
     taste,
@@ -82,6 +83,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(hunts.router)
     app.include_router(notify.router)
     app.include_router(push.router)
+    app.include_router(purchases.router)
 
     @app.middleware("http")
     async def limits_and_headers(request: Request, call_next: CallNext) -> Response:

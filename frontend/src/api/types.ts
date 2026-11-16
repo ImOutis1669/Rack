@@ -144,6 +144,15 @@ export interface TasteItem {
   embedded: boolean;
   embed_error: string | null;
   created_at: string;
+  // "I bought it" details (null for items added by hand)
+  listing_id?: number | null;
+  source?: Source | null;
+  listing_url?: string | null;
+  brand?: string | null;
+  size?: string | null;
+  purchase_price_gbp?: string | null;
+  purchased_at?: string | null;
+  photo_missing?: boolean;
 }
 
 export interface Hidden {

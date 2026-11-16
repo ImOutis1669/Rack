@@ -5,12 +5,19 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.ingest import record_error, record_success, upsert_listings
-from rack.models import HiddenRow, HuntMatchRow, HuntRow, ListingRow, ListingScoreRow
+from rack.models import (
+    HiddenRow,
+    HuntMatchRow,
+    HuntRow,
+    ListingRow,
+    ListingScoreRow,
+    TasteItemRow,
+)
 from rack.notify.base import Channel, Notification
 from rack.notify.dispatch import notify_once
 from rack.parsing.categories import infer_category
@@ -113,7 +120,16 @@ async def run_hunt(
         ).scalars()
     )
     rows = (
-        (await session.execute(select(ListingRow).where(ListingRow.id.in_(ids), ListingRow.active)))
+        (
+            await session.execute(
+                select(ListingRow).where(
+                    ListingRow.id.in_(ids),
+                    ListingRow.active,
+                    # already bought ("I bought it"): never alert on it again
+                    ~exists().where(TasteItemRow.listing_id == ListingRow.id),
+                )
+            )
+        )
         .scalars()
         .all()
     )
