@@ -82,8 +82,21 @@ Use tabular figures for prices and numbers.
 
 ## Glass
 Glass is for the navigation layer only (top bar, tab bar, overlay buttons on photos), never on
-content. It's built from `backdrop-filter: blur(20px) saturate(180%)` over a translucent
-`background`. On phones the floating tab bar sits on a solid-to-transparent gradient of the page
+content, and never glass on glass.
+
+**Liquid Glass chrome** (`glass-chrome` for the dock, `glass-bar` for the top bar, tokens
+`--chrome*` in `index.css`): one `backdrop-filter: blur(24px) saturate(180%)` layer over a
+translucent `--chrome` fill so content tints it, plus a specular top line and sheen (gradient),
+a bright inner rim and a soft drop shadow (`box-shadow`). Light and dark have their own values.
+No SVG refraction filters (Safari ignores them in `backdrop-filter`). The top bar has no hairline:
+a soft scroll-edge fade appears under it once content scrolls beneath (`data-scrolled`).
+`prefers-reduced-transparency` makes both solid (`surface`); `prefers-contrast: more` makes them
+solid with a 1px edge. Note: this PC's browser reports reduced transparency, so the desktop app
+shows the solid version here.
+
+**Active tab:** a plain fill pill (not glass) that slides between tabs with the default spring
+(`lib/motion.ts`, `bounce 0, 0.35s`), instant with reduced motion. Same on the desktop segmented
+control. Small overlays on photos still use the plain `glass` utility. On phones the floating tab bar sits on a solid-to-transparent gradient of the page
 background that runs to the bottom edge, so content fades out under it. No blur band: a partial
 blur strip with sharp content below it looked messy on iPhone.
 
@@ -114,9 +127,9 @@ and ticked off here.
 |---|---|---|---|
 | 1 | Body and Headline 15px, Large title 32px | iOS text styles: Body 17, Headline 17 semibold, Subheadline 15, Large Title 34 | A type pass: decide with the user (17px body makes the feed less dense) |
 | 2 | Fixed sizes; Dynamic Type is ignored | `font: -apple-system-body` on `html` so `rem` follows the iPhone text-size setting | Type pass, together with #1 |
-| 3 | Top bar ends in a 1px hairline (`AppShell` header) | Soft scroll-edge fade, no hard divider | Liquid Glass dock and top bar |
-| 4 | Tab bar is plain glass with a `ring-border` outline | Liquid Glass: specular top line, bright rim, soft shadow, no decorated border; active pill slides with a spring | Liquid Glass dock and top bar |
-| 5 | No `prefers-reduced-transparency` or `prefers-contrast` handling for glass | Solid fallbacks for both | Liquid Glass dock and top bar |
+| 3 | ~~Top bar ends in a 1px hairline~~ | Soft scroll-edge fade | **Done** (Liquid Glass) |
+| 4 | ~~Tab bar is plain glass with a `ring-border` outline~~ | Liquid Glass with a sliding pill | **Done** (Liquid Glass) |
+| 5 | ~~No reduced-transparency / contrast handling~~ | Solid fallbacks | **Done** (Liquid Glass) |
 | 6 | Sheet spring `damping 34, stiffness 380`; menus fade in a 0.12s tween | Springs in Apple terms (`bounce`/`duration`): default `bounce 0, 0.35s`, sheets `bounce 0.2, 0.3s`; menus scale from their trigger | When the sheets are restyled (minimal Wardrobe) |
 | 7 | Wardrobe tiles carry inputs and buttons | Content tiles are photo + text; editing lives in a sheet | Minimal Wardrobe |
 

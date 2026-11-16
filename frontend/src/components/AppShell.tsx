@@ -1,6 +1,9 @@
 import { Bookmark, Crosshair, LayoutGrid, Settings as SettingsIcon, Shirt } from "lucide-react";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { pillTransition } from "../lib/motion";
+import { useScrolled } from "../lib/useScrolled";
 import { cn } from "../lib/utils";
 
 export const TABS = [
@@ -12,29 +15,47 @@ export const TABS = [
 
 /** Desktop: segmented tabs in the top bar. */
 function DesktopTabs() {
+  const reduce = useReducedMotion();
   return (
-    <nav className="hidden items-center rounded-full bg-fill p-0.5 md:flex">
-      {TABS.map(({ to, label }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === "/"}
-          className={({ isActive }) =>
-            cn(
-              "press rounded-full px-4 py-1.5 text-footnote font-semibold transition-colors",
-              isActive ? "bg-elevated text-foreground shadow-sm" : "text-muted hover:text-foreground",
-            )
-          }
-        >
-          {label}
-        </NavLink>
-      ))}
-    </nav>
+    <LayoutGroup id="desktop-tabs">
+      <nav className="isolate hidden items-center rounded-full bg-fill p-0.5 md:flex">
+        {TABS.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+              cn(
+                "press relative rounded-full px-4 py-1.5 text-footnote font-semibold transition-colors",
+                isActive ? "text-foreground" : "text-muted hover:text-foreground",
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="desktop-tab-pill"
+                    transition={pillTransition(reduce)}
+                    className="absolute inset-0 -z-10 rounded-full bg-elevated shadow-sm"
+                  />
+                )}
+                {label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+    </LayoutGroup>
   );
 }
 
-/** iPhone: floating glass tab bar above the home indicator. */
+/**
+ * iPhone: the Liquid Glass dock floating above the home indicator. One glass layer; the active
+ * tab sits on a plain fill pill (never glass on glass) that slides between tabs with a spring.
+ */
 function TabBar() {
+  const reduce = useReducedMotion();
   return (
     <nav
       aria-label="Tabs"
@@ -45,24 +66,38 @@ function TabBar() {
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-35% via-background/75 via-60% to-transparent"
       />
-      <div className="glass relative mx-auto flex max-w-md items-stretch justify-around rounded-full p-1 shadow-[0_6px_24px_rgb(0_0_0/0.18)] ring-1 ring-border">
-        {TABS.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) =>
-              cn(
-                "press flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium",
-                isActive ? "bg-fill text-foreground" : "text-muted",
-              )
-            }
-          >
-            <Icon size={20} strokeWidth={1.75} />
-            {label}
-          </NavLink>
-        ))}
-      </div>
+      <LayoutGroup id="dock">
+        <div data-testid="dock" className="glass-chrome mx-auto flex max-w-md items-stretch justify-around rounded-full p-1">
+          {TABS.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/"}
+              className={({ isActive }) =>
+                cn(
+                  "press relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium",
+                  isActive ? "text-foreground" : "text-muted",
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="dock-pill"
+                      data-testid="dock-pill"
+                      transition={pillTransition(reduce)}
+                      className="absolute inset-0 -z-10 rounded-full bg-fill-strong"
+                    />
+                  )}
+                  <Icon size={20} strokeWidth={isActive ? 2.1 : 1.75} />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </LayoutGroup>
     </nav>
   );
 }
@@ -84,9 +119,10 @@ export function PageShell({
   grouped?: boolean;
 }) {
   const { pathname } = useLocation();
+  const scrolled = useScrolled();
   return (
     <div className={cn("min-h-dvh", grouped && "bg-surface dark:bg-background")}>
-      <header className="glass sticky top-0 z-30 pt-safe">
+      <header data-scrolled={scrolled} className="glass-bar sticky top-0 z-30 pt-safe">
         <div className={cn("mx-auto flex h-14 items-center gap-3 px-4 md:px-6", wide ? "max-w-7xl" : "max-w-3xl")}>
           <Link to="/" className="hidden font-display text-[19px] font-bold tracking-tight md:block">
             Rack
@@ -105,7 +141,6 @@ export function PageShell({
           </div>
         </div>
         {below && <div className={cn("mx-auto px-4 pb-2.5 md:px-6", wide ? "max-w-7xl" : "max-w-3xl")}>{below}</div>}
-        <div className="h-px bg-border" />
       </header>
       <main
         className={cn(
