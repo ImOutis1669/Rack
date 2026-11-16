@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
+import { nextVote, voteValue, type Vote } from "../lib/vote";
 
 export interface ListingActions {
-  vote: -1 | 1 | null;
+  vote: Vote;
   saved: boolean;
   error: string | null;
   castVote: (v: -1 | 1) => void;
@@ -11,9 +12,9 @@ export interface ListingActions {
   hide: (kind: "seller" | "brand", value: string) => void;
 }
 
-/** Optimistic 👍/👎, save and hide for one listing (shared by the tile and the detail sheet). */
+/** Optimistic upvote/downvote, save and hide for one listing (shared by the tile and the detail sheet). */
 export function useListingActions(item: Listing, onHidden?: (id: number) => void): ListingActions {
-  const [vote, setVote] = useState<-1 | 1 | null>(item.feedback);
+  const [vote, setVote] = useState<Vote>(item.feedback);
   const [saved, setSaved] = useState(item.saved);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,9 +34,9 @@ export function useListingActions(item: Listing, onHidden?: (id: number) => void
     error,
     castVote: (v) => {
       const prev = vote;
-      const next = vote === v ? null : v;
+      const next = nextVote(vote, v);
       setVote(next);
-      void run(() => api.feedback(item.id, next ?? 0), () => setVote(prev));
+      void run(() => api.feedback(item.id, voteValue(next)), () => setVote(prev));
     },
     toggleSave: () => {
       const prev = saved;

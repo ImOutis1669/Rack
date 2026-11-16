@@ -87,5 +87,9 @@ blur strip with sharp content below it looked messy on iPhone.
 ## Icons
 One family: `lucide-react`, stroke 1.75, 20px in bars and 18px inline. No emoji as icons.
 
+**Votes** (`components/VoteButtons.tsx`): Reddit-style `ArrowBigUp` / `ArrowBigDown` in one capsule
+(`bg-fill` in the sheet, glass on desktop tile hover). Outlined when off; the active arrow fills,
+up in `--accent` green and down in `--danger` red. Tapping the active arrow clears the vote.
+
 ## Copy
 Plain and short. No em dashes in visible strings, no exclamation marks, no "Welcome back".

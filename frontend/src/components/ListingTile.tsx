@@ -1,4 +1,4 @@
-import { Bookmark, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Listing } from "../api/types";
 import { formatGBP } from "../lib/format";
@@ -7,6 +7,7 @@ import { BlurFade } from "./magicui/blur-fade";
 import { SourceBadge } from "./SourceBadge";
 import { IconButton } from "./ui";
 import type { ListingActions } from "./useListingActions";
+import { VoteButtons } from "./VoteButtons";
 
 /** Photo-first tile: the clothes are the interface. Everything else lives in the detail sheet. */
 export function ListingTile({
@@ -78,13 +79,8 @@ export function ListingTile({
           </span>
         )}
         {/* quick feedback on desktop hover; on iPhone it's in the detail sheet */}
-        <div className="absolute right-1.5 bottom-1.5 hidden gap-1 opacity-0 transition-opacity group-hover:opacity-100 md:flex">
-          <IconButton label="More like this" glass active={actions.vote === 1} onClick={() => actions.castVote(1)} className="size-9">
-            <ThumbsUp size={16} strokeWidth={2} fill={actions.vote === 1 ? "currentColor" : "none"} />
-          </IconButton>
-          <IconButton label="Less like this" glass active={actions.vote === -1} onClick={() => actions.castVote(-1)} className="size-9">
-            <ThumbsDown size={16} strokeWidth={2} fill={actions.vote === -1 ? "currentColor" : "none"} />
-          </IconButton>
+        <div className="absolute right-1.5 bottom-1.5 hidden opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 md:flex">
+          <VoteButtons compact vote={actions.vote} onVote={actions.castVote} />
         </div>
       </div>
       <button onClick={onOpen} className="block w-full pt-2 text-left">

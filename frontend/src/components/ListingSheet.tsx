@@ -7,8 +7,6 @@ import {
   EyeOff,
   MoreHorizontal,
   ShoppingBag,
-  ThumbsDown,
-  ThumbsUp,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +22,7 @@ import { AnimatedCircularProgressBar } from "./magicui/animated-circular-progres
 import { SourceBadge } from "./SourceBadge";
 import { Button, IconButton, Menu, Sheet } from "./ui";
 import type { ListingActions } from "./useListingActions";
+import { VoteButtons } from "./VoteButtons";
 
 const MEAS: [keyof Listing["measurements"], string][] = [
   ["inseam_cm", "Inseam"],
@@ -192,12 +191,7 @@ export function ListingSheet({
           </div>
 
           <div className="flex items-center gap-1">
-            <IconButton label="More like this" active={actions.vote === 1} onClick={() => actions.castVote(1)} className="bg-fill">
-              <ThumbsUp size={19} strokeWidth={1.9} fill={actions.vote === 1 ? "currentColor" : "none"} />
-            </IconButton>
-            <IconButton label="Less like this" active={actions.vote === -1} onClick={() => actions.castVote(-1)} className="bg-fill">
-              <ThumbsDown size={19} strokeWidth={1.9} fill={actions.vote === -1 ? "currentColor" : "none"} />
-            </IconButton>
+            <VoteButtons vote={actions.vote} onVote={actions.castVote} />
             <IconButton label={actions.saved ? "Remove from saved" : "Save"} active={actions.saved} onClick={actions.toggleSave} className="bg-fill">
               <Bookmark size={19} strokeWidth={1.9} fill={actions.saved ? "currentColor" : "none"} />
             </IconButton>

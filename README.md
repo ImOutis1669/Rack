@@ -9,8 +9,8 @@ It's for a single user, and it runs in Docker on your own PC.
 - **One ranked feed** across marketplaces. Each card shows the price, a delivered-cost estimate for
   imports, your measurements check, and a *Why this?* line ("Looks like your black derbies · Rick
   Owens (love) · ~30% under similar listings").
-- **Taste from images**: a CLIP model compares listing photos with your wardrobe and wishlist. 👍/👎
-  nudge it further. A designer you list only ever *adds* to a score, so unbranded items are never
+- **Taste from images**: a CLIP model compares listing photos with your wardrobe and wishlist.
+  Upvotes and downvotes nudge it further. A designer you list only ever *adds* to a score, so unbranded items are never
   pushed down.
 - **Fit for a tall frame**: inseam, sleeve, pit-to-pit and length are read from listing text (cm or
   inches, "W32 L34"). Listings that are too short are hidden; listings with no measurements never are.
@@ -65,7 +65,7 @@ Tap the coloured dots under the header for each source's status, last run and la
    inseam/sleeve/length (cm or inches), sizes, budget, exploration share and banned words.
 2. **Wardrobe / Wishlist**: upload photos of clothes you own or want, paste an image or listing link,
    or describe it ("long black wool overcoat").
-3. Use 👍 / 👎, ☆ save, and ⋯ to hide a seller or brand, or **Hunt for this**.
+3. Use the upvote / downvote arrows, ☆ save, and ⋯ to hide a seller or brand, or **Hunt for this**.
 
 ## Alerts
 Hunt matches and price drops go to any channel you set up; **Settings → Alerts → Send test alert**

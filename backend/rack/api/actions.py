@@ -1,4 +1,4 @@
-"""Per-listing actions (👍/👎, save), hidden sellers/brands, seen tracking and visits."""
+"""Per-listing actions (upvote/downvote, save), hidden sellers/brands, seen tracking and visits."""
 
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
