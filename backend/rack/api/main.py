@@ -1,12 +1,26 @@
 """FastAPI app: /api routes plus the built frontend served as a SPA."""
 
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from rack.api import actions, auth, feed, gallery, hunts, notify, profile, refresh, taste
+from rack.api import (
+    actions,
+    auth,
+    feed,
+    gallery,
+    hunts,
+    notify,
+    profile,
+    push,
+    refresh,
+    taste,
+)
 from rack.config import get_settings
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
 def create_app(static_dir: Path | None = None) -> FastAPI:
@@ -20,6 +34,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(refresh.router)
     app.include_router(hunts.router)
     app.include_router(notify.router)
+    app.include_router(push.router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -34,6 +49,8 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
             raise HTTPException(404)
         candidate = (root / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(root):
+            if path == "sw.js":  # must update promptly; browsers re-check it anyway
+                return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
             return FileResponse(candidate)
         if index.is_file():
             return FileResponse(index)

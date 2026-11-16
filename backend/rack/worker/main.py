@@ -27,6 +27,7 @@ from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
 from rack.store import get_state, load_designers, load_profile, set_state
 from rack.worker.adapters import shared_adapters
 from rack.worker.hunts import run_due_hunts
+from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
 from rack.worker.refresh import refresh_all
 from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
@@ -199,7 +200,9 @@ async def recheck_blocked() -> None:
 
 async def run_hunts() -> None:
     try:
-        await run_due_hunts(sessionmaker(), shared_adapters(), build_channels(get_settings()))
+        await run_due_hunts(
+            sessionmaker(), shared_adapters(), build_channels(get_settings(), sessionmaker())
+        )
     except Exception:
         log.exception("hunts run failed")
 
@@ -208,7 +211,7 @@ async def run_price_checks() -> None:
     settings = get_settings()
     try:
         n = await check_saved_prices(
-            sessionmaker(), shared_adapters(), build_channels(settings), settings
+            sessionmaker(), shared_adapters(), build_channels(settings, sessionmaker()), settings
         )
         if n:
             log.info("price drops: %d alerts sent", n)
@@ -223,6 +226,7 @@ class EmbedAndScore:
         self.embedder = ClipEmbedder(settings.clip_model, settings.clip_pretrained)
         self.images: dict[str, RateLimitedClient] = {}
         self._lock = asyncio.Lock()
+        self.llm = make_client(settings) if settings.llm_enabled else None
 
     async def fetch(self, url: str) -> bytes:
         """One request in flight per image host, RATE_IMAGES seconds apart."""
@@ -250,6 +254,8 @@ class EmbedAndScore:
                 )
                 await assign_clusters(sessions)
                 await rescore(sessions, self.embedder)
+                if self.llm is not None:
+                    await llm_rerank(sessions, self.settings, self.llm)
             except Exception:
                 log.exception("embed/score run failed")
 

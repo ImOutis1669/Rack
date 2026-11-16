@@ -4,13 +4,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import require_session
 from rack.config import Settings, get_settings
-from rack.db import get_session
-from rack.models import NotificationRow
+from rack.db import get_session, sessionmaker
+from rack.models import NotificationRow, PushSubscriptionRow
 from rack.notify.base import Notification
 from rack.notify.dispatch import build_channels, send_all
 
@@ -34,7 +34,11 @@ class SentOut(BaseModel):
 
 
 @router.get("/status", response_model=list[ChannelStatus])
-async def status(settings: Config) -> list[ChannelStatus]:
+async def status(
+    settings: Config, session: Annotated[AsyncSession, Depends(get_session)]
+) -> list[ChannelStatus]:
+    devices = (await session.execute(select(func.count(PushSubscriptionRow.id)))).scalar_one()
+    push_keys = bool(settings.vapid_public_key and settings.vapid_private_key)
     ntfy_on = bool(settings.ntfy_url and settings.ntfy_topic)
     return [
         ChannelStatus(
@@ -53,12 +57,21 @@ async def status(settings: Config) -> list[ChannelStatus]:
             if settings.telegram_bot_token and settings.telegram_chat_id
             else "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env",
         ),
+        ChannelStatus(
+            name="webpush",
+            configured=push_keys and devices > 0,
+            detail=(
+                f"{devices} device(s) enabled"
+                if push_keys
+                else "Run `rack vapid-keys` and add the keys to .env"
+            ),
+        ),
     ]
 
 
 @router.post("/test", response_model=dict[str, str])
 async def test(settings: Config) -> dict[str, str]:
-    channels = build_channels(settings)
+    channels = build_channels(settings, sessionmaker())
     if not channels:
         return {"error": "No notification channel is configured"}
     return await send_all(

@@ -166,6 +166,10 @@ class ListingScoreRow(Base):
     filtered_reason: Mapped[str | None] = mapped_column(String(64))
     profile_version: Mapped[int] = mapped_column(Integer)
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # optional LLM second opinion (0-10), kept for a few days; never overwritten by rescoring
+    llm_score: Mapped[float | None]
+    llm_why: Mapped[str | None] = mapped_column(Text)
+    llm_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class FeedbackRow(Base):

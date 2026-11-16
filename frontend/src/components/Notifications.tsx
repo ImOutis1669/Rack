@@ -1,6 +1,43 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { timeAgo } from "../lib/format";
+import { disablePush, enablePush, PUSH_HELP, pushState, type PushState } from "../lib/push";
+
+function ThisDevice() {
+  const qc = useQueryClient();
+  const [state, setState] = useState<PushState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void pushState().then(setState);
+  }, []);
+  const toggle = useMutation({
+    mutationFn: () => (state === "on" ? disablePush() : enablePush()),
+    onSuccess: (s) => {
+      setState(s);
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ["notify-status"] });
+    },
+    onError: (e) => setError(String((e as Error).message)),
+  });
+  if (!state) return null;
+  const canToggle = state === "on" || state === "off";
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded bg-neutral-900 px-2.5 py-1.5 text-sm">
+      <span>This device</span>
+      <span className="text-xs text-neutral-400">{error ?? PUSH_HELP[state]}</span>
+      {canToggle && (
+        <button
+          className="ml-auto rounded bg-neutral-700 px-2 py-1 text-xs"
+          disabled={toggle.isPending}
+          onClick={() => toggle.mutate()}
+        >
+          {state === "on" ? "Turn off" : "Enable push here"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 /** Settings section: which alert channels are set up, a test button, and recent alerts. */
 export function Notifications() {
@@ -26,6 +63,7 @@ export function Notifications() {
           </li>
         ))}
       </ul>
+      <ThisDevice />
       <div className="flex items-center gap-3">
         <button
           className="rounded bg-white px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-40"

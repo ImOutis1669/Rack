@@ -39,12 +39,24 @@ class Settings(BaseSettings):
     vestiaire_monthly_result_cap: int = 300
     vestiaire_enrich: bool = False  # full descriptions + galleries; slower
 
+    # Optional LLM re-rank (Claude). Off by default; the app is complete without it.
+    llm_enabled: bool = False
+    anthropic_api_key: str = ""
+    llm_model: str = "claude-opus-5-5"
+    llm_top_n: int = 30
+    llm_daily_call_cap: int = 12
+    llm_verdict_days: float = 3
+    llm_weight: float = 0.3  # how far a verdict can move a score: ± weight/2
+
     # Notifications. ntfy: phone app subscribes to the topic (the topic name is the secret).
     ntfy_url: str = "https://ntfy.sh"
     ntfy_topic: str = ""
     ntfy_token: str = ""  # only for protected/self-hosted servers
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    # Web Push to the installed app: generate with `rack vapid-keys`
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
     rack_price_check_hours: float = 6
     # Landed-cost estimate for imports (see rack/pricing/landed.py)
     landed_duty_rate: float = 0.12

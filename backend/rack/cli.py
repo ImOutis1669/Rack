@@ -101,6 +101,7 @@ def main() -> None:
     p = argparse.ArgumentParser(prog="rack")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("hash-password", help="Generate RACK_PASSWORD_HASH")
+    sub.add_parser("vapid-keys", help="Generate VAPID keys for Web Push")
     lf = sub.add_parser("load-fixture", help="Ingest a recorded source response (demo/dev)")
     lf.add_argument("source", choices=["ebay", "vinted", "grailed", "vestiaire"])
     lf.add_argument("path", type=Path)
@@ -113,6 +114,12 @@ def main() -> None:
 
     if args.cmd == "hash-password":
         _hash_password()
+    elif args.cmd == "vapid-keys":
+        from rack.notify.webpush import generate_vapid_keys
+
+        public, private = generate_vapid_keys()
+        print(f"VAPID_PUBLIC_KEY={public}\nVAPID_PRIVATE_KEY={private}")
+        print("Add both lines to .env and restart (keep the private key secret).", file=sys.stderr)
     elif args.cmd == "load-fixture":
         asyncio.run(_load_fixture(args.source, args.path))
     elif args.cmd == "refresh":

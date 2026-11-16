@@ -37,7 +37,8 @@ async def sessions(pg_url: str) -> AsyncIterator[async_sessionmaker[AsyncSession
         await conn.execute(
             text(
                 "TRUNCATE listings, listing_images, source_health, profile, designers, "
-                "adjacent_designers, taste_items, hidden, app_state, hunts, notifications CASCADE"
+                "adjacent_designers, taste_items, hidden, app_state, hunts, notifications, "
+                "push_subscriptions CASCADE"
             )
         )
     yield async_sessionmaker(engine, expire_on_commit=False)

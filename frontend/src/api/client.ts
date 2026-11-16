@@ -100,6 +100,11 @@ export const api = {
   deleteHunt: (id: number) => request<void>(`/api/hunts/${id}`, json("DELETE")),
   runHunt: (id: number) => request<Hunt>(`/api/hunts/${id}/run`, json("POST")),
   huntMatches: (id: number) => request<Listing[]>(`/api/hunts/${id}/matches`),
+  pushKey: () => request<{ public_key: string | null }>("/api/push/key"),
+  pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<void>("/api/push/subscribe", json("POST", sub)),
+  pushUnsubscribe: (endpoint: string) =>
+    request<void>("/api/push/unsubscribe", json("POST", { endpoint })),
   notifyStatus: () => request<ChannelStatus[]>("/api/notify/status"),
   notifyTest: () => request<Record<string, string>>("/api/notify/test", json("POST")),
   notifyRecent: () => request<SentNotification[]>("/api/notify/recent"),

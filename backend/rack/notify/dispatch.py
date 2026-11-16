@@ -6,21 +6,30 @@ from typing import Any
 
 from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.config import Settings
 from rack.models import NotificationRow
 from rack.notify.base import Channel, Notification, NotifyError
 from rack.notify.ntfy import NtfyChannel
 from rack.notify.telegram import TelegramChannel
+from rack.notify.webpush import WebPushChannel
 
 log = logging.getLogger(__name__)
 
 
-def build_channels(settings: Settings) -> list[Channel]:
+def build_channels(
+    settings: Settings, sessions: async_sessionmaker[AsyncSession] | None = None
+) -> list[Channel]:
     channels: list[Channel] = [
         NtfyChannel(settings.ntfy_url, settings.ntfy_topic, settings.ntfy_token),
         TelegramChannel(settings.telegram_bot_token, settings.telegram_chat_id),
+        WebPushChannel(
+            settings.vapid_public_key,
+            settings.vapid_private_key,
+            settings.rack_public_url,
+            sessions,
+        ),
     ]
     return [c for c in channels if c.configured]
 

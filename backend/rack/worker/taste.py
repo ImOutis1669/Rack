@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +12,7 @@ from sqlalchemy import and_, exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from rack.config import get_settings
 from rack.embeddings.clip import Embedder
 from rack.embeddings.images import for_embedding
 from rack.embeddings.phash import phash
@@ -28,6 +29,7 @@ from rack.ranking.brands import normalize as normalize_name
 from rack.ranking.dedupe import clusters
 from rack.ranking.explain import explain
 from rack.ranking.filters import Hidden
+from rack.ranking.llm import adjusted_score
 from rack.ranking.scoring import ListingFeatures, TasteContext, score_all
 from rack.ranking.vectors import as_matrix, normalize, rocchio
 from rack.store import get_state, load_designers, load_profile, set_state
@@ -353,12 +355,38 @@ async def rescore(
         results = await asyncio.to_thread(score_all, feats, ctx)
 
         now = datetime.now(UTC)
+        settings = get_settings()
+        fresh_after = now - timedelta(days=settings.llm_verdict_days)
+        verdicts = {
+            lid: (llm, why)
+            for lid, llm, why, at in (
+                await s.execute(
+                    select(
+                        ListingScoreRow.listing_id,
+                        ListingScoreRow.llm_score,
+                        ListingScoreRow.llm_why,
+                        ListingScoreRow.llm_at,
+                    ).where(ListingScoreRow.llm_score.is_not(None))
+                )
+            ).all()
+            if at and at > fresh_after
+        }
         values = [
             {
                 "listing_id": res.listing_id,
-                "score": res.score,
-                "components": res.components,
-                "why": explain(res.components, res.details, profile.weights),
+                "score": round(
+                    adjusted_score(
+                        res.score,
+                        verdicts.get(res.listing_id, (None, None))[0],
+                        settings.llm_weight,
+                    ),
+                    5,
+                ),
+                "components": {**res.components, "base": res.score},
+                "why": _why(
+                    explain(res.components, res.details, profile.weights),
+                    verdicts.get(res.listing_id, (None, None))[1],
+                ),
                 "category": res.category.value,
                 "measurements": res.measurements,
                 "filtered_reason": res.filtered_reason,
@@ -379,6 +407,10 @@ async def rescore(
         await s.commit()
         log.info("rescored %d listings (profile v%d)", len(values), version)
         return len(values)
+
+
+def _why(template: str, llm_why: str | None) -> str:
+    return f"{llm_why} · {template}" if llm_why else template
 
 
 def _short(s: str, n: int = 40) -> str:

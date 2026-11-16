@@ -22,6 +22,8 @@ dependencies = [
     "torch>=2.5",
     "torchvision>=0.20",
     "open-clip-torch>=2.29",
+    "pywebpush>=2.0",
+    "anthropic>=1.0",
 ]
 
 [project.scripts]
