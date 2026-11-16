@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     ebay_client_id: str = ""
     ebay_client_secret: str = ""
     ebay_marketplace: str = "EBAY_GB"
+    # "I do not persist eBay data": delete eBay listings inactive or unseen for this long
+    rack_ebay_retention_days: float = 7
 
     # Grailed: public search-only Algolia key that grailed.com ships to browsers
     grailed_algolia_app_id: str = ""

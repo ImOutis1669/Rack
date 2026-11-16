@@ -68,7 +68,12 @@ stack; never bundle Apple font files.
   `ranking/scoring.py`. They are educated guesses for CLIP ViT-B-32 and need tuning on real listings.
 - No "replica" in default banned words: Maison Margiela sells a genuine "Replica" line.
 - Sources (checked live 2026-11-15, see module docstrings):
-  - eBay: official Browse API (no keys yet).
+  - eBay: official Browse API. Production keys are in `.env.worker` (never print them).
+    **No eBay user data is stored** (user's Marketplace Account Deletion exemption: "I do not persist
+    eBay data"): the adapter never parses the seller or item city/postcode, `raw` is an allow-list
+    (`ebay.RAW_KEYS`, so recorded fixtures are clean too), `privacy.scrub` re-checks at ingest, and
+    the hourly `ebay_retention` worker job deletes eBay listings that are inactive or unseen for
+    `RACK_EBAY_RETENTION_DAYS` (7; votes/saves on them go too). "Hide seller" is disabled for eBay.
   - Vinted: `/api/v2/catalog/items` is gone (404); parse `productItem` objects from the Next.js
     flight data of `/catalog?search_text=…`, men's catalogue ids from the page's own tree.
     price_gbp includes the compulsory buyer-protection fee. DataDome is present.

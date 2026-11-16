@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from rack.models import ListingImageRow, ListingRow, SourceHealthRow, utcnow
 from rack.pricing.fx import to_gbp
 from rack.pricing.history import record_price
+from rack.privacy import scrub
 from rack.sources.base import Listing
 
 
@@ -19,6 +20,10 @@ def url_hash(url: str) -> str:
 
 
 def _row_values(listing: Listing) -> dict[str, object]:
+    return scrub(_listing_values(listing))
+
+
+def _listing_values(listing: Listing) -> dict[str, object]:
     seller = listing.seller
     return {
         "source": listing.source,

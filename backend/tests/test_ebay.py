@@ -26,7 +26,7 @@ def test_parse_search_normalises_items() -> None:
     assert gat.price_gbp == Decimal("185.00")
     assert gat.images[0].endswith("AAA/s-l1600.jpg") and len(gat.images) == 3
     assert gat.shipping_cost == Decimal("4.99")  # cheapest option
-    assert gat.seller and gat.seller.rating == 99.6 and gat.seller.count == 1342
+    assert gat.seller is None and gat.location is None  # no eBay user data (test_ebay_privacy)
     assert gat.country == "GB"
     assert gat.listed_at and gat.listed_at.tzinfo is not None
     assert gat.url == "https://www.ebay.co.uk/itm/186712345678"

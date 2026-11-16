@@ -2,6 +2,11 @@
 
 Docs: https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search
 Auth: OAuth client-credentials grant, scope https://api.ebay.com/oauth/api_scope.
+
+Privacy: the user registered for eBay's Marketplace Account Deletion exemption ("I do not persist
+eBay data"). So no eBay user data is ever parsed or stored: no seller username, feedback, or item
+city/postcode, and `raw` keeps only the allow-listed item fields below. `ingest.py` re-checks this,
+and the worker deletes eBay listings that are inactive or unseen for RACK_EBAY_RETENTION_DAYS.
 """
 
 import re
@@ -17,7 +22,6 @@ from rack.sources.base import (
     Category,
     Listing,
     SearchQuery,
-    Seller,
     SourceError,
     SourceNotConfigured,
     build_listing,
@@ -38,6 +42,22 @@ CATEGORY_IDS: dict[Category, str] = {
     Category.SHOES: "93427",  # Men's Shoes
     Category.OUTERWEAR: "57988",  # Men's Coats, Jackets & Waistcoats
 }
+
+# Item fields kept in `raw` (also all a recorded fixture contains). Nothing about the seller.
+RAW_KEYS = (
+    "itemId",
+    "title",
+    "shortDescription",
+    "price",
+    "image",
+    "additionalImages",
+    "size",
+    "condition",
+    "itemWebUrl",
+    "brand",
+    "itemCreationDate",
+)
+RAW_ASPECTS = ("brand", "size")
 
 LEGACY_ID_RE = re.compile(r"/itm/(?:[^/]+/)?(\d{9,15})")
 
@@ -62,6 +82,29 @@ def _aspect(item: dict[str, Any], name: str) -> str | None:
     return None
 
 
+def safe_raw(item: dict[str, Any]) -> dict[str, Any]:
+    """The item minus every field that isn't plain item data (seller, location, buyer...)."""
+    out = {k: item[k] for k in RAW_KEYS if k in item}
+    aspects = [
+        {"name": a.get("name"), "value": a.get("value")}
+        for a in item.get("localizedAspects") or []
+        if str(a.get("name", "")).lower() in RAW_ASPECTS
+    ]
+    if aspects:
+        out["localizedAspects"] = aspects
+    shipping = [
+        {"shippingCost": o["shippingCost"]}
+        for o in item.get("shippingOptions") or []
+        if isinstance(o.get("shippingCost"), dict)
+    ]
+    if shipping:
+        out["shippingOptions"] = shipping
+    country = (item.get("itemLocation") or {}).get("country")
+    if country:
+        out["itemLocation"] = {"country": country}
+    return out
+
+
 def parse_item(item: dict[str, Any]) -> Listing | None:
     """Parse an itemSummary (search) or item (getItem) object into a Listing."""
     price = item.get("price") or {}
@@ -77,15 +120,6 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
         if extra.get("imageUrl") and extra["imageUrl"] not in images:
             images.append(extra["imageUrl"])
 
-    seller_raw = item.get("seller") or {}
-    seller = Seller(
-        name=seller_raw.get("username"),
-        rating=float(seller_raw["feedbackPercentage"])
-        if seller_raw.get("feedbackPercentage")
-        else None,
-        count=seller_raw.get("feedbackScore"),
-    )
-
     shipping: Decimal | None = None
     for opt in item.get("shippingOptions") or []:
         cost = opt.get("shippingCost") or {}
@@ -93,8 +127,8 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
         if val is not None and cost.get("currency") == currency:
             shipping = val if shipping is None else min(shipping, val)
 
-    loc = item.get("itemLocation") or {}
-    location = ", ".join(p for p in (loc.get("city"), loc.get("postalCode")) if p) or None
+    # country only (landed cost needs it); city/postcode can identify a private seller
+    country = (item.get("itemLocation") or {}).get("country")
 
     return build_listing(
         source="ebay",
@@ -109,12 +143,12 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
         size=item.get("size") or _aspect(item, "Size"),
         condition=item.get("condition"),
         images=images,
-        seller=seller,
+        seller=None,
         listed_at=_dt(item.get("itemCreationDate")),
-        location=location,
-        country=loc.get("country"),
+        location=None,
+        country=country,
         shipping_cost=shipping,
-        raw=item,
+        raw=safe_raw(item),
     )
 
 

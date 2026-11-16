@@ -18,6 +18,7 @@ import { formatGBP, sellerLabel, SOURCE_LABEL, timeAgo } from "../lib/format";
 import { huntFromListing } from "../lib/hunts";
 import { landedLines, previousPrice } from "../lib/landed";
 import { safeHref } from "../lib/safe";
+import { sellerHide } from "../lib/seller";
 import { cn } from "../lib/utils";
 import { AnimatedCircularProgressBar } from "./magicui/animated-circular-progress-bar";
 import { SourceBadge } from "./SourceBadge";
@@ -138,6 +139,7 @@ export function ListingSheet({
   const reasons = (item.why ?? "").split(" · ").filter(Boolean);
   const meas = MEAS.filter(([k]) => item.measurements?.[k] != null);
   const seller = sellerLabel(item.seller?.rating ?? null, item.seller?.count ?? null);
+  const hideSeller = sellerHide(item);
   const extra = gallery.data?.photo_count && gallery.data.photo_count > images.length ? gallery.data.photo_count - images.length : 0;
 
   const buy = (
@@ -216,9 +218,11 @@ export function ListingSheet({
                 </IconButton>
               )}
               items={[
-                ...(item.seller?.name
-                  ? [{ label: `Hide seller ${item.seller.name}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("seller", item.seller!.name!); onClose(); } }]
-                  : []),
+                ...(hideSeller?.available
+                  ? [{ label: `Hide seller ${hideSeller.name}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("seller", hideSeller.name); onClose(); } }]
+                  : hideSeller
+                    ? [{ label: `Hide seller: ${hideSeller.reason}`, icon: <EyeOff size={16} />, onSelect: () => {}, disabled: true }]
+                    : []),
                 ...(item.brand
                   ? [{ label: `Hide ${item.brand}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("brand", item.brand!); onClose(); } }]
                   : []),

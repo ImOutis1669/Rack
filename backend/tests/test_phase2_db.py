@@ -4,9 +4,11 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.ingest import upsert_listings
+from rack.models import ListingRow
 from rack.sources.ebay import parse_search
 from rack.worker.taste import embed_listings, embed_taste, rescore
 from tests.conftest import login
@@ -136,9 +138,15 @@ async def test_rank_feedback_hide_save_and_seen(
     saved = (await client.get("/api/saved")).json()
     assert saved[0]["id"] == top["id"] and saved[0]["price_gbp_at_save"] is not None
 
-    # hide the seller -> filtered out after rescoring, in every sort
-    seller = feed[1]["seller"]["name"]
-    await client.post("/api/hidden", json={"kind": "seller", "value": seller}, headers=H)
+    # hide the brand -> filtered out after rescoring, in every sort (eBay seed has no sellers:
+    # hidden sellers are covered by test_ranking and the hunt tests)
+    assert feed[1]["seller"] is None  # no eBay user data
+    async with sessions() as s:  # the search summary has no brand field
+        await s.execute(
+            update(ListingRow).where(ListingRow.id == feed[1]["id"]).values(brand="Maison Margiela")
+        )
+        await s.commit()
+    await client.post("/api/hidden", json={"kind": "brand", "value": "maison margiela"}, headers=H)
     await rescore(sessions, FakeEmbedder())
     for sort in ("best", "newest", "price_asc"):
         items = (await client.get(f"/api/feed?sort={sort}")).json()["items"]

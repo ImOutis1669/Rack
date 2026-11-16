@@ -26,6 +26,7 @@ from rack.ingest import record_check, record_error, record_success, upsert_listi
 from rack.models import AdjacentDesignerRow, TasteItemRow
 from rack.notify.dispatch import build_channels
 from rack.pricing.fx import fetch_rates, set_live_rates
+from rack.privacy import purge_ebay
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
 from rack.sources.base import SearchQuery, SourceError
 from rack.sources.http import RateLimitedClient
@@ -226,6 +227,18 @@ async def run_price_checks() -> None:
         log.exception("price check failed")
 
 
+async def purge_ebay_listings() -> None:
+    """Keep "I do not persist eBay data" true: drop eBay listings that are gone or stale."""
+    try:
+        async with sessionmaker()() as s:
+            n = await purge_ebay(s, get_settings().rack_ebay_retention_days, _now())
+            await s.commit()
+        if n:
+            log.info("eBay retention: deleted %d listings", n)
+    except Exception:
+        log.exception("eBay retention purge failed")
+
+
 class EmbedAndScore:
     def __init__(self) -> None:
         settings = get_settings()
@@ -333,6 +346,7 @@ async def main() -> None:
         (update_fx, timedelta(hours=24), "fx", await resume_at("fx", timedelta(hours=24))),
         (run_hunts, timedelta(minutes=1), "hunts", now),
         (run_price_checks, timedelta(minutes=30), "price_drops", now),
+        (purge_ebay_listings, timedelta(hours=1), "ebay_retention", now),
         (
             recheck_blocked,
             timedelta(days=1),
