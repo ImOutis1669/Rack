@@ -118,11 +118,17 @@ def _resolve(names: list[str]) -> frozenset[str]:
 
 
 async def trusted_proxy_ips(settings: Settings) -> frozenset[str]:
+    """IPs of the tunnel container. Re-resolved every minute; a failed lookup (tunnel not
+    running) is remembered for 10 minutes and never delays a login by more than a second."""
     global _trusted
     at, ips = _trusted
-    if at == 0.0 or time.monotonic() - at > 60:
+    ttl = 60 if ips else 600
+    if at == 0.0 or time.monotonic() - at > ttl:
         names = [n.strip() for n in settings.rack_trusted_proxies.split(",") if n.strip()]
-        ips = await asyncio.to_thread(_resolve, names)
+        try:
+            ips = await asyncio.wait_for(asyncio.to_thread(_resolve, names), timeout=1.0)
+        except TimeoutError:
+            ips = frozenset()
         _trusted = (time.monotonic(), ips)
     return ips
 

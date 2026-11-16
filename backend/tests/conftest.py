@@ -60,20 +60,32 @@ def password_hash() -> str:
 
 @pytest.fixture
 async def client(
-    sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+    sessions: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    pg_url: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> AsyncIterator[httpx.AsyncClient]:
     from rack.api.auth import attempts, require_session, reset_caches
     from rack.api.main import create_app
-    from rack.config import Settings, get_settings
-    from rack.db import get_session
+    from rack.config import get_settings
+    from rack.db import get_session, init_engine
 
-    settings = Settings(
-        rack_password_hash=password_hash(),
-        rack_session_secret="test-secret-that-is-long-enough-1234567890",
-        rack_trusted_proxies="",
-        rack_cookie_secure=False,
-        rack_data_dir=tmp_path / "data",
-    )
+    test_env = {
+        "RACK_PASSWORD_HASH": password_hash(),
+        "RACK_SESSION_SECRET": "test-secret-that-is-long-enough-1234567890",
+        "RACK_TRUSTED_PROXIES": "",
+        "RACK_COOKIE_SECURE": "false",
+        "RACK_DATA_DIR": str(tmp_path / "data"),
+        "DATABASE_URL": pg_url,
+    }
+    # FastAPI caches how shared module-level routers resolve dependencies, so a dependency
+    # override can occasionally be skipped across test apps. Make the real settings and the
+    # default database match the test ones too, so the result is the same either way.
+    for k, v in test_env.items():
+        monkeypatch.setenv(k, v)
+    get_settings.cache_clear()
+    init_engine(pg_url)
+    settings = get_settings()
     app = create_app(static_dir=tmp_path)
 
     @app.post("/api/_test/mutate", dependencies=[Depends(require_session)])
@@ -94,8 +106,9 @@ async def client(
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+    get_settings.cache_clear()  # env is restored by monkeypatch; don't keep test settings cached
 
 
 async def login(client: httpx.AsyncClient) -> None:
     r = await client.post("/api/auth/login", json={"password": PASSWORD})
-    assert r.status_code == 204
+    assert r.status_code == 204, r.text

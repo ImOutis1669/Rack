@@ -1,5 +1,6 @@
 """Regression tests for docs/security-audit-2026-11-16.md (RACK-01 .. RACK-10)."""
 
+import os
 import time
 from decimal import Decimal
 
@@ -72,6 +73,7 @@ async def test_logout_all_kills_copied_cookies(client: httpx.AsyncClient) -> Non
     auth._epoch_cache = (0.0, -1)
     client.cookies.set(auth.COOKIE, copied)
     assert (await client.get("/api/auth/me")).status_code == 401
+    client.cookies.clear()
     await login(client)  # logging in again works
     assert (await client.get("/api/auth/me")).status_code == 200
 
@@ -82,10 +84,13 @@ async def test_password_change_ends_sessions(client: httpx.AsyncClient) -> None:
 
     await login(client)
     app = client._transport.app  # type: ignore[attr-defined]
-    old = app.dependency_overrides[get_settings]()
-    app.dependency_overrides[get_settings] = lambda: old.model_copy(
-        update={"rack_password_hash": auth.hash_password("a-new-long-password!")}
+    new_hash = auth.hash_password("a-new-long-password!")
+    changed = app.dependency_overrides[get_settings]().model_copy(
+        update={"rack_password_hash": new_hash}
     )
+    app.dependency_overrides[get_settings] = lambda: changed
+    os.environ["RACK_PASSWORD_HASH"] = new_hash  # the fixture's monkeypatch restores it
+    get_settings.cache_clear()
     assert (await client.get("/api/auth/me")).status_code == 401
 
 
