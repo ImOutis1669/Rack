@@ -6,6 +6,7 @@ import getpass
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from rack.api.auth import hash_password
 
@@ -23,13 +24,15 @@ def _hash_password() -> None:
 async def _load_fixture(source: str, path: Path) -> None:
     from rack.db import sessionmaker
     from rack.ingest import upsert_listings
-    from rack.sources import ebay, grailed, vinted
+    from rack.sources import ebay, grailed, vestiaire, vinted
 
     text = await asyncio.to_thread(path.read_text, encoding="utf-8")
     if source == "ebay":
         listings = ebay.parse_search(json.loads(text))
     elif source == "grailed":
         listings = grailed.parse_results(json.loads(text))
+    elif source == "vestiaire":
+        listings = vestiaire.parse_items(json.loads(text))
     else:
         listings = vinted.parse_page(text)
     async with sessionmaker()() as session:
@@ -47,11 +50,13 @@ async def _refresh() -> None:
 async def _probe(source: str, query: str, record: Path | None) -> None:
     """One live request; optionally record the raw response as a new fixture."""
     from rack.config import get_settings
-    from rack.sources import grailed, vinted
+    from rack.sources import grailed, vestiaire, vinted
     from rack.sources.base import SearchQuery
     from rack.sources.registry import build_adapters
 
-    adapters = {a.name: a for a in build_adapters(get_settings())}
+    settings = get_settings()
+    adapters: dict[str, Any] = {a.name: a for a in build_adapters(settings)}
+    adapters["vestiaire"] = vestiaire.VestiaireApifyAdapter(settings.apify_token, max_results=5)
     adapter = adapters[source]
     q = SearchQuery(text=query, limit=100)
     try:
@@ -59,6 +64,10 @@ async def _probe(source: str, query: str, record: Path | None) -> None:
             html = await adapter.fetch_page(q)
             listings = vinted.parse_page(html)
             body = vinted.trim_page(html)
+        elif isinstance(adapter, vestiaire.VestiaireApifyAdapter):
+            rows = await adapter.run_actor(q)  # billed per row: probes ask for 5
+            listings = vestiaire.parse_items(rows)
+            body = json.dumps(rows, indent=1, ensure_ascii=False)
         elif isinstance(adapter, grailed.GrailedAdapter):
             payload = await adapter.fetch(q)
             listings = grailed.parse_results(payload)
@@ -93,7 +102,7 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("hash-password", help="Generate RACK_PASSWORD_HASH")
     lf = sub.add_parser("load-fixture", help="Ingest a recorded source response (demo/dev)")
-    lf.add_argument("source", choices=["ebay", "vinted", "grailed"])
+    lf.add_argument("source", choices=["ebay", "vinted", "grailed", "vestiaire"])
     lf.add_argument("path", type=Path)
     sub.add_parser("refresh", help="Run one source refresh now")
     pr = sub.add_parser("probe", help="One live search against a source")

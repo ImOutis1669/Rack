@@ -6,6 +6,7 @@ import { CATEGORIES, type Category, type FeedParams, type Sort, type Source } fr
 import { HealthPill } from "../components/HealthPill";
 import { ListingCard } from "../components/ListingCard";
 import { Nav } from "../components/Nav";
+import { RefreshButton } from "../components/RefreshButton";
 import { SOURCE_LABEL } from "../lib/format";
 import { SeenBatcher } from "../lib/seen";
 
@@ -85,6 +86,7 @@ export function Feed({ onLogout }: { onLogout: () => void }) {
         <Nav onLogout={onLogout} />
         <HealthPill />
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <RefreshButton />
           <select
             aria-label="Sort"
             value={params.sort}

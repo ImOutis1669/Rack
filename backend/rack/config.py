@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     grailed_algolia_app_id: str = ""
     grailed_algolia_api_key: str = ""
 
+    # Vestiaire via a paid Apify actor (residential proxies). Billed per result, so it runs on its
+    # own slow schedule with hard caps. ~$25 per 1,000 results at time of writing.
+    apify_token: str = ""
+    vestiaire_refresh_hours: float = 24
+    vestiaire_queries_per_run: int = 3
+    vestiaire_max_results: int = 10  # per query
+    vestiaire_monthly_result_cap: int = 300
+    vestiaire_enrich: bool = False  # full descriptions + galleries; slower
+
     # Rate limits (seconds between requests, per source)
     rate_ebay: float = 2.0
     rate_vinted: float = 10.0
@@ -47,6 +56,7 @@ class Settings(BaseSettings):
     rack_refresh_minutes: int = 30
     rack_queries_per_refresh: int = 12
     rack_score_seconds: int = 60
+    rack_manual_refresh_cooldown_minutes: int = 5
     # Used only until you've added designers / wishlist text.
     rack_seed_queries: str = "maison margiela,rick owens,our legacy"
 

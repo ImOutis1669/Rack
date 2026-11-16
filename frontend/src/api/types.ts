@@ -145,6 +145,15 @@ export interface GalleryInfo {
   note: string | null;
 }
 
+export interface RefreshStatus {
+  running: boolean;
+  queued: boolean;
+  last_at: string | null;
+  next_allowed_at: string | null;
+  results: Record<string, number>;
+  message: string;
+}
+
 export interface Visit {
   visit_start: string;
   last_visit: string | null;

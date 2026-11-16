@@ -67,20 +67,27 @@ On this Windows dev box uv lives at
   - Grailed: grailed.com is Cloudflare-blocked (also for headless Chromium). User chose to query
     Grailed's Algolia index directly with the public search-only key (in .env), honest UA, no browser
     impersonation headers. Index has no descriptions; hits that don't ship to the UK are dropped.
-  - Vestiaire: Cloudflare Turnstile. Stub only; `sources/recheck.py` checks once a day.
-  - Boundaries agreed with the user: no CAPTCHA solving, stealth/fingerprint spoofing, browser UA
-    impersonation or proxies, even though they're fine with "whatever it takes".
+  - Vestiaire: Cloudflare Turnstile (also blocks the user's residential connection). User chose the
+    paid Apify actor `b2b_leads/vestiaire-collective-real-time-data-scraper` (Apify's UK residential
+    proxies) via `sources/vestiaire.py`; runs only in its own daily job with per-run and monthly
+    result caps (`vestiaire_*` settings, usage in `app_state['vestiaire_usage']`). Without
+    APIFY_TOKEN, `sources/recheck.py` checks the site daily. Fixture is hand-built from the actor's
+    docs until a live run is recorded.
+  - Rack itself does no CAPTCHA solving, fingerprint spoofing, browser UA impersonation or proxying.
 - Dedupe (`ranking/dedupe.py`): pHash ≤ 6 bits AND CLIP ≥ 0.96 AND compatible brands (checked per
   group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:
   near-identical photos + titles of genuinely different items (e.g. two lookbooks) still merge.
-- The worker stores the last refresh time; restarts don't re-run searches early.
+- The worker stores the last refresh time; restarts don't re-run searches early (same for the
+  Vestiaire job and the daily recheck). Manual refresh: `api/refresh.py` writes
+  `app_state['refresh_request']`; the worker's `ManualRefresh` job (every 10 s) runs it, then
+  embeds/scores. Cooldown `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES`.
 - Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
   ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all
   images; Grailed exposes only the cover photo + `photo_count`.
 - `docs/security-audit-prompt.md`: the user's audit prompt, to run in a later (security) phase.
 - Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs) and the Apify
-  "Vestiaire Collective Real-Time Data Scraper" actor (paid, residential proxies — see README).
+  "Vestiaire Collective Real-Time Data Scraper" actor (later adopted at the user's request).
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe

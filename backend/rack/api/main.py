@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from rack.api import actions, auth, feed, gallery, profile, taste
+from rack.api import actions, auth, feed, gallery, profile, refresh, taste
 from rack.config import get_settings
 
 
@@ -17,6 +17,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(taste.router)
     app.include_router(actions.router)
     app.include_router(gallery.router)
+    app.include_router(refresh.router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

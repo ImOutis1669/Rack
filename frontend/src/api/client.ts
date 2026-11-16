@@ -3,6 +3,7 @@ import type {
   FeedPage,
   FeedParams,
   GalleryInfo,
+  RefreshStatus,
   Hidden,
   Listing,
   Profile,
@@ -89,6 +90,8 @@ export const api = {
   save: (id: number) => request<void>(`/api/listings/${id}/saved`, json("PUT")),
   unsave: (id: number) => request<void>(`/api/listings/${id}/saved`, json("DELETE")),
   saved: () => request<Listing[]>("/api/saved"),
+  refreshStatus: () => request<RefreshStatus>("/api/refresh"),
+  refresh: () => request<RefreshStatus>("/api/refresh", json("POST")),
   gallery: (id: number) => request<GalleryInfo>(`/api/listings/${id}/gallery`),
   hidden: () => request<Hidden[]>("/api/hidden"),
   hide: (kind: Hidden["kind"], value: string) =>
