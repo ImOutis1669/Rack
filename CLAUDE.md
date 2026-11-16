@@ -93,15 +93,28 @@ On this Windows dev box uv lives at
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: Phase 4 done (hunts, ntfy/Telegram alerts with dedupe, price drops for saved items).
+Status: Phase 5 done (FX, price history, landed cost, PWA, Web Push, optional Claude re-rank,
+mobile pass, Cloudflare Tunnel profile, deploy README). All planned phases complete.
+Next: security phase using `docs/security-audit-prompt.md` (user's prompt), when the user asks.
+Phase 5 notes:
+- FX: `pricing/fx.py` live ECB rates (frankfurter.dev, daily worker job, `app_state['fx']`), static
+  fallbacks. Price history: `price_observations`, `pricing/history.py`; a ≥5% cut since first seen
+  lifts `deal` and shows "Price cut (was £X)". Landed cost: `pricing/landed.py` (estimate only).
+- PWA: `frontend/public/{manifest.webmanifest,sw.js,icon-*.png}`; the SW never caches `/api/*`.
+  Web Push: `notify/webpush.py` (pywebpush, VAPID keys in .env via `rack vapid-keys`), expired
+  subscriptions (404/410) removed. Needs HTTPS (tunnel) on phones; iOS needs home-screen install.
+- LLM re-rank (`ranking/llm.py`, `worker/llm_job.py`): off by default; Claude Opus 5.5 via the
+  Anthropic SDK (beta endpoint for `fallbacks: "default"` refusal fallback), effort low, JSON schema
+  output, photos as URL images with a text-only retry on 400. Verdicts live in listing_scores.llm_*
+  and are re-applied on every rescore (`components.base` keeps the un-adjusted score).
+- Compose: API binds 127.0.0.1 by default (`RACK_BIND`); `cloudflared` under profile `tunnel`.
+Phase 4 done (hunts, ntfy/Telegram alerts with dedupe, price drops for saved items).
 Phase 3 done (Vinted + Grailed live, Vestiaire blocked stub, health panel, dedupe).
 73 backend tests (+1 slow) + 10 Vitest pass. Phase 2 notes: 57 backend (+1 slow real-CLIP) + 10 Vitest tests pass; compose stack verified
 locally (CLIP weights download to `/data/hf` on first worker run, ~2 min).
 eBay fixture is hand-built from the documented schema; its image URLs resolve to eBay's grey placeholder,
 so visual matches on fixture data are meaningless. Replace with a live recording once keys exist.
 Local `.env` is dev-only (RACK_COOKIE_SECURE=false; dev password in its first-line comment).
-Next: Phase 5 (polish: PWA, deal score from price history, landed cost, Web Push, README/deploy),
-then a security phase using `docs/security-audit-prompt.md`.
 Phase 4 notes:
 - Hunts (`worker/hunts.py`, `ranking/hunt_match.py`): every query word must appear in brand+title+
   description; unknown size/category/score never excludes. First run (and after editing the search)

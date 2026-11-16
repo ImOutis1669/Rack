@@ -1,82 +1,125 @@
 # Rack
 
-A personal, self-hosted fashion feed across eBay UK, Vinted UK, Grailed and Vestiaire Collective, ranked by
-*your* taste profile rather than your click history. Single user, runs on a small home server.
+A personal, self-hosted feed of second-hand menswear from eBay UK, Vinted UK, Grailed and (optionally)
+Vestiaire Collective. It ranks listings by **your** taste profile, not your click history: your
+wardrobe photos, designers, style notes and fit. Saved hunts and price drops alert your phone.
+It's for a single user, and it runs in Docker on your own PC.
 
-> **Status:** Phase 4. Vinted and Grailed live, eBay ready for keys, Vestiaire blocked. See `CLAUDE.md`.
+## What it does
+- **One ranked feed** across marketplaces. Each card shows the price, a delivered-cost estimate for
+  imports, your measurements check, and a *Why this?* line ("Looks like your black derbies · Rick
+  Owens (love) · ~30% under similar listings").
+- **Taste from images**: a CLIP model compares listing photos with your wardrobe and wishlist. 👍/👎
+  nudge it further. A designer you list only ever *adds* to a score, so unbranded items are never
+  pushed down.
+- **Fit for a tall frame**: inseam, sleeve, pit-to-pit and length are read from listing text (cm or
+  inches, "W32 L34"). Listings that are too short are hidden; listings with no measurements never are.
+- **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches.
+- **Price drops** on saved items, **deal score** from similar listings and the item's own price cuts.
+- **Duplicates merged**: the same item listed twice (another site, a repost, or one listing per size)
+  becomes one card with a buy button per copy.
+- **Installable app** (PWA) with push notifications, a full-screen photo gallery and a mobile layout.
 
-## Quick start
+## Requirements
+Windows 10/11 with **Docker Desktop** (WSL 2 backend) and a few GB of disk for the images, the model
+and data. The image model runs on the CPU, so no GPU is needed.
 
-```bash
-cp .env.example .env
+## Setup
+```powershell
+cd C:\dev\rack
+copy .env.example .env
 docker compose build
-docker compose run --rm api rack hash-password   # paste output into RACK_PASSWORD_HASH (single quotes)
+docker compose run --rm api rack hash-password      # paste into RACK_PASSWORD_HASH='...'
+docker compose run --rm api rack vapid-keys          # paste both lines (Web Push)
 python -c "import secrets;print(secrets.token_urlsafe(48))"   # -> RACK_SESSION_SECRET
 docker compose up -d
 ```
+Open http://localhost:8000 and log in. For plain-http testing on this PC set
+`RACK_COOKIE_SECURE=false`; set it back to `true` before going public.
 
-Open http://localhost:8000. For plain-http local testing set `RACK_COOKIE_SECURE=false`.
-
-No eBay keys yet? Load demo listings:
-
-```bash
-docker compose exec api rack load-fixture ebay tests/fixtures/ebay/search_sample.json
-```
-
-### eBay keys
-Create a production keyset at developer.ebay.com → *Application Keys*, then set `EBAY_CLIENT_ID` and
-`EBAY_CLIENT_SECRET`. Rack uses the client-credentials grant against the Browse API (`EBAY_GB`).
-
-## Teaching it your taste
-1. **Settings:** designers (love / like / curious / exclude), a few words about your style, your minimum
-   inseam/sleeve and other measurements (cm or inches), sizes, budget and how much exploration you want.
-2. **Wardrobe:** upload photos of clothes you own and love. **Wishlist:** photos, links to listings or
-   images, or a short text description.
-3. Use 👍 / 👎 on listings. Each card says *why* it's there.
-
-The worker computes CLIP embeddings on the CPU. The first run downloads the model (~600 MB) into the data
-volume. It rescores the whole feed within about a minute of any change. Listings whose stated
-measurements are too short for you are hidden; listings without measurements never are. A designer you
-list only ever *adds* to a score: unbranded or unknown items are not pushed down for it.
+On first start the worker downloads the image model (about 600 MB, roughly 2 minutes) into the
+`rack_data` volume. Docker Desktop's *Start when you sign in* plus `restart: unless-stopped` keeps Rack
+running across reboots. For alerts to arrive, the PC must not sleep (Windows Settings → Power).
 
 ## Sources
 | Source | How | Notes |
 |---|---|---|
-| eBay UK | Official Browse API | Needs your keys (below). |
-| Vinted UK | Its public search page | Price shown includes Vinted's compulsory buyer-protection fee (postage extra). |
-| Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env`). If Grailed rotates it, source health shows the error; update the key. No descriptions, so measurements come from titles only. |
-| Vestiaire | Optional paid Apify actor (residential proxies) | vestiairecollective.com blocks Rack with a Cloudflare human check, even from a home connection. Add an Apify token (`APIFY_TOKEN`) to run the `b2b_leads/vestiaire-collective-real-time-data-scraper` actor: billed per result (~$25 / 1,000; free Apify plans return 2 per run). Defaults: 3 searches × 10 results once a day, hard stop at 300 results a month. Without a token Rack just checks daily and shows "Blocked". |
+| eBay UK | Official Browse API | Create a production keyset at developer.ebay.com → *Application Keys*; set `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET`. |
+| Vinted UK | Its public search page | Price includes Vinted's compulsory buyer-protection fee (postage extra). Opening a listing fetches all its photos and the description. |
+| Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*`). If Grailed rotates it, source health shows the error; update the key. Cover photo only, no descriptions. |
+| Vestiaire | Optional, paid: Apify actor on residential proxies | vestiairecollective.com blocks Rack with a Cloudflare human check, even from a home connection. Add `APIFY_TOKEN` to run `b2b_leads/vestiaire-collective-real-time-data-scraper`: billed per result (~$25 / 1,000; free Apify plans return 2 per run). Defaults: 3 searches × 10 results a day, hard stop at 300 results a month (~$7.50). Without a token Rack checks daily and shows "Blocked". |
 
-Tap the middle of a listing's photo to open every photo full-screen (swipe, arrow keys or
-thumbnails), with the full description. Vinted's extra photos are fetched when you open the listing;
-Grailed only shares its cover photo.
+Tap the coloured dots under the header for each source's status, last run and last error.
+**Refresh** re-ranks now and searches the free sources (at most every 5 minutes).
 
-## Hunts and alerts
-**Hunts** are saved searches (words, category, max price, sizes, sources) that run on their own schedule,
-from every 5 minutes to daily. Every word you type must appear in the listing. The first run quietly
-records what's already listed; after that, new matches are pushed to your phone. Your hidden sellers,
-banned words and fit rules still apply. Use "Hunt for this" in a listing's ⋯ menu to start one from a
-listing. Saved items are re-checked every few hours and you're alerted when the price drops by at
-least 5% and £5 (configurable).
+## Teaching it your taste
+1. **Settings**: designers (love / like / curious / exclude), a few words about your style, minimum
+   inseam/sleeve/length (cm or inches), sizes, budget, exploration share and banned words.
+2. **Wardrobe / Wishlist**: upload photos of clothes you own or want, paste an image or listing link,
+   or describe it ("long black wool overcoat").
+3. Use 👍 / 👎, ☆ save, and ⋯ to hide a seller or brand, or **Hunt for this**.
 
-Alerts go to [ntfy](https://ntfy.sh) and/or Telegram, set in `.env` (see `.env.example`); use **Send
-test alert** in Settings to check. ntfy.sh is a public server: anyone who knows your topic can read the
-alerts, so use a long random topic (or self-host ntfy). Each alert is sent once.
+## Alerts
+Hunt matches and price drops go to any channel you set up; **Settings → Alerts → Send test alert**
+checks them all. Each alert is sent once.
+- **Phone app (Web Push)**: open Rack over HTTPS (your tunnel address, below), install it (Android:
+  *Install app*; iPhone: Share → *Add to Home Screen*, then open it from the home screen), then
+  Settings → *Enable push here*.
+- **ntfy**: set `NTFY_TOPIC` to a long random name and subscribe to it in the ntfy app. ntfy.sh is
+  public: anyone who knows the topic can read your alerts.
+- **Telegram**: create a bot with @BotFather; set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
-**Refresh** (top of the feed) re-ranks immediately and asks the worker to search the free sources
-now; it's limited to once every 5 minutes (`RACK_MANUAL_REFRESH_COOLDOWN_MINUTES`). Vestiaire isn't
-included because it's billed per result.
+## Using it from your phone (Cloudflare Tunnel)
+Rack listens only on this PC by default. To reach it from anywhere over HTTPS without opening router
+ports:
+1. Cloudflare dashboard → Zero Trust → Networks → Tunnels → *Create a tunnel* (Cloudflared).
+   Copy the token into `CLOUDFLARE_TUNNEL_TOKEN`.
+2. Add a *public hostname* (e.g. `rack.yourdomain.com`) with service `http://api:8000`.
+3. In `.env`: `RACK_PUBLIC_URL=https://rack.yourdomain.com` and `RACK_COOKIE_SECURE=true`.
+4. `docker compose --profile tunnel up -d`
+5. **Strongly recommended**: Zero Trust → Access → Applications → add the hostname with a policy that
+   allows only your email (one-time code). The app then sits behind two logins.
 
-Tap the source dots under the header for each source's status, last run and last error. The same item
-listed more than once (another site, a repost, or one listing per size) is shown as a single card with a
-buy button per copy.
+Before going public: use a long, unique password (`rack hash-password`), keep `.env` private (it
+holds every key), and keep `RACK_COOKIE_SECURE=true`. Login is rate-limited (5 attempts per 15 minutes).
+
+**LAN only instead?** Set `RACK_BIND=0.0.0.0` and open `http://<pc-ip>:8000`. Push notifications and
+app install need HTTPS, so they won't work this way. [Tailscale](https://tailscale.com) with
+`tailscale serve` is another option for private HTTPS.
+
+## Optional: Claude second opinion
+With `LLM_ENABLED=true` and an Anthropic API key (`ANTHROPIC_API_KEY`), Claude (Opus 5.5 by default,
+`LLM_MODEL`) looks at the top of your feed, photos included, against your taste profile. It gives
+each listing a 0-10 verdict and a short reason, which leads the *Why this?* line. Each listing is
+judged at most every 3 days, and calls are capped at 12 a day (roughly $0.10-0.20 each). The app is
+complete without it.
+
+## Data, backups, updates
+- Data lives in two Docker volumes: `pg_data` (database) and `rack_data` (uploads, model cache).
+- Backup: `docker compose exec db pg_dump -U rack rack > rack-backup.sql`, plus copy your `.env`.
+  Restore with `psql` into a fresh `db`. Uploaded photos are in `rack_data:/data/uploads`.
+- Update: `git pull`, then `docker compose build && docker compose up -d` (migrations run automatically).
+- Logs: `docker compose logs -f worker`.
+
+## Costs
+eBay, Vinted and Grailed access is free. Exchange rates come from the ECB via frankfurter.dev (free).
+Optional paid extras: Vestiaire through Apify (capped, ~$7.50 a month by default), and the Claude
+second opinion (capped per day).
 
 ## Honest caveats
-Only eBay is accessed through an official API. Other sources (added in Phase 3) use the endpoints their own
-websites call. That may breach those sites' terms of service and can stop working at any time. Rack keeps
-volume very low (≥10 s between requests per source, no parallelism, no proxies, no CAPTCHA solving, no
-logins) and each source fails independently. To compute image similarity, Rack downloads one thumbnail per
-listing from the marketplace's image CDN (`RATE_IMAGES`, default one per second). It keeps only the
-embedding, not the image.
+- Only eBay uses an official API. Vinted and Grailed are read through the same public endpoints
+  their websites use. That may breach their terms of service and can stop working at any time.
+  Rack keeps volume low: at least 10 s between requests per source, one request at a time, an honest
+  User-Agent, no logins and no CAPTCHA solving. Each source fails on its own without breaking the feed.
+- Vestiaire, if you enable it, goes through a third-party scraping service that uses residential
+  proxies to get past the site's bot protection. That is your choice, made with eyes open; the same
+  terms-of-service caveat applies, more strongly.
+- To compare photos, Rack downloads one thumbnail per listing from the marketplace's image CDN (about
+  one per second per host) and keeps only the embedding. Photos you see are loaded from the
+  marketplaces directly.
+- Delivered-cost figures are estimates (UK VAT 20%; duty and a courier fee above £135, often £0 duty
+  for EU-made goods). Check the checkout before buying.
 
-*Deployment (CasaOS, Tailscale, Cloudflare Tunnel + Access) docs arrive in Phase 5.*
+## Development
+See `CLAUDE.md` for architecture, commands and conventions. Backend: `cd backend && uv run pytest`;
+frontend: `cd frontend && npm test`.

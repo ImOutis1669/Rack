@@ -34,7 +34,8 @@ services:
   api:
     <<: *app
     ports:
-      - "${RACK_PORT:-8000}:8000"
+      # Only this PC by default. Set RACK_BIND=0.0.0.0 to open it to your LAN (plain http).
+      - "${RACK_BIND:-127.0.0.1}:${RACK_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
@@ -47,6 +48,19 @@ services:
     depends_on:
       api:
         condition: service_healthy  # api runs migrations first
+
+  # Public HTTPS access without opening ports: `docker compose --profile tunnel up -d`
+  # (create the tunnel in Cloudflare Zero Trust; route your hostname to http://api:8000).
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["tunnel"]
 
 volumes:
   pg_data:
