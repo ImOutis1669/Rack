@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from rack.api import (
     actions,
@@ -30,6 +31,7 @@ log = logging.getLogger("rack.api")
 CallNext = Callable[[Request], Awaitable[Response]]
 
 API_MAX_BODY = 1024 * 1024  # 1 MB for JSON requests
+IMMUTABLE = "public, max-age=31536000, immutable"
 UPLOAD_MAX_BODY = 20 * 10 * 1024 * 1024 + 1024 * 1024  # 20 photos x 10 MB + form overhead
 
 # Marketplace photos are hotlinked, so images may come from any https host; everything else is ours.
@@ -87,6 +89,21 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(purchases.router)
     app.include_router(thumbs.router)
 
+    # JS/CSS/HTML/JSON go out gzipped (the app bundle was sent uncompressed: 383 kB instead of
+    # ~128 kB). Photos are already compressed. Responses carry no secrets for BREACH to target.
+    app.add_middleware(
+        GZipMiddleware,
+        minimum_size=1024,
+        compresslevel=6,
+        exclude_content_types=(
+            "text/event-stream",
+            "image/webp",
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+        ),
+    )
+
     @app.middleware("http")
     async def limits_and_headers(request: Request, call_next: CallNext) -> Response:
         if request.method in ("POST", "PUT", "PATCH"):
@@ -118,9 +135,11 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
         if path and candidate.is_file() and candidate.is_relative_to(root):
             if path == "sw.js":  # must update promptly; browsers re-check it anyway
                 return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
+            if path.startswith("assets/"):  # content-hashed names: never change, cache for good
+                return FileResponse(candidate, headers={"Cache-Control": IMMUTABLE})
             return FileResponse(candidate)
-        if index.is_file():
-            return FileResponse(index)
+        if index.is_file():  # always re-checked, so a deploy shows up on the next open
+            return FileResponse(index, headers={"Cache-Control": "no-cache"})
         raise HTTPException(404, "Frontend not built")
 
     return app

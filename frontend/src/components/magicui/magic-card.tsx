@@ -1,6 +1,6 @@
 // Magic UI "Magic Card" (https://magicui.design/docs/components/magic-card), MIT.
 // Adapted: gradient mode only, monochrome + accent colours from the theme tokens.
-import { motion, useMotionTemplate, useMotionValue } from "motion/react";
+import { m, useMotionTemplate, useMotionValue } from "motion/react";
 import { useCallback, useEffect } from "react";
 import { cn } from "../../lib/utils";
 
@@ -45,7 +45,7 @@ export function MagicCard({
   }, [reset]);
 
   return (
-    <motion.div
+    <m.div
       className={cn("group relative isolate overflow-hidden rounded-[inherit] border border-transparent", className)}
       onPointerMove={onMove}
       onPointerLeave={reset}
@@ -57,7 +57,7 @@ export function MagicCard({
       }}
     >
       <div className="absolute inset-px z-20 rounded-[inherit] bg-surface" />
-      <motion.div
+      <m.div
         className="pointer-events-none absolute inset-px z-30 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background: useMotionTemplate`radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)`,
@@ -65,6 +65,6 @@ export function MagicCard({
         }}
       />
       <div className="relative z-40">{children}</div>
-    </motion.div>
+    </m.div>
   );
 }

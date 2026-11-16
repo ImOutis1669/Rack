@@ -1,9 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { prefetchForOpen, prefetchGallery, prefetchOnView } from "../lib/prefetch";
 import type { Listing } from "../api/types";
-import { BoughtSheet } from "./BoughtSheet";
-import { ListingSheet } from "./ListingSheet";
+
+// The sheets load the first time any listing is opened, not with the feed.
+const ListingSheet = lazy(() => import("./ListingSheet").then((m) => ({ default: m.ListingSheet })));
+const BoughtSheet = lazy(() => import("./BoughtSheet").then((m) => ({ default: m.BoughtSheet })));
 import { ListingTile } from "./ListingTile";
 import { useListingActions } from "./useListingActions";
 
@@ -33,9 +35,17 @@ export function ListingItem({
   );
   const [open, setOpen] = useState(false);
   const [buying, setBuying] = useState(false);
+  // mounted from the first open on, so the closing animation still plays
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [boughtMounted, setBoughtMounted] = useState(false);
   const startBuying = () => {
     setOpen(false);
+    setBoughtMounted(true);
     setBuying(true);
+  };
+  const openSheet = () => {
+    setSheetMounted(true);
+    setOpen(true);
   };
   return (
     <>
@@ -43,13 +53,21 @@ export function ListingItem({
         item={item}
         actions={actions}
         index={index}
-        onOpen={() => setOpen(true)}
+        onOpen={openSheet}
         onSeen={onSeen}
         onBought={showBought ? startBuying : undefined}
         onPrefetch={onPrefetch}
       />
-      <ListingSheet item={item} open={open} onClose={() => setOpen(false)} actions={actions} onBought={startBuying} />
-      <BoughtSheet item={item} open={buying} onClose={() => setBuying(false)} onDone={() => onHidden?.(item.id)} />
+      {sheetMounted && (
+        <Suspense fallback={null}>
+          <ListingSheet item={item} open={open} onClose={() => setOpen(false)} actions={actions} onBought={startBuying} />
+        </Suspense>
+      )}
+      {boughtMounted && (
+        <Suspense fallback={null}>
+          <BoughtSheet item={item} open={buying} onClose={() => setBuying(false)} onDone={() => onHidden?.(item.id)} />
+        </Suspense>
+      )}
     </>
   );
 }

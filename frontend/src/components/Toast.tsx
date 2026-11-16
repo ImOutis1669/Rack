@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useState } from "react";
 
 export interface ToastAction {
@@ -67,7 +67,7 @@ export function Toaster() {
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-[60] flex justify-center px-4 md:bottom-8">
       <AnimatePresence>
         {msg && (
-          <motion.div
+          <m.div
             key={msg.text}
             initial={{ opacity: 0, y: 12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -75,7 +75,7 @@ export function Toaster() {
             transition={{ type: "spring", damping: 30, stiffness: 400 }}
           >
             <ToastView msg={msg} />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

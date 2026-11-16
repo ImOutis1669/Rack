@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
-import { StrictMode } from "react";
+import { LazyMotion } from "motion/react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
@@ -9,11 +10,15 @@ import "./index.css";
 import { perfEnabled } from "./lib/perf";
 import { installViewportFix } from "./lib/viewport";
 import { Feed } from "./pages/Feed";
-import { Hunts } from "./pages/Hunts";
-import { Login } from "./pages/Login";
-import { Saved } from "./pages/Saved";
-import { Settings } from "./pages/Settings";
-import { Taste } from "./pages/Taste";
+
+// The feed is the home screen and loads with the app; other pages load when first opened.
+const Hunts = lazy(() => import("./pages/Hunts").then((m) => ({ default: m.Hunts })));
+const Login = lazy(() => import("./pages/Login").then((m) => ({ default: m.Login })));
+const Saved = lazy(() => import("./pages/Saved").then((m) => ({ default: m.Saved })));
+const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const Taste = lazy(() => import("./pages/Taste").then((m) => ({ default: m.Taste })));
+const Blank = () => <div className="min-h-dvh bg-background" />;
+const loadMotionFeatures = () => import("./lib/motionFeatures").then((m) => m.default);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +35,11 @@ function App() {
 
   if (me.isPending) return <div className="min-h-dvh bg-background" />;
   if (me.isError) {
-    return <Login onSuccess={() => void qc.invalidateQueries()} />;
+    return (
+      <Suspense fallback={<Blank />}>
+        <Login onSuccess={() => void qc.invalidateQueries()} />
+      </Suspense>
+    );
   }
   const onLogout = async () => {
     await api.logout();
@@ -39,6 +48,7 @@ function App() {
   };
   return (
     <>
+      <Suspense fallback={<Blank />}>
       <Routes>
         <Route path="/" element={<Feed />} />
         <Route path="/taste" element={<Taste />} />
@@ -47,6 +57,7 @@ function App() {
         <Route path="/settings" element={<Settings onLogout={onLogout} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       <Toaster />
       {SHOW_PERF && <PerfHud />}
     </>
@@ -72,9 +83,11 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <LazyMotion features={loadMotionFeatures} strict>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </LazyMotion>
     </QueryClientProvider>
   </StrictMode>,
 );

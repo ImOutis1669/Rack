@@ -1,6 +1,6 @@
 // Magic UI "Blur Fade" (https://magicui.design/docs/components/blur-fade), MIT.
 // Adapted: honours reduced motion; used only on the first screenful of feed tiles.
-import { AnimatePresence, motion, useInView, useReducedMotion, type MotionProps, type UseInViewOptions, type Variants } from "motion/react";
+import { AnimatePresence, m, useInView, useReducedMotion, type MotionProps, type UseInViewOptions, type Variants } from "motion/react";
 import { useRef } from "react";
 
 type MarginType = UseInViewOptions["margin"];
@@ -45,7 +45,7 @@ export function BlurFade({
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         ref={ref}
         initial="hidden"
         animate={isInView ? "visible" : "hidden"}
@@ -56,7 +56,7 @@ export function BlurFade({
         {...props}
       >
         {children}
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

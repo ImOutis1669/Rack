@@ -1,5 +1,5 @@
 import { Bookmark, Crosshair, LayoutGrid, Settings as SettingsIcon, Shirt } from "lucide-react";
-import { LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { LayoutGroup, m, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { pillTransition } from "../lib/motion";
@@ -34,7 +34,7 @@ function DesktopTabs() {
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <motion.span
+                  <m.span
                     layoutId="desktop-tab-pill"
                     transition={pillTransition(reduce)}
                     className="absolute inset-0 -z-10 rounded-full bg-elevated shadow-sm"
@@ -83,7 +83,7 @@ function TabBar() {
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <motion.span
+                    <m.span
                       layoutId="dock-pill"
                       data-testid="dock-pill"
                       transition={pillTransition(reduce)}

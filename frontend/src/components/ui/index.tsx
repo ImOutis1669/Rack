@@ -1,6 +1,6 @@
 /** Rack's UI primitives. Tokens and rules: DESIGN.md. */
 import { X } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import {
   forwardRef,
   useEffect,
@@ -294,7 +294,7 @@ export function Sheet({
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6">
-          <motion.div
+          <m.div
             className="absolute inset-0 bg-scrim"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -302,7 +302,7 @@ export function Sheet({
             transition={{ duration: reduce ? 0 : 0.2 }}
             onClick={onClose}
           />
-          <motion.div
+          <m.div
             ref={panel}
             tabIndex={-1}
             role="dialog"
@@ -330,7 +330,7 @@ export function Sheet({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
             {footer && <div className="border-t border-border px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)]">{footer}</div>}
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>,
@@ -362,7 +362,7 @@ export function Menu({
       {trigger({ onClick: () => setOpen((o) => !o), "aria-expanded": open })}
       <AnimatePresence>
         {open && (
-          <motion.div
+          <m.div
             role="menu"
             initial={{ opacity: 0, scale: 0.95, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -391,7 +391,7 @@ export function Menu({
                 {it.label}
               </button>
             ))}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

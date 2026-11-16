@@ -64,3 +64,22 @@ draws no frames, so the browser fires no `scroll` events there; tests dispatch t
 |---|---|---|---|
 | Details request on opening a listing | starts when the sheet opens | **already done** when it opens (started on touch, 40 ms) and not repeated | pane, Resource Timing |
 | Prefetch when a tile appears | | not observable in the pane (no visibility checks without drawing); check on the iPhone | |
+
+## Step 5: trim
+
+- Pages other than the feed (Wardrobe, Saved, Hunts, Settings, Login) and the listing and
+  "I bought it" sheets load on first use (`React.lazy`).
+- Motion: `LazyMotion` + `m` elements; its animation features (incl. layout, for the tab pill)
+  load as their own chunk after startup.
+- Unused Magic UI components removed (`animated-shiny-text`, `progressive-blur`).
+- lucide-react is imported per icon (already tree-shaken: 23 kB of source in the bundle).
+- Found while measuring: the server sent everything **uncompressed**, and hashed assets had no
+  long cache header. Now gzip for text (not photos), `immutable` for `/assets/*`, `no-cache` for
+  the app shell.
+
+| Measure | Baseline | After step 3 | After step 5 | How |
+|---|---|---|---|---|
+| Main JS, minified | 520 kB | 560 kB | **393 kB** | `vite build` |
+| Main JS, over the wire | 520 kB (uncompressed) | 560 kB | **128 kB** (+32 kB motion features after start) | Resource Timing |
+| Feed API first page, over the wire | 41 kB | 35 kB | **7 kB** | Resource Timing |
+| First tile, warm | 207 ms | 71 ms (from snapshot) | 143 ms (this run) | pane, `?perf=1` |
