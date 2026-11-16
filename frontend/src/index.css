@@ -59,7 +59,8 @@
 
   /* SF Pro on Apple devices via the system font; on Windows if installed locally. Never bundled. */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI Variable Text",
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "SF Pro Display", system-ui,
+    "Segoe UI Variable Text",
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", system-ui,
