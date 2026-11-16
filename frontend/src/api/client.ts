@@ -2,6 +2,7 @@ import type {
   Designer,
   FeedPage,
   FeedParams,
+  GalleryInfo,
   Hidden,
   Listing,
   Profile,
@@ -88,6 +89,7 @@ export const api = {
   save: (id: number) => request<void>(`/api/listings/${id}/saved`, json("PUT")),
   unsave: (id: number) => request<void>(`/api/listings/${id}/saved`, json("DELETE")),
   saved: () => request<Listing[]>("/api/saved"),
+  gallery: (id: number) => request<GalleryInfo>(`/api/listings/${id}/gallery`),
   hidden: () => request<Hidden[]>("/api/hidden"),
   hide: (kind: Hidden["kind"], value: string) =>
     request<Hidden>("/api/hidden", json("POST", { kind, value })),

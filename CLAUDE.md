@@ -74,6 +74,13 @@ On this Windows dev box uv lives at
   group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:
   near-identical photos + titles of genuinely different items (e.g. two lookbooks) still merge.
 - The worker stores the last refresh time; restarts don't re-run searches early.
+- Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
+  ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
+  and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all
+  images; Grailed exposes only the cover photo + `photo_count`.
+- `docs/security-audit-prompt.md`: the user's audit prompt, to run in a later (security) phase.
+- Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs) and the Apify
+  "Vestiaire Collective Real-Time Data Scraper" actor (paid, residential proxies — see README).
 
 ## Phases
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe

@@ -138,6 +138,13 @@ export interface Hidden {
   value: string;
 }
 
+export interface GalleryInfo {
+  images: string[];
+  description: string | null;
+  photo_count: number | null;
+  note: string | null;
+}
+
 export interface Visit {
   visit_start: string;
   last_visit: string | null;

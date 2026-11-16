@@ -47,6 +47,10 @@ list only ever *adds* to a score: unbranded or unknown items are not pushed down
 | Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env`). If Grailed rotates it, source health shows the error; update the key. No descriptions, so measurements come from titles only. |
 | Vestiaire | — | Blocked by Cloudflare's human check. Rack checks once a day and says so in source health; it won't try to get around it. |
 
+Tap the middle of a listing's photo to open every photo full-screen (swipe, arrow keys or
+thumbnails), with the full description. Vinted's extra photos are fetched when you open the listing;
+Grailed only shares its cover photo.
+
 Tap the source dots under the header for each source's status, last run and last error. The same item
 listed more than once (another site, a repost, or one listing per size) is shown as a single card with a
 buy button per copy.

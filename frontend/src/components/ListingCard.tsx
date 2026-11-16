@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { Listing } from "../api/types";
 import { formatGBP, sellerLabel, SOURCE_LABEL, timeAgo } from "../lib/format";
 import { Carousel } from "./Carousel";
+import { Gallery } from "./Gallery";
 import { SourceBadge } from "./SourceBadge";
 
 const MEAS: [keyof Listing["measurements"], string][] = [
@@ -23,6 +24,7 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
   const [vote, setVote] = useState(item.feedback);
   const [saved, setSaved] = useState(item.saved);
   const [menu, setMenu] = useState(false);
+  const [gallery, setGallery] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLElement>(null);
 
@@ -89,7 +91,8 @@ export function ListingCard({ item, onSeen, onHidden }: Props) {
       ref={ref}
       className="mb-3 break-inside-avoid overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-white/5"
     >
-      <Carousel images={item.images} alt={item.title} />
+      <Carousel images={item.images} alt={item.title} onOpen={() => setGallery(true)} />
+      {gallery && <Gallery item={item} onClose={() => setGallery(false)} />}
       <div className="space-y-1.5 p-2.5">
         <div className="flex items-center justify-between gap-2">
           <SourceBadge source={item.source} />

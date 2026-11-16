@@ -58,6 +58,8 @@ class ListingRow(Base):
     text_embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
     # Same item listed more than once (cross-listed / reposted): id of the cheapest copy.
     cluster_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    # Full photo set / description fetched from the item page (on demand, e.g. Vinted).
+    details_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True

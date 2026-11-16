@@ -2,8 +2,9 @@
 
 import hashlib
 from collections.abc import Sequence
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,7 +52,11 @@ async def upsert_listings(session: AsyncSession, listings: Sequence[Listing]) ->
     for listing in listings:
         values = _row_values(listing)
         ins = insert(ListingRow).values(**values, first_seen_at=utcnow())
-        update_cols = {k: ins.excluded[k] for k in values if k not in ("source", "source_id")}
+        update_cols: dict[str, Any] = {
+            k: ins.excluded[k] for k in values if k not in ("source", "source_id")
+        }
+        # search results often lack the description we fetched from the item page: keep it
+        update_cols["description"] = func.coalesce(ins.excluded.description, ListingRow.description)
         upsert = ins.on_conflict_do_update(
             constraint="uq_listing_source", set_=update_cols
         ).returning(ListingRow.id)
@@ -67,17 +72,43 @@ async def upsert_listings(session: AsyncSession, listings: Sequence[Listing]) ->
             .scalars()
             .all()
         )
-        if [img.url for img in sorted(existing, key=lambda i: i.position)] != listing.images:
-            for img in existing:
-                await session.delete(img)
-            for pos, url in enumerate(listing.images):
+        await set_images(session, listing_id, existing, listing.images)
+    await session.flush()
+    return ids
+
+
+async def set_images(
+    session: AsyncSession, listing_id: int, existing: Sequence[ListingImageRow], urls: list[str]
+) -> None:
+    """Update a listing's photos without throwing away work.
+
+    Same first photo: keep every existing row (and its embedding/pHash) and append new URLs — a
+    search result showing 1 photo must not wipe the full gallery fetched from the item page.
+    Different first photo: the listing's photos really changed, so replace them.
+    """
+    current = sorted(existing, key=lambda i: i.position)
+    if current and urls and current[0].url == urls[0]:
+        have = {i.url for i in current}
+        pos = len(current)
+        for url in urls:
+            if url not in have:
                 session.add(
                     ListingImageRow(
                         listing_id=listing_id, position=pos, url=url, url_hash=url_hash(url)
                     )
                 )
+                have.add(url)
+                pos += 1
+        return
+    if [i.url for i in current] == urls:
+        return
+    for img in current:
+        await session.delete(img)
     await session.flush()
-    return ids
+    for pos, url in enumerate(urls):
+        session.add(
+            ListingImageRow(listing_id=listing_id, position=pos, url=url, url_hash=url_hash(url))
+        )
 
 
 async def _health(session: AsyncSession, source: str) -> SourceHealthRow:

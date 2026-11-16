@@ -1,12 +1,26 @@
 import { useState } from "react";
 
 /** First image loads eagerly-lazy; others only mount once the user swipes/taps to them. */
-export function Carousel({ images, alt }: { images: string[]; alt: string }) {
+export function Carousel({
+  images,
+  alt,
+  onOpen,
+}: {
+  images: string[];
+  alt: string;
+  onOpen?: () => void;
+}) {
   const [index, setIndex] = useState(0);
   const [loaded, setLoaded] = useState<Set<number>>(() => new Set([0]));
 
   if (images.length === 0) {
-    return <div className="aspect-[4/5] w-full bg-neutral-800" />;
+    return (
+      <button
+        aria-label="Open photos"
+        onClick={onOpen}
+        className="block aspect-[4/5] w-full bg-neutral-800"
+      />
+    );
   }
 
   const go = (next: number) => {
@@ -30,6 +44,13 @@ export function Carousel({ images, alt }: { images: string[]; alt: string }) {
             }`}
           />
         ) : null,
+      )}
+      {onOpen && (
+        <button
+          aria-label="Open all photos"
+          onClick={onOpen}
+          className={`absolute inset-y-0 ${images.length > 1 ? "left-1/3 w-1/3" : "inset-x-0"}`}
+        />
       )}
       {images.length > 1 && (
         <>

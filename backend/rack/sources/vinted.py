@@ -10,6 +10,7 @@ protection is present). Volume is kept very low; a block is reported in source h
 
 import json
 import re
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -130,6 +131,78 @@ def trim_page(html: str) -> str:
     return f"<script>self.__next_f.push([1,{chunk}])</script>\n"
 
 
+@dataclass
+class ItemDetails:
+    images: list[str]
+    description: str | None
+    price: Decimal | None
+    currency: str | None
+    available: bool | None
+
+
+def _photo_sets(flight: str) -> list[dict[str, Any]]:
+    """Objects shaped {"item_id": …, "photos": [...]} (the item page's gallery)."""
+    dec = json.JSONDecoder()
+    out: list[dict[str, Any]] = []
+    for m in re.finditer(r'"photos":\[\{', flight):
+        start = m.start()
+        for _ in range(50):  # walk back to the enclosing object
+            start = flight.rfind("{", 0, start)
+            if start < 0:
+                break
+            try:
+                obj, end = dec.raw_decode(flight, start)
+            except ValueError:
+                continue
+            if end > m.start() and isinstance(obj, dict) and "item_id" in obj:
+                out.append(obj)
+                break
+    return out
+
+
+def parse_item_page(html: str, item_id: str) -> ItemDetails:
+    flight = flight_text(html)
+    if not flight:
+        raise SourceError("Vinted item page has no Next.js data (blocked or page format changed)")
+    images: list[str] = []
+    for obj in _photo_sets(flight):
+        if str(obj.get("item_id")) == str(item_id):
+            images = [p["url"] for p in obj.get("photos") or [] if p.get("url")]
+            break
+    product: dict[str, Any] = {}
+    if m := re.search(r'"jsonLd":', flight):
+        try:
+            product, _ = json.JSONDecoder().raw_decode(flight, m.end())
+        except ValueError:
+            product = {}
+    offer = product.get("offers") or {}
+    availability = str(offer.get("availability") or "")
+    if not images and product.get("image"):
+        images = [str(product["image"])]
+    return ItemDetails(
+        images=images,
+        description=product.get("description"),
+        price=_dec(offer.get("price")),
+        currency=offer.get("priceCurrency"),
+        available=("InStock" in availability) if availability else None,
+    )
+
+
+def trim_item_page(html: str, item_id: str) -> str:
+    """Small fixture: just the JSON-LD product and this item's photo set, in flight format."""
+    flight = flight_text(html)
+    parts: list[str] = []
+    if m := re.search(r'"jsonLd":', flight):
+        product, _ = json.JSONDecoder().raw_decode(flight, m.end())
+        parts.append(json.dumps({"jsonLd": product}, ensure_ascii=False, separators=(",", ":")))
+    for obj in _photo_sets(flight):
+        if str(obj.get("item_id")) == str(item_id):
+            parts.append(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+            break
+    chunk = json.dumps(",".join(parts), ensure_ascii=False)
+    return f"<script>self.__next_f.push([1,{chunk}])</script>\n"
+
+
 def build_search_params(query: SearchQuery) -> list[tuple[str, str]]:
     params: list[tuple[str, str]] = [("search_text", query.text)]
     if query.newest_first:
@@ -165,9 +238,24 @@ class VintedAdapter:
     async def search(self, query: SearchQuery) -> list[Listing]:
         return parse_page(await self.fetch_page(query))[: query.limit]
 
+    async def fetch_item_page(self, url: str) -> str:
+        if not url.startswith(f"{BASE}/items/"):
+            raise SourceError("not a Vinted UK item URL")
+        resp = await self._http.get(url)
+        if resp.status_code == 404:
+            raise SourceError("Vinted item no longer exists (404)")
+        if resp.status_code != 200:
+            raise SourceError(f"Vinted item page failed: HTTP {resp.status_code}")
+        return resp.text
+
+    async def item_details(self, url: str) -> ItemDetails:
+        m = ITEM_ID.search(url)
+        if not m:
+            raise SourceError("can't find the item id in that URL")
+        return parse_item_page(await self.fetch_item_page(url), m.group(1))
+
     async def get_listing(self, url_or_id: str) -> Listing | None:
-        # Item pages aren't parsed yet (needed for price-drop checks in Phase 4).
-        return None
+        return None  # search results carry everything the feed needs; see item_details()
 
     async def aclose(self) -> None:
         await self._http.aclose()
