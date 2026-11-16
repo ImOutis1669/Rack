@@ -26,6 +26,8 @@ clothes are the interface, and the chrome stays quiet.
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.
 - On iPhone they're a bottom glass tab bar; on desktop a segmented control in the top glass bar.
 - Settings sits behind the gear in the header, not in a tab.
+- The feed is titled **Rack** (the app name) on iPhone; on desktop the "Rack" wordmark in the bar
+  is its title and the feed has no large heading. The sort menu keeps "For you".
 
 | Surface | Kind |
 |---|---|

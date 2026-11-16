@@ -31,3 +31,24 @@ describe("Liquid Glass chrome", () => {
     expect(html).not.toContain("h-px bg-border");
   });
 });
+
+describe("page titles", () => {
+  const shell = (desktopTitle?: boolean) =>
+    renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/"]}>
+        <PageShell title="Rack" desktopTitle={desktopTitle}>
+          <p>feed</p>
+        </PageShell>
+      </MemoryRouter>,
+    );
+
+  it("leaves out the desktop heading on the feed, so 'Rack' isn't shown twice", () => {
+    const html = shell(false);
+    expect(html.match(/<h1/g)).toHaveLength(1); // the iPhone title only (md:hidden)
+    expect(html).toMatch(/<h1 class="[^"]*md:hidden[^"]*">Rack<\/h1>/);
+  });
+
+  it("keeps it on other pages", () => {
+    expect(shell().match(/<h1/g)).toHaveLength(2);
+  });
+});

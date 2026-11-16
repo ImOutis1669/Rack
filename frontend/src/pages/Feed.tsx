@@ -27,6 +27,9 @@ const CATEGORY_LABEL: Record<Category, string> = {
   outerwear: "Outerwear",
 };
 
+/** The feed is the app's home: its title is the app name (the sort menu keeps "For you"). */
+export const FEED_TITLE = "Rack";
+
 export function Feed() {
   const [params, setParams] = useState<FeedParams>({ sort: "best", sources: [], maxPrice: null, category: null, brand: "" });
   const [newOnly, setNewOnly] = useState(false);
@@ -118,7 +121,8 @@ export function Feed() {
 
   return (
     <PageShell
-      title={params.sort === "best" ? "For you" : "Feed"}
+      title={FEED_TITLE}
+      desktopTitle={false}
       actions={
         <>
           <SourcesButton />

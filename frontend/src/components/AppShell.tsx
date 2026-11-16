@@ -109,6 +109,7 @@ export function PageShell({
   children,
   wide = true,
   grouped = false,
+  desktopTitle = true,
 }: {
   title: string;
   actions?: ReactNode;
@@ -117,6 +118,8 @@ export function PageShell({
   wide?: boolean;
   /** iOS grouped-list page: grey page with white rows (black / dark grey in dark mode) */
   grouped?: boolean;
+  /** Desktop large heading under the bar. Off for the feed, whose title is the "Rack" wordmark. */
+  desktopTitle?: boolean;
 }) {
   const { pathname } = useLocation();
   const scrolled = useScrolled();
@@ -148,7 +151,7 @@ export function PageShell({
           wide ? "max-w-7xl" : "max-w-3xl",
         )}
       >
-        <h1 className="mb-4 hidden font-display text-largetitle font-bold md:block">{title}</h1>
+        {desktopTitle && <h1 className="mb-4 hidden font-display text-largetitle font-bold md:block">{title}</h1>}
         {children}
       </main>
       <TabBar />
