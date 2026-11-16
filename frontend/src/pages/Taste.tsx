@@ -1,14 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { ImagePlus, Link2, Plus, Shirt, Trash2, Type } from "lucide-react";
+import { useRef, useState } from "react";
 import { api } from "../api/client";
 import type { TasteItem, TasteKind } from "../api/types";
-import { PageShell } from "../components/Nav";
+import { PageShell } from "../components/AppShell";
+import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
+import { cn } from "../lib/utils";
 
-const INPUT = "w-full rounded bg-neutral-900 px-2.5 py-1.5 text-sm ring-1 ring-white/15";
-const BTN = "rounded bg-white px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-40";
+const COPY: Record<TasteKind, string> = {
+  wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
+  wishlist: "Things you want: photos, links to listings, or a short description like “black derby shoes with a chunky sole”.",
+};
 
-export function Taste({ onLogout }: { onLogout: () => void }) {
+export function Taste() {
   const [kind, setKind] = useState<TasteKind>("wardrobe");
+  const [adding, setAdding] = useState(false);
   const qc = useQueryClient();
   const items = useQuery({
     queryKey: ["taste", kind],
@@ -21,50 +27,129 @@ export function Taste({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <PageShell onLogout={onLogout}>
-      <div className="mt-3 flex gap-2 text-sm">
-        {(["wardrobe", "wishlist"] as const).map((k) => (
-          <button
-            key={k}
-            onClick={() => setKind(k)}
-            className={`rounded-full px-3 py-1 capitalize ring-1 ${kind === k ? "bg-white text-black ring-white" : "ring-white/20"}`}
-          >
-            {k}
-          </button>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-neutral-400">
-        {kind === "wardrobe"
-          ? "Photos of clothes you own and love. Rack finds things that look like them."
-          : "Things you want: photos, links to listings or images, or a short description like “black derby shoes with a chunky sole”."}
-      </p>
+    <PageShell
+      title="Wardrobe"
+      actions={
+        <IconButton label={`Add to ${kind}`} onClick={() => setAdding(true)}>
+          <Plus size={21} strokeWidth={1.9} />
+        </IconButton>
+      }
+      below={
+        <Segmented
+          value={kind}
+          onChange={setKind}
+          options={[
+            ["wardrobe", "Wardrobe"],
+            ["wishlist", "Wishlist"],
+          ]}
+        />
+      }
+    >
+      <p className="-mt-1 mb-5 max-w-xl text-footnote text-muted">{COPY[kind]}</p>
 
-      <AddForms kind={kind} onAdded={refresh} />
-
-      {items.isError && <p className="mt-4 text-sm text-red-400">{String(items.error)}</p>}
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        {items.data?.map((it) => <TasteCard key={it.id} item={it} onChange={refresh} />)}
-      </div>
-      {items.isSuccess && items.data.length === 0 && (
-        <p className="mt-6 text-sm text-neutral-500">Nothing here yet.</p>
+      {items.isPending && (
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="aspect-square" />
+          ))}
+        </div>
       )}
+      {items.isError && <p className="text-footnote text-danger">{String((items.error as Error).message)}</p>}
+      {items.isSuccess && items.data.length === 0 && (
+        <EmptyState
+          icon={<Shirt size={24} />}
+          title={kind === "wardrobe" ? "Your wardrobe is empty" : "Your wishlist is empty"}
+          action={
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={17} /> Add {kind === "wardrobe" ? "photos" : "something"}
+            </Button>
+          }
+        >
+          The more you add, the better the feed gets.
+        </EmptyState>
+      )}
+
+      <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 lg:grid-cols-6">
+        {items.data?.map((it) => <TasteTile key={it.id} item={it} onChange={refresh} />)}
+      </div>
+
+      <AddSheet
+        open={adding}
+        kind={kind}
+        onClose={() => setAdding(false)}
+        onAdded={() => {
+          setAdding(false);
+          refresh();
+        }}
+      />
     </PageShell>
   );
 }
 
-function AddForms({ kind, onAdded }: { kind: TasteKind; onAdded: () => void }) {
+function TasteTile({ item, onChange }: { item: TasteItem; onChange: () => void }) {
+  const [label, setLabel] = useState(item.text ?? item.note ?? "");
+  const save = useMutation({
+    mutationFn: () => api.patchTaste(item.id, item.image ? { note: label } : { text: label }),
+    onSuccess: onChange,
+  });
+  const del = useMutation({ mutationFn: () => api.deleteTaste(item.id), onSuccess: onChange });
+  const dirty = label !== (item.text ?? item.note ?? "");
+  const state = item.embed_error ? "Couldn't read" : item.embedded ? null : "Learning";
+
+  return (
+    <div className="group">
+      <div className="relative overflow-hidden rounded-photo bg-fill">
+        {item.image ? (
+          <img src={item.image} alt={label} loading="lazy" className="aspect-square w-full object-cover" />
+        ) : (
+          <div className="flex aspect-square items-center justify-center p-3 text-center text-footnote font-medium">“{item.text}”</div>
+        )}
+        <IconButton
+          label="Remove"
+          glass
+          onClick={() => window.confirm("Remove this?") && del.mutate()}
+          className="absolute top-1 right-1 size-8 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+        >
+          <Trash2 size={14} />
+        </IconButton>
+        {state && (
+          <span
+            title={item.embed_error ?? ""}
+            className={cn(
+              "glass absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-caption font-medium",
+              item.embed_error ? "text-danger" : "text-muted",
+            )}
+          >
+            {state}
+          </span>
+        )}
+      </div>
+      <input
+        aria-label="Label"
+        className="mt-1.5 w-full truncate rounded-md bg-transparent px-1 py-0.5 text-footnote outline-none placeholder:text-subtle focus:bg-fill"
+        placeholder="Add a label"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={() => dirty && save.mutate()}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      />
+    </div>
+  );
+}
+
+function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: TasteKind; onClose: () => void; onAdded: () => void }) {
   const [note, setNote] = useState("");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [inputKey, setInputKey] = useState(0);
+  const picker = useRef<HTMLInputElement>(null);
 
   const done = () => {
     setNote("");
     setUrl("");
     setText("");
     setFiles([]);
-    setInputKey((k) => k + 1);
+    if (picker.current) picker.current.value = "";
     onAdded();
   };
   const upload = useMutation({ mutationFn: () => api.uploadTaste(kind, files, note), onSuccess: done });
@@ -73,76 +158,61 @@ function AddForms({ kind, onAdded }: { kind: TasteKind; onAdded: () => void }) {
   const err = upload.error ?? byUrl.error ?? byText.error;
 
   return (
-    <div className="mt-3 grid gap-3 rounded-lg bg-neutral-900/60 p-3 ring-1 ring-white/10 sm:grid-cols-3">
-      <div className="space-y-2">
-        <label className="block text-xs text-neutral-400">Upload photos</label>
-        <input
-          key={inputKey}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-          className="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-neutral-700 file:px-2 file:py-1 file:text-white"
-        />
-        <input className={INPUT} placeholder="Label (optional), e.g. black Margiela derbies" value={note} onChange={(e) => setNote(e.target.value)} />
-        <button className={BTN} disabled={!files.length || upload.isPending} onClick={() => upload.mutate()}>
-          {upload.isPending ? "Uploading…" : `Add ${files.length || ""} photo${files.length === 1 ? "" : "s"}`}
-        </button>
-      </div>
-      <div className="space-y-2">
-        <label className="block text-xs text-neutral-400">Image or listing link</label>
-        <input className={INPUT} placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <button className={BTN} disabled={!url.trim() || byUrl.isPending} onClick={() => byUrl.mutate()}>
-          {byUrl.isPending ? "Fetching…" : "Add link"}
-        </button>
-      </div>
-      <div className="space-y-2">
-        <label className="block text-xs text-neutral-400">Describe it</label>
-        <input className={INPUT} placeholder="e.g. long black wool overcoat" value={text} onChange={(e) => setText(e.target.value)} />
-        <button className={BTN} disabled={!text.trim() || byText.isPending} onClick={() => byText.mutate()}>
-          Add text
-        </button>
-      </div>
-      {err && <p className="text-xs text-red-400 sm:col-span-3">{String((err as Error).message)}</p>}
-    </div>
-  );
-}
-
-function TasteCard({ item, onChange }: { item: TasteItem; onChange: () => void }) {
-  const [label, setLabel] = useState(item.text ?? item.note ?? "");
-  const save = useMutation({
-    mutationFn: () => api.patchTaste(item.id, item.image ? { note: label } : { text: label }),
-    onSuccess: onChange,
-  });
-  const del = useMutation({ mutationFn: () => api.deleteTaste(item.id), onSuccess: onChange });
-  const dirty = label !== (item.text ?? item.note ?? "");
-
-  return (
-    <div className="overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-white/5">
-      {item.image ? (
-        <img src={item.image} alt={label} loading="lazy" className="aspect-square w-full object-cover" />
-      ) : (
-        <div className="flex aspect-square items-center justify-center p-3 text-center text-sm text-neutral-300">
-          “{item.text}”
-        </div>
-      )}
-      <div className="space-y-1.5 p-2">
-        <input
-          className="w-full rounded bg-neutral-800 px-2 py-1 text-xs"
-          placeholder="Label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={() => dirty && save.mutate()}
-        />
-        <div className="flex items-center justify-between text-[11px]">
-          <span className={item.embed_error ? "text-red-400" : item.embedded ? "text-emerald-400" : "text-neutral-500"} title={item.embed_error ?? ""}>
-            {item.embed_error ? "Failed" : item.embedded ? "Learned" : "Processing…"}
-          </span>
-          <button className="text-neutral-400 hover:text-red-400" onClick={() => del.mutate()} disabled={del.isPending}>
-            Remove
+    <Sheet open={open} onClose={onClose} title={kind === "wardrobe" ? "Add to wardrobe" : "Add to wishlist"}>
+      <div className="space-y-6 p-4">
+        <section className="space-y-3">
+          <input
+            ref={picker}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+          <button
+            onClick={() => picker.current?.click()}
+            className="press flex w-full flex-col items-center gap-2 rounded-group border border-dashed border-border bg-surface px-4 py-7 text-center dark:bg-elevated"
+          >
+            <ImagePlus size={26} strokeWidth={1.6} className="text-muted" />
+            <span className="text-body font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} chosen` : "Choose photos"}</span>
+            <span className="text-caption text-muted">From your camera roll or files. Up to 20 at once.</span>
           </button>
+          <Input placeholder="Label (optional), e.g. black Margiela derbies" value={note} onChange={(e) => setNote(e.target.value)} />
+          <Button variant="primary" className="w-full" disabled={!files.length || upload.isPending} onClick={() => upload.mutate()}>
+            {upload.isPending ? "Uploading" : "Add photos"}
+          </Button>
+        </section>
+
+        <div className="flex items-center gap-3 text-caption text-muted">
+          <span className="h-px flex-1 bg-border" />
+          or
+          <span className="h-px flex-1 bg-border" />
         </div>
+
+        <Field label={<span className="inline-flex items-center gap-1.5"><Link2 size={14} /> Image or listing link</span>}>
+          {(id) => (
+            <div className="flex gap-2">
+              <Input id={id} type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <Button disabled={!url.trim() || byUrl.isPending} onClick={() => byUrl.mutate()}>
+                {byUrl.isPending ? "Adding" : "Add"}
+              </Button>
+            </div>
+          )}
+        </Field>
+
+        <Field label={<span className="inline-flex items-center gap-1.5"><Type size={14} /> Describe it</span>}>
+          {(id) => (
+            <div className="flex gap-2">
+              <Input id={id} placeholder="Long black wool overcoat" value={text} onChange={(e) => setText(e.target.value)} />
+              <Button disabled={!text.trim() || byText.isPending} onClick={() => byText.mutate()}>
+                Add
+              </Button>
+            </div>
+          )}
+        </Field>
+
+        {err && <p className="text-footnote text-danger">{String((err as Error).message)}</p>}
       </div>
-    </div>
+    </Sheet>
   );
 }

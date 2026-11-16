@@ -1,19 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { ListingCard } from "../components/ListingCard";
-import { PageShell } from "../components/Nav";
+import { Bookmark } from "lucide-react";
 import { api } from "../api/client";
+import { PageShell } from "../components/AppShell";
+import { ListingGrid, ListingItem } from "../components/ListingItem";
+import { EmptyState, Skeleton } from "../components/ui";
 
-export function Saved({ onLogout }: { onLogout: () => void }) {
+export function Saved() {
   const q = useQuery({ queryKey: ["saved"], queryFn: api.saved, staleTime: 0 });
   return (
-    <PageShell onLogout={onLogout}>
-      <h2 className="mt-3 text-sm font-semibold">Saved</h2>
-      {q.isSuccess && q.data.length === 0 && (
-        <p className="mt-6 text-sm text-neutral-400">Nothing saved yet. Tap ☆ on a listing to keep it here.</p>
+    <PageShell title="Saved">
+      {q.isPending && (
+        <ListingGrid>
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="mb-5 aspect-[4/5] break-inside-avoid" />
+          ))}
+        </ListingGrid>
       )}
-      <div className="mt-2 columns-2 gap-3 sm:columns-3 lg:columns-4">
-        {q.data?.map((item) => <ListingCard key={item.id} item={item} />)}
-      </div>
+      {q.isSuccess && q.data.length === 0 && (
+        <EmptyState icon={<Bookmark size={24} />} title="Nothing saved yet">
+          Tap the bookmark on a listing to keep it here. You'll get an alert if its price drops.
+        </EmptyState>
+      )}
+      <ListingGrid>
+        {q.data?.map((item, i) => <ListingItem key={item.id} item={item} index={i} />)}
+      </ListingGrid>
     </PageShell>
   );
 }

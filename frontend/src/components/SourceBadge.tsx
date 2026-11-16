@@ -1,16 +1,25 @@
 import type { Source } from "../api/types";
 import { SOURCE_LABEL } from "../lib/format";
+import { cn } from "../lib/utils";
 
-const STYLE: Record<Source, string> = {
-  ebay: "bg-ebay text-white",
-  vinted: "bg-vinted text-white",
-  grailed: "bg-grailed text-black",
-  vestiaire: "bg-vestiaire text-black",
+const DOT: Record<Source, string> = {
+  ebay: "bg-ebay",
+  vinted: "bg-vinted",
+  grailed: "bg-grailed dark:bg-white",
+  vestiaire: "bg-vestiaire",
 };
 
-export function SourceBadge({ source }: { source: Source }) {
+/** Small source label; `glass` when it floats over a photo. */
+export function SourceBadge({ source, glass, className }: { source: Source; glass?: boolean; className?: string }) {
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STYLE[source]}`}>
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 rounded-full px-2 text-caption font-semibold",
+        glass ? "glass text-foreground" : "bg-fill text-foreground",
+        className,
+      )}
+    >
+      <span className={cn("size-1.5 rounded-full", DOT[source])} />
       {SOURCE_LABEL[source] ?? source}
     </span>
   );

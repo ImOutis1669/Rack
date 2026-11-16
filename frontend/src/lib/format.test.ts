@@ -8,8 +8,8 @@ describe("formatGBP", () => {
     expect(formatGBP(1234.4)).toBe("£1,234");
   });
   it("handles missing values", () => {
-    expect(formatGBP(null)).toBe("—");
-    expect(formatGBP("abc")).toBe("—");
+    expect(formatGBP(null)).toBe("–");
+    expect(formatGBP("abc")).toBe("–");
   });
 });
 

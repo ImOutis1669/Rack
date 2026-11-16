@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { AnimatedShinyText } from "../components/magicui/animated-shiny-text";
+import { MagicCard } from "../components/magicui/magic-card";
+import { Button, Input } from "../components/ui";
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
@@ -14,30 +17,37 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       await api.login(password);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Couldn't log in");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <form onSubmit={submit} className="mx-auto mt-32 flex max-w-xs flex-col gap-3 px-4">
-      <h1 className="text-center text-2xl font-bold tracking-tight">Rack</h1>
-      <input
-        type="password"
-        autoComplete="current-password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="rounded-lg bg-neutral-900 px-3 py-2.5 ring-1 ring-white/15 focus:outline-none focus:ring-white/40"
-      />
-      <button
-        disabled={busy || !password}
-        className="rounded-lg bg-white py-2.5 font-semibold text-black disabled:opacity-50"
-      >
-        {busy ? "…" : "Log in"}
-      </button>
-      {error && <p className="text-center text-sm text-red-400">{error}</p>}
-    </form>
+    <div className="flex min-h-dvh items-center justify-center px-4 pt-safe pb-safe">
+      <div className="w-full max-w-sm rounded-sheet">
+        <MagicCard className="rounded-sheet" gradientSize={260}>
+          <form onSubmit={submit} className="flex flex-col gap-4 p-7">
+            <div className="mb-2 text-center">
+              <h1 className="font-display text-largetitle font-bold">Rack</h1>
+              <AnimatedShinyText className="mt-1 inline-block text-footnote">Second-hand, ranked by your taste</AnimatedShinyText>
+            </div>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Password"
+              aria-label="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="bg-background dark:bg-elevated"
+            />
+            <Button type="submit" variant="primary" size="lg" disabled={busy || !password}>
+              {busy ? "Logging in" : "Log in"}
+            </Button>
+            {error && <p className="text-center text-footnote text-danger">{error}</p>}
+          </form>
+        </MagicCard>
+      </div>
+    </div>
   );
 }

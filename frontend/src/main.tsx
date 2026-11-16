@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
+import { Toaster } from "./components/Toast";
 import "./index.css";
 import { Feed } from "./pages/Feed";
 import { Hunts } from "./pages/Hunts";
@@ -24,7 +25,7 @@ function App() {
   const qc = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: api.me });
 
-  if (me.isPending) return null;
+  if (me.isPending) return <div className="min-h-dvh bg-background" />;
   if (me.isError) {
     return <Login onSuccess={() => void qc.invalidateQueries()} />;
   }
@@ -34,14 +35,17 @@ function App() {
     void qc.invalidateQueries({ queryKey: ["me"] });
   };
   return (
-    <Routes>
-      <Route path="/" element={<Feed onLogout={onLogout} />} />
-      <Route path="/taste" element={<Taste onLogout={onLogout} />} />
-      <Route path="/saved" element={<Saved onLogout={onLogout} />} />
-      <Route path="/hunts" element={<Hunts onLogout={onLogout} />} />
-      <Route path="/settings" element={<Settings onLogout={onLogout} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Feed />} />
+        <Route path="/taste" element={<Taste />} />
+        <Route path="/saved" element={<Saved />} />
+        <Route path="/hunts" element={<Hunts />} />
+        <Route path="/settings" element={<Settings onLogout={onLogout} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster />
+    </>
   );
 }
 

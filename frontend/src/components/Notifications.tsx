@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { safeHref } from "../lib/safe";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { timeAgo } from "../lib/format";
 import { disablePush, enablePush, PUSH_HELP, pushState, type PushState } from "../lib/push";
+import { cn } from "../lib/utils";
+import { Button, Group, Row, Switch } from "./ui";
+
+const NAMES: Record<string, string> = { ntfy: "ntfy", telegram: "Telegram", webpush: "Push to this app" };
 
 function ThisDevice() {
   const qc = useQueryClient();
@@ -22,25 +25,16 @@ function ThisDevice() {
     onError: (e) => setError(String((e as Error).message)),
   });
   if (!state) return null;
-  const canToggle = state === "on" || state === "off";
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded bg-neutral-900 px-2.5 py-1.5 text-sm">
-      <span>This device</span>
-      <span className="text-xs text-neutral-400">{error ?? PUSH_HELP[state]}</span>
-      {canToggle && (
-        <button
-          className="ml-auto rounded bg-neutral-700 px-2 py-1 text-xs"
-          disabled={toggle.isPending}
-          onClick={() => toggle.mutate()}
-        >
-          {state === "on" ? "Turn off" : "Enable push here"}
-        </button>
+    <Row label="Notifications on this device" detail={error ?? PUSH_HELP[state]}>
+      {(state === "on" || state === "off") && (
+        <Switch checked={state === "on"} onChange={() => toggle.mutate()} label="Notifications on this device" />
       )}
-    </div>
+    </Row>
   );
 }
 
-/** Settings section: which alert channels are set up, a test button, and recent alerts. */
+/** Settings section: alert channels, this device's push, a test button and recent alerts. */
 export function Notifications() {
   const status = useQuery({ queryKey: ["notify-status"], queryFn: api.notifyStatus });
   const recent = useQuery({ queryKey: ["notify-recent"], queryFn: api.notifyRecent });
@@ -48,59 +42,39 @@ export function Notifications() {
   const anyOn = status.data?.some((c) => c.configured);
 
   return (
-    <section className="mt-5 max-w-2xl space-y-2">
-      <h2 className="text-sm font-semibold">Alerts</h2>
-      <p className="text-xs text-neutral-400">
-        Hunt matches and price drops on saved items are pushed here. Channels are set in <code>.env</code>.
-      </p>
-      <ul className="space-y-1 text-sm">
+    <>
+      <Group
+        title="Alerts"
+        footer="Hunt matches and price drops on saved items are sent to every channel that's set up. ntfy and Telegram are set in .env."
+      >
+        <ThisDevice />
         {status.data?.map((c) => (
-          <li key={c.name} className="flex items-start gap-2 rounded bg-neutral-900 px-2.5 py-1.5">
-            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${c.configured ? "bg-emerald-500" : "bg-neutral-600"}`} />
-            <span>
-              <span className="capitalize">{c.name}</span>
-              <span className="block break-all text-xs text-neutral-400">{c.detail}</span>
+          <Row key={c.name} label={NAMES[c.name] ?? c.name} detail={c.detail}>
+            <span className={cn("shrink-0 text-footnote", c.configured ? "text-accent" : "text-muted")}>
+              {c.configured ? "On" : "Off"}
             </span>
-          </li>
+          </Row>
         ))}
-      </ul>
-      <ThisDevice />
-      <div className="flex items-center gap-3">
-        <button
-          className="rounded bg-white px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-40"
-          disabled={!anyOn || test.isPending}
-          onClick={() => test.mutate()}
-        >
-          Send test alert
-        </button>
-        {test.data && (
-          <span className="text-xs text-neutral-300">
-            {Object.entries(test.data)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(" · ")}
-          </span>
-        )}
-      </div>
+        <Row>
+          <Button size="sm" disabled={!anyOn || test.isPending} onClick={() => test.mutate()}>
+            Send test alert
+          </Button>
+          {test.data && (
+            <span className="text-footnote text-muted">
+              {Object.entries(test.data)
+                .map(([k, v]) => `${NAMES[k] ?? k}: ${v}`)
+                .join(" · ")}
+            </span>
+          )}
+        </Row>
+      </Group>
       {!!recent.data?.length && (
-        <details className="text-xs text-neutral-400">
-          <summary className="cursor-pointer">Recent alerts ({recent.data.length})</summary>
-          <ul className="mt-2 space-y-1">
-            {recent.data.map((n, i) => (
-              <li key={i}>
-                <span className="text-neutral-500">{timeAgo(n.sent_at)}</span>{" "}
-                {n.url ? (
-                  <a href={safeHref(n.url)} target="_blank" rel="noopener noreferrer" className="underline">
-                    {n.title}
-                  </a>
-                ) : (
-                  n.title
-                )}{" "}
-                — {n.body}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <Group title="Recent alerts">
+          {recent.data.slice(0, 8).map((n, i) => (
+            <Row key={i} label={n.title} detail={`${n.body} · ${timeAgo(n.sent_at)}`} />
+          ))}
+        </Group>
       )}
-    </section>
+    </>
   );
 }

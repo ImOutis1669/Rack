@@ -47,6 +47,13 @@ On this Windows dev box uv lives at
 - Whole stack: `docker compose up --build`
 - Migrations: `cd backend && uv run alembic upgrade head`
 
+## Frontend design
+`DESIGN.md` is the UI source of truth (tokens, type, navigation, Magic UI usage). Shared pieces:
+`components/ui` (buttons, sheet, grouped rows, switch), `components/AppShell` (glass top bar, iPhone
+tab bar), `components/magicui/*` (adapted Magic UI, MIT), `lucide-react` icons only. Use `cn()` from
+`lib/utils` (tailwind-merge knows the custom text sizes and radii). SF Pro comes from the system font
+stack; never bundle Apple font files.
+
 ## Conventions
 - Small, typed, testable modules; parsers are pure and tested against `backend/tests/fixtures/<source>/`.
 - Secrets only in `.env`; keep `.env.example` in sync.

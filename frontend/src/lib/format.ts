@@ -5,9 +5,9 @@ const gbp = new Intl.NumberFormat("en-GB", {
 });
 
 export function formatGBP(value: string | number | null | undefined): string {
-  if (value == null || value === "") return "—";
+  if (value == null || value === "") return "–";
   const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? gbp.format(n) : "—";
+  return Number.isFinite(n) ? gbp.format(n) : "–";
 }
 
 export function timeAgo(iso: string | null, now: Date = new Date()): string {
