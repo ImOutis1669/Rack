@@ -32,7 +32,8 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
 On this Windows dev box uv lives at
 `%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe`
 (not on PATH in agent shells; prepend it).
-- Backend tests: `cd backend && uv run pytest` (`-m "not db"` skips Docker-backed tests,
+- Backend tests: `cd backend && uv run python -m pytest` (Windows Application Control now blocks the
+  generated `pytest.exe` too, since 2026-11-16) (`-m "not db"` skips Docker-backed tests,
   `-m "not slow"` skips the real CLIP test)
 - Dev server: `cd backend && uv run uvicorn rack.api.main:app --reload` + `cd frontend && npm run dev`
   (Vite proxies `/api` to :8000; set `RACK_COOKIE_SECURE=false` for http dev)
