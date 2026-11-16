@@ -19,6 +19,7 @@ import type {
   TasteKind,
   Visit,
 } from "./types";
+import { clearSnapshots } from "../lib/snapshot";
 
 export class UnauthorizedError extends Error {}
 
@@ -33,7 +34,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...(init.headers ?? {}),
     },
   });
-  if (res.status === 401) throw new UnauthorizedError("Not logged in");
+  if (res.status === 401) {
+    clearSnapshots(); // never show a signed-out device someone's last feed
+    throw new UnauthorizedError("Not logged in");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? "");
@@ -61,8 +65,14 @@ export function feedQueryString(params: FeedParams, cursor?: string | null): str
 
 export const api = {
   login: (password: string) => request<void>("/api/auth/login", json("POST", { password })),
-  logout: () => request<void>("/api/auth/logout", json("POST")),
-  logoutAll: () => request<void>("/api/auth/logout-all", json("POST")),
+  logout: () => {
+    clearSnapshots();
+    return request<void>("/api/auth/logout", json("POST"));
+  },
+  logoutAll: () => {
+    clearSnapshots();
+    return request<void>("/api/auth/logout-all", json("POST"));
+  },
   me: () => request<{ authenticated: boolean }>("/api/auth/me"),
   feed: (params: FeedParams, cursor?: string | null) =>
     request<FeedPage>(`/api/feed?${feedQueryString(params, cursor)}`),

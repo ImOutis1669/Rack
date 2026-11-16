@@ -3,7 +3,7 @@ import { ArrowDownWideNarrow, Check, ChevronDown, SearchX, SlidersHorizontal, Sp
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import { CATEGORIES, type Category, type FeedParams, type Sort, type Source } from "../api/types";
+import { CATEGORIES, type Category, type FeedPage, type FeedParams, type Sort, type Source } from "../api/types";
 import { PageShell } from "../components/AppShell";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { RefreshButton } from "../components/RefreshButton";
@@ -11,6 +11,7 @@ import { SourcesButton } from "../components/SourcesButton";
 import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton, Switch } from "../components/ui";
 import { SOURCE_LABEL } from "../lib/format";
 import { SeenBatcher } from "../lib/seen";
+import { isDefaultFeed, loadSnapshot, saveSnapshot } from "../lib/snapshot";
 
 const SOURCES: Source[] = ["ebay", "vinted", "grailed", "vestiaire"];
 const SORTS: [Sort, string][] = [
@@ -51,7 +52,17 @@ export function Feed() {
     getNextPageParam: (last) => last.next_cursor,
     enabled: visit.isSuccess || visit.isError,
     staleTime: Infinity, // ranking order must not reshuffle under you while scrolling
+    // instant start: the last default feed shows while this one loads
+    placeholderData: () => {
+      if (!isDefaultFeed(params, newOnly)) return undefined;
+      const first = loadSnapshot<FeedPage>("feed");
+      return first ? { pages: [first], pageParams: [null] } : undefined;
+    },
   });
+  const firstPage = query.isPlaceholderData ? undefined : query.data?.pages[0];
+  useEffect(() => {
+    if (firstPage && isDefaultFeed(params, newOnly)) saveSnapshot("feed", firstPage);
+  }, [firstPage, params, newOnly]);
 
   const batcher = useMemo(() => new SeenBatcher(api.seen), []);
   useEffect(() => {

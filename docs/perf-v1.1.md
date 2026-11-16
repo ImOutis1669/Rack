@@ -28,3 +28,15 @@ doesn't draw frames, so scroll smoothness is measured on the iPhone with `?perf=
 | First photo, warm (thumbnails cached) | 210 ms | 154 ms | pane, `?perf=1` |
 | First photo, first ever view of a photo | | 330–1,250 ms | the thumbnail is made on that request, then cached |
 | iPhone: first tile / first photo / scroll | 439 / 1,061 ms, 62 fps | to measure | `?perf=1` |
+
+## Step 2: instant start
+
+The feed's cache key includes the visit start time (it changes every open), so TanStack Query's
+persistence would never match. Instead the first page of the default feed and the Saved list are
+kept as a small snapshot (`lib/snapshot.ts`, localStorage, 24 h, cleared on logout / log out
+everywhere / any 401) and shown as placeholder data while fresh results load. No new dependency.
+
+| Measure | Before | After | How |
+|---|---|---|---|
+| First tile, warm reload | 152–207 ms | **71 ms** (fresh feed arrives at 206 ms) | pane, `?perf=1` |
+| Snapshot size | | 35 kB | localStorage |
