@@ -2,6 +2,18 @@
 
 The source of truth for UI decisions. Read this before changing the frontend.
 
+## Design reference
+From v1.1 (2026-11-16) all UI work follows the project skill
+**`.claude/skills/rack-apple-design`**, which the user chose to build from the best of both
+candidates:
+- Emil Kowalski's web-first `apple-design` (motion, springs, materials, typography craft);
+- the iOS 26 rules from `claude-code-apple-skills` (Liquid Glass, shapes, scroll edge effects,
+  SF text styles and Dynamic Type), translated from SwiftUI to CSS;
+- the "tells" catalogue from `mobile-taste-skill`, adapted for the web.
+
+Where this file and the skill disagree, the skill wins unless a decision below says otherwise.
+The open conflicts with the v1.0 design are listed at the end of this file.
+
 ## App read
 A personal second-hand fashion finder for one person, used daily on an iPhone (installed to the
 home screen) and a Windows PC. The language is calm, photo-first and Apple-native: the
@@ -93,3 +105,18 @@ up in `--accent` green and down in `--danger` red. Tapping the active arrow clea
 
 ## Copy
 Plain and short. No em dashes in visible strings, no exclamation marks, no "Welcome back".
+
+## Conflicts with the design skill (v1.0 → v1.1)
+Found when adopting `rack-apple-design`. Each is fixed when the feature that touches it is built,
+and ticked off here.
+
+| # | v1.0 | Skill says | Fix in |
+|---|---|---|---|
+| 1 | Body and Headline 15px, Large title 32px | iOS text styles: Body 17, Headline 17 semibold, Subheadline 15, Large Title 34 | A type pass: decide with the user (17px body makes the feed less dense) |
+| 2 | Fixed sizes; Dynamic Type is ignored | `font: -apple-system-body` on `html` so `rem` follows the iPhone text-size setting | Type pass, together with #1 |
+| 3 | Top bar ends in a 1px hairline (`AppShell` header) | Soft scroll-edge fade, no hard divider | Liquid Glass dock and top bar |
+| 4 | Tab bar is plain glass with a `ring-border` outline | Liquid Glass: specular top line, bright rim, soft shadow, no decorated border; active pill slides with a spring | Liquid Glass dock and top bar |
+| 5 | No `prefers-reduced-transparency` or `prefers-contrast` handling for glass | Solid fallbacks for both | Liquid Glass dock and top bar |
+| 6 | Sheet spring `damping 34, stiffness 380`; menus fade in a 0.12s tween | Springs in Apple terms (`bounce`/`duration`): default `bounce 0, 0.35s`, sheets `bounce 0.2, 0.3s`; menus scale from their trigger | When the sheets are restyled (minimal Wardrobe) |
+| 7 | Wardrobe tiles carry inputs and buttons | Content tiles are photo + text; editing lives in a sheet | Minimal Wardrobe |
+

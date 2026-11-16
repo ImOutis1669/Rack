@@ -49,7 +49,8 @@ On this Windows dev box uv lives at
 - Migrations: `cd backend && uv run alembic upgrade head`
 
 ## Frontend design
-`DESIGN.md` is the UI source of truth (tokens, type, navigation, Magic UI usage). Shared pieces:
+`DESIGN.md` is the UI source of truth (tokens, type, navigation, Magic UI usage), guided by the
+project skill `.claude/skills/rack-apple-design` (combined from three MIT design skills). Shared pieces:
 `components/ui` (buttons, sheet, grouped rows, switch), `components/AppShell` (glass top bar, iPhone
 tab bar), `components/magicui/*` (adapted Magic UI, MIT), `lucide-react` icons only. Use `cn()` from
 `lib/utils` (tailwind-merge knows the custom text sizes and radii). SF Pro comes from the system font
