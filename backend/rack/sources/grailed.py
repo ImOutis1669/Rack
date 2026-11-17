@@ -15,6 +15,7 @@ wardrobe resale estimates and trends (pricing/resale.py, pricing/trend.py), keep
 `parse_sold` never reads the `user` (seller) object.
 """
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,6 +24,7 @@ from typing import Any
 
 import httpx
 
+from rack.parsing.categories import shoe_sizes
 from rack.pricing.fx import current_rates, to_gbp
 from rack.sources.base import (
     Category,
@@ -50,6 +52,76 @@ CATEGORY_FACETS: dict[Category, list[str]] = {
     # gloves_scarves; womenswear has its own womens_accessories / womens_jewelry.
     Category.ACCESSORIES: ["category:accessories"],
 }
+# Grailed category whose sizes Rack can name, per Rack category (tailoring stays unrestricted).
+SIZED_CATEGORY = {
+    Category.TOPS: "tops",
+    Category.TROUSERS: "bottoms",
+    Category.SHOES: "footwear",
+    Category.OUTERWEAR: "outerwear",
+}
+US_SHOE = r"(?:[3-9]|1[0-6])(?:\.5)?"  # US men's 3-16; anything else (e.g. "43") is left as is
+LETTER_SIZES = {"xxs", "xs", "s", "m", "l", "xl", "xxl", "xxxl"}
+_LETTER_ALIASES = {"2xs": "xxs", "2xl": "xxl", "3xl": "xxxl"}
+
+
+def us_shoe_size(category: object, size: object) -> str | None:
+    """Grailed's shoe sizes are US (US 10 = UK 9 = EU 43): say so, or Rack would read a bare
+    "10" as UK 10. Other categories' sizes pass through."""
+    if size is None:
+        return None
+    text = str(size)[:64]
+    if str(category) == "footwear" and re.fullmatch(US_SHOE, text):
+        return f"US {text}"
+    return text
+
+
+def _num(v: float) -> str:
+    return str(int(v)) if v == int(v) else str(v)
+
+
+def size_values(category: Category, wanted: Sequence[str]) -> list[str] | None:
+    """Grailed `category_size` values for the sizes a profile wants, or None when any of them
+    can't be named exactly (then that category isn't restricted at all: never hide by guessing)."""
+    grailed = SIZED_CATEGORY.get(category)
+    if grailed is None or not wanted:
+        return None
+    out: list[str] = []
+    for w in wanted:
+        token = re.sub(r"[^a-z0-9.]", "", w.lower().replace("size", ""))
+        token = _LETTER_ALIASES.get(token, token)
+        if category in (Category.TOPS, Category.OUTERWEAR) and token in LETTER_SIZES:
+            values = [token]
+        elif category == Category.TROUSERS and (m := re.fullmatch(r"w?(\d{2})(?:l\d{2})?", token)):
+            values = [m.group(1)] if 24 <= int(m.group(1)) <= 46 else []
+        elif category == Category.SHOES and (readings := shoe_sizes(w)):
+            values = []
+            for family, eu in readings:  # as EU; US = EU - 33 (see parsing.categories)
+                us = eu - 33
+                # an EU size matches US/UK within half a size, as in size_matches
+                for v in (us,) if family == "uk" else (us - 0.5, us, us + 0.5):
+                    values.append(_num(v))
+        else:
+            values = []
+        if not values:
+            return None
+        out += [f"category_size:{grailed}.{v}" for v in values if v not in out]
+    return list(dict.fromkeys(out))
+
+
+def category_group(category: Category, sizes: dict[Category, list[str]]) -> list[str]:
+    """One OR facet group: the category, narrowed to the wanted sizes where Grailed can."""
+    cats = [c for c in Category if c != Category.ANY] if category == Category.ANY else [category]
+    group: list[str] = []
+    for c in cats:
+        sized = size_values(c, sizes.get(c, []))
+        for facet in CATEGORY_FACETS[c]:
+            if sized and facet == f"category:{SIZED_CATEGORY[c]}":
+                group += sized
+            else:
+                group.append(facet)
+    return group
+
+
 CONDITIONS = {
     "is_new": "New",
     "is_gently_used": "Gently used",
@@ -109,7 +181,7 @@ def parse_hit(hit: dict[str, Any]) -> Listing | None:
         price=price,
         currency="USD",
         price_gbp=to_gbp(price, "USD"),
-        size=str(hit["size"]) if hit.get("size") is not None else None,
+        size=us_shoe_size(hit.get("category"), hit.get("size")),
         condition=CONDITIONS.get(str(hit.get("condition"))),
         images=[image] if image else [],
         seller=Seller(
@@ -171,7 +243,7 @@ def parse_sold(hit: dict[str, Any]) -> SoldItem | None:
         title=str(hit["title"])[:500],
         brand=" × ".join(designers) or hit.get("designer_names"),
         category=GRAILED_CATEGORIES.get(str(hit.get("category")), Category.ANY),
-        size=str(hit["size"])[:64] if hit.get("size") is not None else None,
+        size=us_shoe_size(hit.get("category"), hit.get("size")),
         sold_price_gbp=gbp,
         shipping_gbp=to_gbp(shipping, "USD") if shipping is not None else None,
         sold_at=sold_at,
@@ -209,7 +281,9 @@ def build_sold_body(
 
 def build_body(query: SearchQuery) -> dict[str, Any]:
     facets: list[list[str]] = [["department:menswear"]]
-    if CATEGORY_FACETS[query.category]:
+    if query.sizes:
+        facets.append(category_group(query.category, query.sizes))
+    elif CATEGORY_FACETS[query.category]:
         facets.append(CATEGORY_FACETS[query.category])
     body: dict[str, Any] = {
         "query": query.text,

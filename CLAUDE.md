@@ -205,6 +205,13 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
   - Vestiaire Collective was removed in v1.2 at the user's request (it ran through a paid Apify
     actor because the site blocks Rack). Migration 0018 cleared its data. Only eBay, Vinted and
     Grailed remain; don't re-add it without asking.
+  - Sizes: Grailed shoe sizes are US; the adapter stores them as "US 10" (`grailed.us_shoe_size`,
+    migration 0022 fixed stored rows). `parsing.categories.size_matches` compares shoe sizes that
+    name their system by size, never by the bare number ("US 13" is not "UK 13"). With "size
+    must match", queries carry `SearchQuery.sizes` and Grailed narrows its category facet to
+    `category_size:<cat>.<size>` (`grailed.category_group`); a size it can't name exactly leaves
+    that category unrestricted. Vinted's search page has no size ids to map (checked live
+    2026-11-17) and eBay can't filter by size: both still filter after fetching.
   - Rack itself does no CAPTCHA solving, fingerprint spoofing, browser UA impersonation or proxying.
 - Dedupe (`ranking/dedupe.py`): pHash ≤ 6 bits AND CLIP ≥ 0.96 AND compatible brands (checked per
   group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:

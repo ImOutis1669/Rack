@@ -25,6 +25,9 @@ class SearchQuery(BaseModel):
     size: str | None = None
     limit: int = 50
     newest_first: bool = True
+    # Only these sizes, per category ("size must match" profiles, the Refresh button). Categories
+    # not listed stay unrestricted; a source that can't filter by size ignores it (Grailed can).
+    sizes: dict[Category, list[str]] = Field(default_factory=dict)
 
 
 class Seller(BaseModel):

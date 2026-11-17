@@ -208,7 +208,14 @@ def size_matches(listing_size: str | None, wanted: list[str]) -> bool | None:
     if not listing_size or not wanted:
         return None
     have = size_tokens(listing_size)
-    if any(size_tokens(w) & have for w in wanted):
-        return True
     shoes = shoe_sizes(listing_size)
-    return bool(shoes) and any(_shoes_match(shoes, shoe_sizes(w)) for w in wanted)
+    named = bool(_SHOE_PREFIXED.search(listing_size))
+    for w in wanted:
+        if shoes and (ws := shoe_sizes(w)):
+            if _shoes_match(shoes, ws):
+                return True
+            if named or _SHOE_PREFIXED.search(w):
+                continue  # a shoe size that names its system: "US 13" is not "UK 13"
+        if size_tokens(w) & have:
+            return True
+    return False

@@ -112,17 +112,21 @@ def tailored_streams(inp: PlannerInput) -> dict[str, list[SearchQuery]]:
     categories (category-major, so a batch spans designers), wishlist texts, then liked,
     curious and adjacent designers."""
     p = inp.profile
+    # "Size must match": ask the sources that can filter by size for those sizes only.
+    sizes = {c: list(v) for c, v in p.sizes.items() if v} if p.strict_size else {}
     loved = [n for n, w in inp.designers.items() if w == "love"]
     if p.categories:
         love = [
-            SearchQuery(text=n, category=c, max_price_gbp=p.budget.max_for(c))
+            SearchQuery(text=n, category=c, max_price_gbp=p.budget.max_for(c), sizes=sizes)
             for c in p.categories
             for n in loved
         ]
     else:
-        love = [SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp) for n in loved]
+        love = [
+            SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp, sizes=sizes) for n in loved
+        ]
     wish = [
-        SearchQuery(text=t.strip(), max_price_gbp=p.budget.default_max_gbp)
+        SearchQuery(text=t.strip(), max_price_gbp=p.budget.default_max_gbp, sizes=sizes)
         for t in inp.wishlist_texts
         if t.strip()
     ]
@@ -133,7 +137,9 @@ def tailored_streams(inp: PlannerInput) -> dict[str, list[SearchQuery]]:
             for a in inp.adjacent.get(name, []):
                 if a.lower() not in known and a not in more_names:
                     more_names.append(a)
-    more = [SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp) for n in more_names]
+    more = [
+        SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp, sizes=sizes) for n in more_names
+    ]
     return {"love": love, "wish": wish, "more": more}
 
 
