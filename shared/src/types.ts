@@ -275,3 +275,72 @@ export interface Me {
   display_name: string;
   role: "owner" | "friend";
 }
+
+/** Your account as the Profile sheet shows it (`GET /api/me`, v2.1). */
+export interface Account {
+  id: number;
+  username: string;
+  display_name: string;
+  role: "owner" | "friend";
+  created_at: string;
+  /** `/api/me/avatar?v=N`, or null: show the initials placeholder */
+  avatar: string | null;
+}
+
+/** The owner's view of an account (`/api/admin/users`). */
+export interface AdminUser {
+  id: number;
+  username: string;
+  display_name: string;
+  role: "owner" | "friend";
+  created_at: string;
+  disabled: boolean;
+  last_active_at: string | null;
+  avatar: string | null;
+  hunts: number;
+  ebay_searches_today: number;
+}
+
+export interface Invite {
+  id: number;
+  note: string | null;
+  created_at: string;
+  expires_at: string;
+  status: "open" | "used" | "revoked" | "expired";
+  used_by: string | null;
+}
+
+/** A new invite: the code and link are shown once (only a hash is stored). */
+export interface CreatedInvite extends Invite {
+  code: string;
+  url: string;
+}
+
+export type SearchSort = "best" | "newest" | "price_asc" | "price_desc";
+
+export interface SearchParams {
+  q: string;
+  sort: SearchSort;
+  sources: Source[];
+  category?: Category | null;
+  size?: string | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+}
+
+export interface SearchPage {
+  items: Listing[];
+  next_cursor: string | null;
+}
+
+/** A live "search the marketplaces now" (`/api/search/live`). */
+export interface LiveSearch {
+  id: number;
+  query: string;
+  status: "queued" | "running" | "done" | "error";
+  /** source -> number found, or "failed" / "not set up" */
+  results: Record<string, number | string>;
+  created_at: string;
+  finished_at: string | null;
+  items: Listing[];
+}

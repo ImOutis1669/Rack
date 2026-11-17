@@ -17,9 +17,11 @@ uploads/
 .DS_Store
 *.tsbuildinfo
 
-# Neue Montreal (Pangram Pangram): free for personal use, never redistribute. The user supplies the files.
+# Owner-only licensed assets (v2.1): Neue Montreal (Pangram Pangram) and Basil Icons (Craftwork)
+# from the user's own copies, served by the API to the owner only. Never commit or redistribute.
+frontend/private/*
+!frontend/private/README.md
 frontend/public/fonts/
-# Basil Icons (Craftwork): generated from the user's own pack, never redistribute.
 frontend/src/components/icons/basil.generated.ts
 # iOS app (mobile/): the user's own licensed font and icon files. Never committed (public repo);
 # CI gets them from an encrypted GitHub secret. Only the README in this folder is tracked.

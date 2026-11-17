@@ -131,7 +131,17 @@ Listing sheet (iOS step 5, checked on the user's iPhone):
 ## Navigation
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.
 - On iPhone they're a bottom glass tab bar; on desktop a segmented control in the top glass bar.
-- Settings sits behind the gear in the header, not in a tab.
+- **Profile (v2.1)** replaces the settings gear: your photo, or your initials on `fill-strong`
+  until you set one, at the right end of every top bar. It opens the Profile sheet: an 88px
+  photo with a camera badge (tap: choose or remove), name, @username, member since; then a Name
+  field, Settings / Sources / Friends and invites (owner), Security (change password, log out,
+  log out all devices in red), Privacy and, for friends, Delete my account (red, last). Sub-views
+  push inside the same sheet with a "‹ Profile" back button, never a sheet on a sheet. Inside
+  sheets, grouped rows use `elevated` in dark mode so they stand off the sheet's `surface`.
+- **Search (v2.1)**: a magnifier in the feed's top bar opens `/search`: a search field and chips
+  (sort, filters, sources) in the bar, recent searches when empty, results in the same grid as
+  the feed, and a "Search eBay, Vinted and Grailed now" capsule with "Save as hunt" beside it.
+- Settings (taste, sizes, budget, alerts, hidden) is reached from Profile.
 - The feed is titled **Rack** (the app name) on iPhone; on desktop the "Rack" wordmark in the bar
   is its title and the feed has no large heading. The sort menu keeps "For you".
 
@@ -182,8 +192,11 @@ There are no gradients, and no indigo.
 SF Pro on iPhone/Mac, Segoe UI on Windows.
 - **Licence:** free for personal use, never redistributed, and the repo is public, so the files
   are **not in git**. The user puts `neuemontreal-{regular,medium,bold}.otf` in
-  `frontend/public/fonts/` (git-ignored); Docker builds them in. Missing files fail quietly and
-  the system font takes over (`font-display: swap`). Apple's fonts are never bundled either.
+  `frontend/private/fonts/` (git-ignored). **Owner only (v2.1):** serving the font to friends
+  would be distribution, so the API hands it only to the owner's account after login
+  (`/api/owner-assets/fonts`) and the app adds the @font-face rules then. Friends, and the login
+  and sign-up screens, use the system stack. Missing files fail quietly and the system font
+  takes over (`font-display: swap`). Apple's fonts are never bundled either.
 - **Weights:** the pack has 400 / 500 / 700. `font-semibold` (600) uses Medium, so labels stay
   lighter than titles; 700+ is Bold.
 - **Numbers:** Neue Montreal v1 has no tabular figures. `.tabular` uses `--font-tabular`:
@@ -269,7 +282,9 @@ From v1.2: **Basil Icons** (Craftwork, free pack), always through `components/ic
 - **Licence:** Craftwork allows copying icons into an app's code but not sharing the files, and
   the repo is public. So the artwork is never committed: `basil-map.json` names the file per role,
   `npm run icons -- "<pack>/svg"` (`scripts/basil-icons.mjs`) writes the git-ignored
-  `basil.generated.ts` from the user's own copy, and without it every icon falls back to lucide.
+  `frontend/private/basil.json` from the user's own copy. **Owner only (v2.1):** the app loads it
+  from `/api/owner-assets/icons.json` after an owner login; friends always see lucide, and
+  without the file everyone does.
 - **lucide (stroke 1.5, matching Basil's line)** is kept where Basil has nothing close: Wardrobe
   (shirt), Sources (radio), sparkles, text, link, external link, "⋯", and the vote arrows (Basil's
   arrows have no filled state). The feed's sort chip keeps v1's `ArrowDownWideNarrow` (user's

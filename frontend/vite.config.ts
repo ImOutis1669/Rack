@@ -12,7 +12,8 @@ export default defineConfig({
     alias: { "@rack/shared": fileURLToPath(new URL("../shared/src", import.meta.url)) },
   },
   server: {
-    proxy: { "/api": "http://localhost:8000" },
+    // RACK_API_PROXY: point the dev server at another API (e.g. a scratch copy on :8001)
+    proxy: { "/api": process.env.RACK_API_PROXY ?? "http://localhost:8000" },
   },
   test: {
     environment: "node",

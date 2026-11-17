@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyHunt, huntFromListing, huntSummary, sizesHint } from "./hunts";
+import { emptyHunt, FRIEND_MIN_INTERVAL, huntFromListing, huntSummary, intervalsFor, sizesHint, withinLimits } from "./hunts";
 
 describe("huntFromListing", () => {
   it("uses brand plus distinctive title words and a 20% price margin", () => {
@@ -42,5 +42,15 @@ describe("strict sizing (feature 6)", () => {
     expect(sizesHint(true, true)).toMatch(/^Only listings with one of these sizes/);
     expect(sizesHint(false, true)).toMatch(/^Listings with no size still match/);
     expect(sizesHint(true, false)).toMatch(/^Add sizes to filter by size/);
+  });
+});
+
+describe("friends' hunt limits (v2.1)", () => {
+  it("offers friends hourly or slower only, and raises a faster prefill", () => {
+    expect(intervalsFor(true).map(([m]) => m)).toContain(5);
+    expect(intervalsFor(false).every(([m]) => m >= FRIEND_MIN_INTERVAL)).toBe(true);
+    expect(withinLimits({ ...emptyHunt(), interval_minutes: 30 }, false).interval_minutes).toBe(60);
+    expect(withinLimits({ ...emptyHunt(), interval_minutes: 30 }, true).interval_minutes).toBe(30);
+    expect(withinLimits({ ...emptyHunt(), interval_minutes: 180 }, false).interval_minutes).toBe(180);
   });
 });

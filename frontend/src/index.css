@@ -1,52 +1,8 @@
 @import "tailwindcss";
 
-/* Neue Montreal (Pangram Pangram): free for personal use, never redistributed, so the files are
-   NOT in git. The user puts them in frontend/public/fonts/ (git-ignored); if they're missing the
-   requests fail quietly and the system stack takes over. swap: text shows at once. */
-@font-face {
-  font-family: "Neue Montreal";
-  src: url("/fonts/neuemontreal-regular.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Neue Montreal";
-  src: url("/fonts/neuemontreal-medium.otf") format("opentype");
-  font-weight: 500 600;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Neue Montreal";
-  src: url("/fonts/neuemontreal-bold.otf") format("opentype");
-  font-weight: 700 900;
-  font-style: normal;
-  font-display: swap;
-}
-/* The same faces minus digits and the , . : separators, for .tabular: those characters fall
-   through to the system font, which has tabular figures (Neue Montreal v1 doesn't). */
-@font-face {
-  font-family: "Rack Tabular";
-  src: url("/fonts/neuemontreal-regular.otf") format("opentype");
-  font-weight: 400;
-  font-display: swap;
-  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
-}
-@font-face {
-  font-family: "Rack Tabular";
-  src: url("/fonts/neuemontreal-medium.otf") format("opentype");
-  font-weight: 500 600;
-  font-display: swap;
-  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
-}
-@font-face {
-  font-family: "Rack Tabular";
-  src: url("/fonts/neuemontreal-bold.otf") format("opentype");
-  font-weight: 700 900;
-  font-display: swap;
-  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
-}
+/* Neue Montreal (Pangram Pangram, personal-use licence) is owner-only from v2.1: its @font-face
+   rules are added after an owner login by lib/ownerAssets.ts, from /api/owner-assets/fonts.
+   Everyone else (and the login screen) uses the system stack below. */
 
 /* Dark mode follows the system (iPhone / Windows setting). */
 @custom-variant dark (@media (prefers-color-scheme: dark));

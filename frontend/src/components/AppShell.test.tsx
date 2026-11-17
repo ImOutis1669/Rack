@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -9,11 +10,13 @@ const css: string = readFileSync(new URL("../index.css", import.meta.url), "utf8
 
 function render(path: string): string {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={[path]}>
-      <PageShell title="Saved">
-        <p>content</p>
-      </PageShell>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <PageShell title="Saved">
+          <p>content</p>
+        </PageShell>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -24,6 +27,15 @@ function renderTabs(path: string): string {
     </MemoryRouter>,
   );
 }
+
+describe("profile (v2.1)", () => {
+  it("the top bar has the avatar button where the settings gear was", () => {
+    const html = render("/saved");
+    expect(html).toContain('data-testid="avatar-button"');
+    expect(html).toContain('aria-label="Profile"');
+    expect(html).not.toContain('aria-label="Settings"');
+  });
+});
 
 describe("tab chrome lives at app level (so the pill slides between pages)", () => {
   it("pages don't draw the dock or the desktop tabs themselves", () => {
@@ -64,11 +76,13 @@ describe("Liquid Glass chrome", () => {
 describe("page titles", () => {
   const shell = (desktopTitle?: boolean) =>
     renderToStaticMarkup(
-      <MemoryRouter initialEntries={["/"]}>
-        <PageShell title="Rack" desktopTitle={desktopTitle}>
-          <p>feed</p>
-        </PageShell>
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/"]}>
+          <PageShell title="Rack" desktopTitle={desktopTitle}>
+            <p>feed</p>
+          </PageShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
   it("leaves out the desktop heading on the feed, so 'Rack' isn't shown twice", () => {

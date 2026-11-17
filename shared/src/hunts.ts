@@ -62,3 +62,15 @@ export function huntSummary(h: HuntInput): string {
   bits.push(INTERVALS.find(([m]) => m === h.interval_minutes)?.[1] ?? `every ${h.interval_minutes} min`);
   return bits.join(" · ");
 }
+
+/** Friends' hunts run at most hourly (the server's RACK_FRIEND_MIN_HUNT_MINUTES, v2.1). */
+export const FRIEND_MIN_INTERVAL = 60;
+
+export function intervalsFor(owner: boolean): [number, string][] {
+  return owner ? INTERVALS : INTERVALS.filter(([m]) => m >= FRIEND_MIN_INTERVAL);
+}
+
+/** A hunt as this person may save it: friends' intervals are raised to the minimum. */
+export function withinLimits(h: HuntInput, owner: boolean): HuntInput {
+  return owner || h.interval_minutes >= FRIEND_MIN_INTERVAL ? h : { ...h, interval_minutes: FRIEND_MIN_INTERVAL };
+}

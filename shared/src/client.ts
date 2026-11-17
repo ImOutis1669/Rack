@@ -1,5 +1,12 @@
 import type {
+  Account,
+  AdminUser,
+  CreatedInvite,
+  Invite,
+  LiveSearch,
   Me,
+  SearchPage,
+  SearchParams,
   Category,
   Comparable,
   Designer,
@@ -20,8 +27,20 @@ import type {
   TasteKind,
   Visit,
 } from "./types";
+import { retryAfterSeconds, searchQueryString } from "./search";
 
 export class UnauthorizedError extends Error {}
+
+/** Any other failed request: the API's message, its HTTP status and, for 429, how long to wait. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfter: number | null = null,
+  ) {
+    super(message);
+  }
+}
 
 /** How one app talks to the API. The web app uses its session cookie; the iOS app a bearer token. */
 export interface ApiConfig {
@@ -85,7 +104,7 @@ export function createApi(cfg: ApiConfig) {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       const detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? "");
-      throw new Error(detail || `HTTP ${res.status}`);
+      throw new ApiError(detail || `HTTP ${res.status}`, res.status, retryAfterSeconds(res.headers.get("Retry-After")));
     }
     return (res.status === 204 ? undefined : await res.json()) as T;
   }
@@ -111,6 +130,45 @@ export function createApi(cfg: ApiConfig) {
       return request<void>("/api/auth/logout-all", json("POST"));
     },
     me: () => request<Me>("/api/auth/me"),
+
+    // --- your account (v2.1) ---
+    account: () => request<Account>("/api/me"),
+    updateAccount: (display_name: string) => request<Account>("/api/me", json("PATCH", { display_name })),
+    uploadAvatar: (file: UploadFile) => {
+      const form = new FormData();
+      form.append("file", file as Blob);
+      return request<Account>("/api/me/avatar", { method: "PUT", body: form });
+    },
+    removeAvatar: () => request<Account>("/api/me/avatar", json("DELETE")),
+    /** Friends only. Ends with no session: clear everything on the device afterwards. */
+    deleteAccount: async (password: string) => {
+      await request<void>("/api/me", json("DELETE", { password }));
+      await cfg.onSignedOut?.();
+    },
+
+    // --- owner only ---
+    adminUsers: () => request<AdminUser[]>("/api/admin/users"),
+    disableUser: (id: number) => request<AdminUser>(`/api/admin/users/${id}/disable`, json("POST")),
+    enableUser: (id: number) => request<AdminUser>(`/api/admin/users/${id}/enable`, json("POST")),
+    deleteUser: (id: number) => request<void>(`/api/admin/users/${id}`, json("DELETE")),
+    invites: () => request<Invite[]>("/api/admin/invites"),
+    createInvite: (note?: string) =>
+      request<CreatedInvite>("/api/admin/invites", json("POST", { note: note?.trim() || null })),
+    revokeInvite: (id: number) => request<void>(`/api/admin/invites/${id}`, json("DELETE")),
+
+    // --- search across all sources ---
+    search: (p: SearchParams, cursor?: string | null) =>
+      request<SearchPage>(`/api/search?${searchQueryString(p, cursor)}`),
+    liveSearch: (q: string, opts: { category?: Category | null; maxPrice?: number | null } = {}) =>
+      request<LiveSearch>(
+        "/api/search/live",
+        json("POST", {
+          q,
+          category: opts.category && opts.category !== "any" ? opts.category : "any",
+          max_price_gbp: opts.maxPrice ?? null,
+        }),
+      ),
+    liveSearchStatus: (id: number) => request<LiveSearch>(`/api/search/live/${id}`),
     feed: (params: FeedParams, cursor?: string | null) =>
       request<FeedPage>(`/api/feed?${feedQueryString(params, cursor)}`),
     health: () => request<SourceHealth[]>("/api/sources/health"),

@@ -1,10 +1,11 @@
 import { LayoutGroup, m, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { pillTransition } from "../lib/motion";
 import { useScrolled } from "../lib/useScrolled";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icons/Icon";
+import { AvatarButton } from "./profile/AvatarButton";
 
 export const TABS: readonly { to: string; label: string; icon: IconName }[] = [
   { to: "/", label: "Feed", icon: "feed" },
@@ -145,7 +146,6 @@ export function PageShell({
   /** Desktop large heading under the bar. Off for the feed, whose title is the "Rack" wordmark. */
   desktopTitle?: boolean;
 }) {
-  const { pathname } = useLocation();
   const scrolled = useScrolled();
   return (
     <div className={cn("min-h-dvh", grouped && "bg-surface dark:bg-background")}>
@@ -159,11 +159,7 @@ export function PageShell({
           <div className="flex-1" />
           <div className="-mr-2 flex items-center">
             {actions}
-            {pathname !== "/settings" && (
-              <Link to="/settings" aria-label="Settings" title="Settings" className="press inline-flex size-11 items-center justify-center rounded-full hover:bg-fill">
-                <Icon name="settings" size={22} />
-              </Link>
-            )}
+            <AvatarButton />
           </div>
         </div>
         {below && <div className={cn("mx-auto px-4 pb-2.5 md:px-6", wide ? "max-w-7xl" : "max-w-3xl")}>{below}</div>}

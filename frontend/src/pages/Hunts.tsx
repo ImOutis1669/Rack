@@ -8,7 +8,9 @@ import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { NumberTicker } from "../components/magicui/number-ticker";
 import { Button, Chip, EmptyState, Field, IconButton, Input, Menu, Select, Sheet, Switch } from "../components/ui";
 import { SOURCE_LABEL, timeAgo } from "@rack/shared/format";
-import { emptyHunt, huntSummary, INTERVALS, sizesHint } from "@rack/shared/hunts";
+import { emptyHunt, huntSummary, intervalsFor, sizesHint, withinLimits } from "@rack/shared/hunts";
+import { isOwner } from "@rack/shared/account";
+import { useAccount } from "../lib/account";
 import { splitList } from "@rack/shared/units";
 import { cn } from "../lib/utils";
 import { Icon } from "../components/icons/Icon";
@@ -162,7 +164,9 @@ function HuntCard({ hunt, onEdit, onChange }: { hunt: Hunt; onEdit: () => void; 
 }
 
 function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput; onDone: () => void; onCancel: () => void }) {
-  const [h, setH] = useState<HuntInput>(props.initial);
+  const account = useAccount().data;
+  const owner = account ? isOwner(account) : true; // unknown yet: no limit shown; the server checks anyway
+  const [h, setH] = useState<HuntInput>(() => withinLimits(props.initial, owner));
   const [sizes, setSizes] = useState(props.initial.sizes.join(", "));
   const save = useMutation({
     mutationFn: () => {
@@ -227,7 +231,7 @@ function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput;
           <Field label="Check">
             {(id) => (
               <Select id={id} value={h.interval_minutes} onChange={(e) => set("interval_minutes", Number(e.target.value))}>
-                {INTERVALS.map(([m, label]) => (
+                {intervalsFor(owner).map(([m, label]) => (
                   <option key={m} value={m}>
                     {label[0].toUpperCase() + label.slice(1)}
                   </option>

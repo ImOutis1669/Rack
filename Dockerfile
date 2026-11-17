@@ -19,7 +19,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY backend/ ./
 RUN uv sync --frozen --no-dev
 COPY --from=web /web/dist ./static
-ENV PATH="/app/.venv/bin:$PATH" STATIC_DIR=/app/static
+# owner-only licensed assets (git-ignored; README always there), served by the API after login
+COPY frontend/private/ /app/private/
+ENV PATH="/app/.venv/bin:$PATH" STATIC_DIR=/app/static RACK_PRIVATE_DIR=/app/private
 RUN useradd --create-home --uid 1000 rack && mkdir -p /data && chown rack /data
 USER rack
 EXPOSE 8000

@@ -49,7 +49,7 @@ function RowInput(props: React.InputHTMLAttributes<HTMLInputElement> & { suffix?
   );
 }
 
-export function Settings({ onLogout }: { onLogout: () => void }) {
+export function Settings() {
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const designers = useQuery({ queryKey: ["designers"], queryFn: api.designers });
   const adjacent = useQuery({ queryKey: ["adjacent"], queryFn: api.adjacent });
@@ -67,7 +67,6 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
         )}
         <Notifications />
         <HiddenList />
-        <Account onLogout={onLogout} />
       </div>
     </PageShell>
   );
@@ -405,34 +404,6 @@ function HiddenList() {
           </Button>
         </Row>
       ))}
-    </Group>
-  );
-}
-
-function Account({ onLogout }: { onLogout: () => void }) {
-  const qc = useQueryClient();
-  const logoutAll = useMutation({
-    mutationFn: api.logoutAll,
-    onSuccess: () => {
-      qc.clear();
-      void qc.invalidateQueries({ queryKey: ["me"] });
-    },
-  });
-  return (
-    <Group
-      title="Account"
-      footer="Log out all devices ends every session, including this one. Use it if a phone or computer you were logged in on is lost. Changing your password does the same."
-    >
-      <button className="press flex min-h-11 w-full items-center gap-2 px-4 text-body" onClick={onLogout}>
-        <Icon name="logout" size={18} className="text-muted" /> Log out
-      </button>
-      <button
-        className="press flex min-h-11 w-full items-center gap-2 px-4 text-body text-danger disabled:opacity-40"
-        disabled={logoutAll.isPending}
-        onClick={() => window.confirm("Log out on every device?") && logoutAll.mutate()}
-      >
-        <Icon name="logout" size={18} /> Log out all devices
-      </button>
     </Group>
   );
 }

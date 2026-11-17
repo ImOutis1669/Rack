@@ -128,6 +128,9 @@ export function Feed() {
       desktopTitle={false}
       actions={
         <>
+          <Link to="/search" aria-label="Search" title="Search" className="press inline-flex size-11 items-center justify-center rounded-full hover:bg-fill">
+            <Icon name="find" size={22} />
+          </Link>
           <SourcesButton />
           <RefreshButton />
         </>

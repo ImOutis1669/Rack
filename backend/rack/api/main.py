@@ -19,6 +19,7 @@ from rack.api import (
     hunts,
     me,
     notify,
+    owner_assets,
     profile,
     purchases,
     push,
@@ -86,6 +87,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(admin.router)
     app.include_router(me.router)
+    app.include_router(owner_assets.router)
     app.include_router(feed.router)
     app.include_router(search.router)
     app.include_router(profile.router)

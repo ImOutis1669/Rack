@@ -131,8 +131,23 @@ project skill `.claude/skills/rack-apple-design` (combined from three MIT design
 `components/ui` (buttons, sheet, grouped rows, switch), `components/AppShell` (`PageShell` = per-page glass top bar;
 `AppTabs` = iPhone dock + desktop tabs, mounted once in `main.tsx` so the pill slides between pages), `components/magicui/*` (adapted Magic UI, MIT), icons only via `components/icons/Icon.tsx` (Basil from the user's own pack, git-ignored, else lucide; see DESIGN.md "Icons"). Use `cn()` from
 `lib/utils` (tailwind-merge knows the custom text sizes and radii). UI font: Neue Montreal from the
-user's own files in git-ignored `frontend/public/fonts/` (never commit or download them), system
-stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (see DESIGN.md "Type").
+user's own files, owner-only from v2.1: git-ignored `frontend/private/` (fonts + `basil.json`,
+copied to `/app/private` in Docker, `RACK_PRIVATE_DIR`) served by `api/owner_assets.py` to the
+owner only; `lib/ownerAssets.ts` adds the @font-face rules and loads the icon pack
+(`components/icons/iconPack.ts` store, markup validated) after an owner login, clears them on
+log out. Never put them back in `public/` or the bundle. System stack (SF Pro) as fallback;
+never bundle Apple font files. Numbers: `.tabular` (see DESIGN.md "Type").
+Web v2.1 (step 5): the gear is gone; `components/profile/AvatarButton` (photo or initials) opens
+`ProfileSheet` (one sheet with its own view stack: main, sources, password, privacy, delete;
+log out / everywhere / delete call `leave()`, which clears snapshots, owner assets and the
+query cache and reloads `/`). Settings no longer has the account group. Pages: `/search`
+(`pages/Search.tsx`, from the magnifier in the feed header: debounced instant search, live
+search polling every 2 s, recent searches in localStorage `rack.recentSearches`, "Save as hunt"
+via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/join#code`
+(`pages/Join.tsx`, shown when logged out). Hunt form: friends get hourly or slower only
+(`shared/hunts` `intervalsFor`, `withinLimits`). Shared: `shared/src/account.ts`,
+`shared/src/search.ts`, `ApiError` (status + Retry-After) in the client. Dev against another API:
+`RACK_API_PROXY=http://127.0.0.1:8001 npm run dev`.
 
 ## Conventions
 - Small, typed, testable modules; parsers are pure and tested against `backend/tests/fixtures/<source>/`.

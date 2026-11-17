@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     rack_seed_queries: str = "maison margiela,rick owens,our legacy"
 
     static_dir: Path = Field(default=Path(__file__).resolve().parent.parent / "static")
+    # Owner-only licensed assets (fonts, Basil icons): frontend/private locally, /app/private in
+    # Docker. Served only to the owner, never in the public bundle.
+    rack_private_dir: Path = Field(
+        default=Path(__file__).resolve().parent.parent.parent / "frontend" / "private"
+    )
 
     @property
     def uploads_dir(self) -> Path:

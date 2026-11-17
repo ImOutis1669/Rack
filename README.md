@@ -71,7 +71,9 @@ running across reboots. For alerts to arrive, the PC must not sleep (Windows Set
 **Optional: Neue Montreal.** Rack's UI font is Neue Montreal by Pangram Pangram (free for
 personal use, not redistributable, so not in this repo). Download it from pangrampangram.com and
 copy `neuemontreal-regular.otf`, `neuemontreal-medium.otf` and `neuemontreal-bold.otf` into
-`frontend/public/fonts/`, then rebuild. Without them Rack uses the system font (SF Pro on iPhone).
+`frontend/private/fonts/`, then rebuild. Only the owner's account loads them (v2.1: the API
+serves them after an owner login, they're never in the public bundle), so friends always see the
+system font. Without them Rack uses the system font (SF Pro on iPhone).
 
 **Optional: Basil icons.** Rack can use the free [Basil Icons](https://craftwork.design) pack from
 Craftwork. Its licence doesn't allow sharing the files, so they're not in this repo: download the

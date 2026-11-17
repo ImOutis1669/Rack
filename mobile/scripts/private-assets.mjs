@@ -8,8 +8,8 @@
 //   index.ts                                        the manifest the app imports as @rack/private
 // Without index.ts the app uses src/private/fallback.ts: SF Pro and SF Symbols.
 //
-// Usage (from mobile/): npm run private-assets [-- <fonts dir> <basil.generated.ts>]
-// Defaults: the web app's ../frontend/public/fonts and ../frontend/src/components/icons/basil.generated.ts
+// Usage (from mobile/): npm run private-assets [-- <fonts dir> <basil.json>]
+// Defaults: the web app's owner-only ../frontend/private/fonts and ../frontend/private/basil.json
 // (made by `npm run icons` in frontend/). Either may be missing; the other is still built.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -19,8 +19,8 @@ import { Resvg } from "@resvg/resvg-js";
 const here = dirname(fileURLToPath(import.meta.url));
 const app = resolve(here, "..");
 const out = join(app, "assets/private");
-const fontsDir = resolve(process.argv[2] ?? join(app, "../frontend/public/fonts"));
-const basilFile = resolve(process.argv[3] ?? join(app, "../frontend/src/components/icons/basil.generated.ts"));
+const fontsDir = resolve(process.argv[2] ?? join(app, "../frontend/private/fonts"));
+const basilFile = resolve(process.argv[3] ?? join(app, "../frontend/private/basil.json"));
 
 /** Font family names the app uses (src/theme/type.ts). */
 const FONT_FILES = {
@@ -45,10 +45,16 @@ function checkMarkup(markup) {
 
 function readBasil(file) {
   const src = readFileSync(file, "utf8");
-  const start = src.indexOf("= {");
-  const end = src.lastIndexOf("};");
-  if (start < 0 || end < 0) throw new Error(`${file}: not a basil.generated.ts file`);
-  const pack = JSON.parse(src.slice(start + 2, end + 1));
+  let pack;
+  if (file.endsWith(".json")) {
+    pack = JSON.parse(src);
+  } else {
+    // older basil.generated.ts (before v2.1)
+    const start = src.indexOf("= {");
+    const end = src.lastIndexOf("};");
+    if (start < 0 || end < 0) throw new Error(`${file}: not a basil.json or basil.generated.ts file`);
+    pack = JSON.parse(src.slice(start + 2, end + 1));
+  }
   for (const [role, v] of Object.entries(pack)) {
     if (typeof v?.outline !== "string" || typeof v?.solid !== "string") throw new Error(`bad entry ${role}`);
     checkMarkup(v.outline);

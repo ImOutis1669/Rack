@@ -1,6 +1,7 @@
-// Rack's icons: Basil Icons (Craftwork) when the user has generated them from their own pack
-// (scripts/basil-icons.mjs -> basil.generated.ts, git-ignored: the licence forbids sharing the
-// files and this repo is public), otherwise lucide. Roles Basil has no icon for always use lucide.
+// Rack's icons: Basil Icons (Craftwork) for the owner, loaded after login from the owner-only
+// /api/owner-assets/icons.json (lib/ownerAssets.ts; the licence forbids sharing the files, so
+// they're never in the public bundle), otherwise lucide. Roles Basil has no icon for always use
+// lucide.
 //
 // Design language (DESIGN.md "Icons"): outline at rest, solid when active/selected (the iOS
 // convention): the current tab, a saved bookmark, a cast vote. Basil's 1.5px line is matched by
@@ -31,6 +32,11 @@ import {
   Play,
   Plus,
   Radio,
+  Search,
+  Camera,
+  KeyRound,
+  ShieldCheck,
+  Users,
   RotateCw,
   SearchX,
   Settings,
@@ -43,9 +49,11 @@ import {
   Type,
   X,
 } from "lucide-react";
+import { useSyncExternalStore } from "react";
 import { cn } from "../../lib/utils";
+import { type BasilPack, getIconPack, subscribeIconPack } from "./iconPack";
 
-export type BasilPack = Record<string, { outline: string; solid: string }>;
+export type { BasilPack };
 
 const LUCIDE = {
   bookmark: Bookmark,
@@ -84,6 +92,11 @@ const LUCIDE = {
   text: Type,
   link: Link2,
   external: ExternalLink,
+  find: Search,
+  camera: Camera,
+  password: KeyRound,
+  privacy: ShieldCheck,
+  friends: Users,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof LUCIDE;
@@ -91,10 +104,6 @@ export const ICON_NAMES = Object.keys(LUCIDE) as IconName[];
 
 /** lucide shapes that can be filled solid (others get a heavier line when active) */
 const FILLABLE = new Set<IconName>(["bookmark", "vote-up", "vote-down"]);
-
-// The generated pack, if the user made one. A glob, so a missing file is just an empty match.
-const generated = import.meta.glob<{ BASIL: BasilPack }>("./basil.generated.ts", { eager: true });
-const PACK: BasilPack | undefined = Object.values(generated)[0]?.BASIL;
 
 interface IconProps {
   name: IconName;
@@ -139,5 +148,6 @@ export function IconView({ name, size = 20, filled = false, className, label, pa
 }
 
 export function Icon(props: IconProps) {
-  return <IconView {...props} pack={PACK} />;
+  const pack = useSyncExternalStore(subscribeIconPack, getIconPack, getIconPack);
+  return <IconView {...props} pack={pack} />;
 }
