@@ -1,7 +1,7 @@
 # Rack v1.1
 
 Released 16 November 2026. Covers `docs/v1.1-brief.md` (features 1–6) and the parts of
-`docs/v1.2-brief.md` that were folded into this release. OLED mode was dropped.
+`docs/v1.1-part2-brief.md` that were folded into this release. OLED mode was dropped.
 
 ## New
 - **eBay is live.** Production keys, UK delivery only, men's only. Each new listing is looked up

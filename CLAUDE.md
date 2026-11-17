@@ -146,7 +146,7 @@ stack; never bundle Apple font files.
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
 Status: v1.1 done (2026-11-16), tagged `v1.1`: docs/v1.1-brief.md features 1-6 plus the
-docs/v1.2-brief.md features the user folded into v1.1 (design skill, Liquid Glass, feed title,
+docs/v1.1-part2-brief.md features the user folded into v1.1 (design skill, Liquid Glass, feed title,
 minimal Wardrobe, performance). OLED mode was dropped by the user. Release notes:
 docs/release-notes-v1.1.md; performance numbers: docs/perf-v1.1.md.
 Performance notes (v1.1):
