@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { api } from "../api/client";
-import type { TasteKind } from "../api/types";
+import type { TasteKind } from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
 import { TasteItemSheet, TasteTile } from "../components/TasteItemView";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";

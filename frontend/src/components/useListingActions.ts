@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
-import type { Listing } from "../api/types";
-import { nextVote, voteValue, type Vote } from "../lib/vote";
+import type { Listing } from "@rack/shared/types";
+import { nextVote, voteValue, type Vote } from "@rack/shared/vote";
 
 export interface ListingActions {
   vote: Vote;

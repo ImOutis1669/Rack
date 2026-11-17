@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { Listing } from "../api/types";
-import { defaultPrice, parsePrice } from "../lib/bought";
+import type { Listing } from "@rack/shared/types";
+import { defaultPrice, parsePrice } from "@rack/shared/bought";
 import { toast } from "./Toast";
 import { Button, Field, Input, Sheet } from "./ui";
 

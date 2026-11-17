@@ -1,4 +1,4 @@
-import type { Listing } from "../api/types";
+import type { Listing } from "./types";
 
 /** Sources whose seller data Rack never stores (eBay: "I do not persist eBay data"). */
 export const NO_SELLER_DATA_SOURCES = new Set(["ebay"]);

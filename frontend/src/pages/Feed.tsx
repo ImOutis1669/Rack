@@ -2,15 +2,15 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import { CATEGORIES, type Category, type FeedPage, type FeedParams, type Sort, type Source } from "../api/types";
+import { CATEGORIES, type Category, type FeedPage, type FeedParams, type Sort, type Source } from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { RefreshButton } from "../components/RefreshButton";
 import { VirtualGrid } from "../components/VirtualGrid";
 import { SourcesButton } from "../components/SourcesButton";
 import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton, Switch } from "../components/ui";
-import { SOURCE_LABEL } from "../lib/format";
-import { SeenBatcher } from "../lib/seen";
+import { SOURCE_LABEL } from "@rack/shared/format";
+import { SeenBatcher } from "@rack/shared/seen";
 import { isDefaultFeed, loadSnapshot, saveSnapshot } from "../lib/snapshot";
 import { Icon } from "../components/icons/Icon";
 

@@ -1,13 +1,8 @@
-import { safeHref } from "./safe";
+import { shareLink as shareWith, type ShareEnv, type ShareResult } from "@rack/shared/share";
 
-export type ShareResult = "shared" | "copied" | "cancelled" | "failed";
+export { shareMessage, type ShareEnv, type ShareResult } from "@rack/shared/share";
 
-/** The browser APIs used, injectable for tests. */
-export interface ShareEnv {
-  share?: (data: { url: string; title?: string }) => Promise<void>;
-  writeText?: (text: string) => Promise<void>;
-}
-
+/** The browser's share sheet and clipboard, where they exist. */
 export function browserShareEnv(): ShareEnv {
   const nav = typeof navigator === "undefined" ? undefined : navigator;
   return {
@@ -16,34 +11,7 @@ export function browserShareEnv(): ShareEnv {
   };
 }
 
-/**
- * Share a marketplace listing URL (never Rack's own): the native share sheet where there is one
- * (iOS), otherwise copy to the clipboard. Closing the share sheet is not an error.
- */
-export async function shareLink(url: string, title: string, env: ShareEnv = browserShareEnv()): Promise<ShareResult> {
-  const href = safeHref(url);
-  if (!href) return "failed";
-  if (env.share) {
-    try {
-      await env.share({ url: href, title });
-      return "shared";
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return "cancelled";
-      // e.g. NotAllowedError: fall through to copying
-    }
-  }
-  if (!env.writeText) return "failed";
-  try {
-    await env.writeText(href);
-    return "copied";
-  } catch {
-    return "failed";
-  }
-}
-
-/** Toast text for a result (null: say nothing). */
-export function shareMessage(result: ShareResult): string | null {
-  if (result === "copied") return "Link copied";
-  if (result === "failed") return "Couldn't copy the link";
-  return null;
+/** Share a marketplace listing URL with the browser's share sheet, or copy it. */
+export function shareLink(url: string, title: string, env: ShareEnv = browserShareEnv()): Promise<ShareResult> {
+  return shareWith(url, title, env);
 }

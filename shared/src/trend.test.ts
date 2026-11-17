@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Trend, TrendWindow } from "../api/types";
+import type { Trend, TrendWindow } from "./types";
 import { signedPct, sparkGeometry, tileBadge, windowText } from "./trend";
 
 const w = (pct: number, direction: TrendWindow["direction"]): TrendWindow => ({

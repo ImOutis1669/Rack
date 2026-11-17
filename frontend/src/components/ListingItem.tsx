@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useCallback, useState } from "react";
 import { prefetchForOpen, prefetchGallery, prefetchOnView } from "../lib/prefetch";
-import type { Listing } from "../api/types";
+import type { Listing } from "@rack/shared/types";
 
 // The sheets load the first time any listing is opened, not with the feed.
 const ListingSheet = lazy(() => import("./ListingSheet").then((m) => ({ default: m.ListingSheet })));

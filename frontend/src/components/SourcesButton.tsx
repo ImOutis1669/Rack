@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../api/client";
-import type { SourceHealth } from "../api/types";
-import { SOURCE_LABEL, timeAgo } from "../lib/format";
+import type { SourceHealth } from "@rack/shared/types";
+import { SOURCE_LABEL, timeAgo } from "@rack/shared/format";
 import { cn } from "../lib/utils";
 import { Group, IconButton, Row, Sheet } from "./ui";
 import { Icon } from "./icons/Icon";

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { timeAgo } from "../lib/format";
+import { timeAgo } from "@rack/shared/format";
 import { disablePush, enablePush, PUSH_HELP, pushState, type PushState } from "../lib/push";
 import { cn } from "../lib/utils";
 import { Button, Group, Row, Switch } from "./ui";

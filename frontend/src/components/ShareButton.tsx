@@ -1,5 +1,5 @@
-import type { BuyLink } from "../api/types";
-import { SOURCE_LABEL } from "../lib/format";
+import type { BuyLink } from "@rack/shared/types";
+import { SOURCE_LABEL } from "@rack/shared/format";
 import { shareLink, shareMessage } from "../lib/share";
 import { toast } from "./Toast";
 import { IconButton, Menu } from "./ui";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { TasteItem } from "../api/types";
+import type { TasteItem } from "./types";
 import { detailRows, displayName, formatDate, itemName, sourceLink, tileValue } from "./tasteItem";
 
 const base: TasteItem = {

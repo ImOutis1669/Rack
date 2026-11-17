@@ -1,4 +1,4 @@
-import type { TasteItem } from "../api/types";
+import type { TasteItem } from "./types";
 import { formatGBP } from "./format";
 
 type Priced = Pick<TasteItem, "purchase_price_gbp" | "custom_value_gbp" | "estimate_gbp" | "estimate_count">;

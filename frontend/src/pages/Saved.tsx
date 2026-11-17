@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "../api/client";
-import type { Listing } from "../api/types";
+import type { Listing } from "@rack/shared/types";
 import { loadSnapshot, saveSnapshot } from "../lib/snapshot";
 import { PageShell } from "../components/AppShell";
 import { VirtualGrid } from "../components/VirtualGrid";

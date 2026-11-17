@@ -1,6 +1,6 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { estimateTileHeight, laneGeometry, laneLeft, nearEnd, recallGrid, rememberGrid } from "../lib/grid";
+import { estimateTileHeight, laneGeometry, laneLeft, nearEnd, recallGrid, rememberGrid } from "@rack/shared/grid";
 
 /**
  * Masonry grid that only renders tiles near the screen (window scrolling). Tiles go into the

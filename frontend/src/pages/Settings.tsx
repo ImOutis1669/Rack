@@ -9,12 +9,12 @@ import {
   type Measurements,
   type Profile,
   type Weights,
-} from "../api/types";
+} from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
 import { Notifications } from "../components/Notifications";
 import { toast } from "../components/Toast";
 import { Button, Group, IconButton, Row, Segmented, Skeleton, Switch, Textarea } from "../components/ui";
-import { formatLength, parseLengthCm, splitList } from "../lib/units";
+import { formatLength, parseLengthCm, splitList } from "@rack/shared/units";
 import { cn } from "../lib/utils";
 import { Icon } from "../components/icons/Icon";
 

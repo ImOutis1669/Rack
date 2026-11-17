@@ -1,4 +1,4 @@
-import type { Trend, TrendPoint, TrendWindow } from "../api/types";
+import type { Trend, TrendPoint, TrendWindow } from "./types";
 
 export type WindowDays = "30" | "90";
 

@@ -1,4 +1,4 @@
-import type { Category, HuntInput, Listing } from "../api/types";
+import type { Category, HuntInput, Listing } from "./types";
 
 export const INTERVALS: [number, string][] = [
   [5, "every 5 min"],

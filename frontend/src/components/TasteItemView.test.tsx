@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { TasteItem } from "../api/types";
+import type { TasteItem } from "@rack/shared/types";
 import { draftErrors, draftFrom, TasteTile } from "./TasteItemView";
 
 const belt: TasteItem = {

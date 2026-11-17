@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Landed } from "../api/types";
+import type { Landed } from "./types";
 import { landedLabel, landedLines, previousPrice } from "./landed";
 
 const imported: Landed = {

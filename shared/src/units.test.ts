@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { feedQueryString } from "../api/client";
+import { feedQueryString } from "./client";
 import { SeenBatcher } from "./seen";
 import { formatLength, parseLengthCm, splitList } from "./units";
 

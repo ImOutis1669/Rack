@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { Listing } from "../api/types";
+import type { Listing } from "@rack/shared/types";
 import { ListingTile } from "./ListingTile";
 import type { ListingActions } from "./useListingActions";
 

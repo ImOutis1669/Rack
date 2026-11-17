@@ -1,4 +1,4 @@
-import type { TasteItem } from "../api/types";
+import type { TasteItem } from "./types";
 import { SOURCE_LABEL } from "./format";
 
 export const MAX_PRICE_GBP = 100_000;

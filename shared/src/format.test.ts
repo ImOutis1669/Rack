@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feedQueryString } from "../api/client";
+import { feedQueryString } from "./client";
 import { formatGBP, sellerLabel, timeAgo } from "./format";
 
 describe("formatGBP", () => {

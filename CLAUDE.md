@@ -25,9 +25,15 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
     `app_state['planner']`), embed+score every 60 s; later hunts and price drops.
 - `frontend/` — React + Vite + TS + Tailwind PWA, TanStack Query. Built into the backend image and
   served by FastAPI at `/` (single origin).
-- `shared/` — `@rack/shared`: plain TS both apps import (types, API client, pure logic; filled in
-  iOS step 2). No runtime deps, no DOM, no React Native: platform bits are passed in. Own Vitest
-  tests (`cd shared && npm test`, `npx tsc --noEmit`). Wired via tsconfig `paths` + Vite alias
+- `shared/` — `@rack/shared`: plain TS both apps import (iOS step 2): `types`, `client`
+  (`createApi({ baseUrl, fetch, credentials, authHeaders, onSignedOut })`: web = cookie + CSRF
+  header in `frontend/src/api/client.ts`, app = bearer token), and the pure `lib` modules (format,
+  units, landed, seller, vote, hunts, bought, tasteItem, wardrobeValue, trend, grid, thumbs, safe,
+  seen, share, snapshot, sheetDrag) with their tests. No runtime deps, no React/RN; only browser
+  APIs RN also has. Platform defaults stay in each app (web: `lib/share.ts` browser share env,
+  `lib/snapshot.ts` localStorage). Web-only modules (motion, perf, prefetch, push, viewport,
+  utils, useScrolled) stay in `frontend/src/lib`. Own Vitest tests (`cd shared && npm test`,
+  `npx tsc --noEmit`). Wired via tsconfig `paths` + Vite alias
   (frontend), `paths` + Metro `watchFolders` + Jest `moduleNameMapper` (mobile); the Dockerfile
   copies `shared/` to `/shared` next to `/web`.
 - `mobile/` — native iOS app (v2.0 work, `docs/ios-brief.md`): Expo SDK 58, RN 0.88, expo-router,
@@ -57,7 +63,8 @@ On this Windows dev box uv lives at
   (Vinted fixtures are trimmed to the result objects; Grailed drops `_highlightResult`)
 - Lint/types: `cd backend && uv run ruff check . && uv run mypy rack`
 - Dependency audit: `sh scripts/audit.sh`
-- Frontend tests: `cd frontend && npm test`
+- Frontend tests: `cd frontend && npm test` (+ `npx tsc -b --noEmit`); shared code:
+  `cd shared && npm test && npx tsc --noEmit`; iOS app: `cd mobile && npm test && npm run typecheck`
 - Whole stack: `docker compose up --build`
 - Migrations: `cd backend && uv run alembic upgrade head`
 

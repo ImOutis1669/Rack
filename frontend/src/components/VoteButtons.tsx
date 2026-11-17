@@ -1,4 +1,4 @@
-import type { Vote } from "../lib/vote";
+import type { Vote } from "@rack/shared/vote";
 import { cn } from "../lib/utils";
 import { IconButton } from "./ui";
 import { Icon } from "./icons/Icon";

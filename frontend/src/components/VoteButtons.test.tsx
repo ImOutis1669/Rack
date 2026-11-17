@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { Vote } from "../lib/vote";
+import type { Vote } from "@rack/shared/vote";
 import { VoteButtons } from "./VoteButtons";
 
 function render(vote: Vote, compact = false): { up: string; down: string; html: string } {

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { TrendPoint } from "../api/types";
-import { formatGBP } from "../lib/format";
-import { sparkGeometry } from "../lib/trend";
+import type { TrendPoint } from "@rack/shared/types";
+import { formatGBP } from "@rack/shared/format";
+import { sparkGeometry } from "@rack/shared/trend";
 
 const W = 240;
 const H = 56;

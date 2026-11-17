@@ -1,4 +1,4 @@
-import type { Landed } from "../api/types";
+import type { Landed } from "./types";
 import { formatGBP } from "./format";
 
 /** "≈ £240 delivered" for imports; null when there's nothing beyond the price to add. */

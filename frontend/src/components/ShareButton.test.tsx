@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { BuyLink } from "../api/types";
+import type { BuyLink } from "@rack/shared/types";
 import { ShareButton, shareTargets } from "./ShareButton";
 
 const link = (source: BuyLink["source"], url: string): BuyLink =>

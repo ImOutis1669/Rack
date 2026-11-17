@@ -1,4 +1,4 @@
-import type { Category, TasteItem } from "../api/types";
+import type { Category, TasteItem } from "./types";
 import { formatGBP, SOURCE_LABEL } from "./format";
 import { worth } from "./wardrobeValue";
 

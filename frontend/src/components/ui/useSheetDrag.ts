@@ -1,7 +1,7 @@
 import { type MotionValue, useMotionValue } from "motion/react";
 import { type RefObject, useEffect, useRef } from "react";
 import { SHEET_SPRING } from "../../lib/motion";
-import { type DragStart, decide, releaseVelocity, resist, shouldDismiss } from "../../lib/sheetDrag";
+import { type DragStart, decide, releaseVelocity, resist, shouldDismiss } from "@rack/shared/sheetDrag";
 
 // From the late-loaded Motion chunk (already fetched by LazyMotion long before any swipe), so the
 // animation engine stays out of the main bundle.

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import type { Listing } from "../api/types";
-import { formatGBP } from "../lib/format";
-import { landedLabel, previousPrice } from "../lib/landed";
-import { listingTileImage } from "../lib/thumbs";
+import type { Listing } from "@rack/shared/types";
+import { formatGBP } from "@rack/shared/format";
+import { landedLabel, previousPrice } from "@rack/shared/landed";
+import { listingTileImage } from "@rack/shared/thumbs";
 import { BlurFade } from "./magicui/blur-fade";
 import { SourceBadge } from "./SourceBadge";
 import { IconButton } from "./ui";

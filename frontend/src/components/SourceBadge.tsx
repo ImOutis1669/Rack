@@ -1,5 +1,5 @@
-import type { Source } from "../api/types";
-import { SOURCE_LABEL } from "../lib/format";
+import type { Source } from "@rack/shared/types";
+import { SOURCE_LABEL } from "@rack/shared/format";
 import { cn } from "../lib/utils";
 
 const DOT: Record<Source, string> = {
