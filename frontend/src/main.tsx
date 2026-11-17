@@ -4,6 +4,7 @@ import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api, UnauthorizedError } from "./api/client";
+import { AppTabs } from "./components/AppShell";
 import { PerfHud } from "./components/PerfHud";
 import { Toaster } from "./components/Toast";
 import "./index.css";
@@ -58,6 +59,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      {/* outside Suspense: the dock and its pill persist while pages change or load */}
+      <AppTabs />
       <Toaster />
       {SHOW_PERF && <PerfHud />}
     </>

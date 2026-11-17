@@ -111,7 +111,10 @@ shows the solid version here.
 
 **Active tab:** a plain fill pill (not glass) that slides between tabs with the default spring
 (`lib/motion.ts`, `bounce 0, 0.35s`), instant with reduced motion. Same on the desktop segmented
-control. Small overlays on photos still use the plain `glass` utility. On phones the floating tab bar sits on a solid-to-transparent gradient of the page
+control. Both are drawn once at app level (`AppTabs` in `main.tsx`, outside the routes' Suspense),
+never inside a page: a page-level dock was rebuilt on every navigation, so the pill jumped (v1.2).
+Both navs are `position: fixed` with Motion's `layoutRoot`, so page scroll can't skew the slide.
+The desktop tabs float centred over each page's sticky top bar. Small overlays on photos still use the plain `glass` utility. On phones the floating tab bar sits on a solid-to-transparent gradient of the page
 background that runs to the bottom edge, so content fades out under it. No blur band: a partial
 blur strip with sharp content below it looked messy on iPhone.
 

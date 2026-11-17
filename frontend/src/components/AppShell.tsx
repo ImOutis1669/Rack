@@ -13,12 +13,34 @@ export const TABS = [
   { to: "/taste", label: "Wardrobe", icon: Shirt },
 ] as const;
 
-/** Desktop: segmented tabs in the top bar. */
+/**
+ * The tab chrome, rendered once at app level (main.tsx), outside the routes and their Suspense
+ * fallback: it persists across navigation, so the active pill slides from tab to tab instead of
+ * being rebuilt with each page (v1.2), and lazy pages loading never make it flicker.
+ */
+export function AppTabs() {
+  return (
+    <>
+      <DesktopTabs />
+      <TabBar />
+    </>
+  );
+}
+
+/**
+ * Desktop: segmented tabs centred in the top bar. Fixed over each page's (sticky) bar rather than
+ * inside it, so they persist; `layoutRoot` keeps the pill's slide correct while the page scrolls.
+ */
 function DesktopTabs() {
   const reduce = useReducedMotion();
   return (
     <LayoutGroup id="desktop-tabs">
-      <nav className="isolate hidden items-center rounded-full bg-fill p-0.5 md:flex">
+      <m.nav
+        layoutRoot
+        aria-label="Tabs"
+        data-testid="desktop-tabs"
+        className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+11px)] z-40 mx-auto isolate hidden w-fit items-center rounded-full bg-fill p-0.5 md:flex"
+      >
         {TABS.map(({ to, label }) => (
           <NavLink
             key={to}
@@ -45,7 +67,7 @@ function DesktopTabs() {
             )}
           </NavLink>
         ))}
-      </nav>
+      </m.nav>
     </LayoutGroup>
   );
 }
@@ -57,7 +79,8 @@ function DesktopTabs() {
 function TabBar() {
   const reduce = useReducedMotion();
   return (
-    <nav
+    <m.nav
+      layoutRoot
       aria-label="Tabs"
       className="fixed inset-x-0 bottom-0 z-30 px-4 pt-6 pb-[max(calc(env(safe-area-inset-bottom)-6px),12px)] md:hidden"
     >
@@ -98,7 +121,7 @@ function TabBar() {
           ))}
         </div>
       </LayoutGroup>
-    </nav>
+    </m.nav>
   );
 }
 
@@ -131,9 +154,8 @@ export function PageShell({
             Rack
           </Link>
           <h1 className="truncate font-display text-title font-bold md:hidden">{title}</h1>
-          <div className="flex flex-1 justify-center">
-            <DesktopTabs />
-          </div>
+          {/* room for the desktop tabs, which AppTabs draws over the bar */}
+          <div className="flex-1" />
           <div className="-mr-2 flex items-center">
             {actions}
             {pathname !== "/settings" && (
@@ -154,7 +176,6 @@ export function PageShell({
         {desktopTitle && <h1 className="mb-4 hidden font-display text-largetitle font-bold md:block">{title}</h1>}
         {children}
       </main>
-      <TabBar />
     </div>
   );
 }
