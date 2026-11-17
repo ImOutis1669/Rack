@@ -21,3 +21,7 @@ uploads/
 frontend/public/fonts/
 # Basil Icons (Craftwork): generated from the user's own pack, never redistribute.
 frontend/src/components/icons/basil.generated.ts
+# iOS app (mobile/): the user's own licensed font and icon files. Never committed (public repo);
+# CI gets them from an encrypted GitHub secret. Only the README in this folder is tracked.
+mobile/assets/private/*
+!mobile/assets/private/README.md

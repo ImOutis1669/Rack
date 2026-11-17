@@ -1,4 +1,3 @@
-// @ts-expect-error: the app has no Node types; Vitest runs in Node (and blanks CSS imports)
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 

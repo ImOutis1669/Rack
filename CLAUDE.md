@@ -25,6 +25,19 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
     `app_state['planner']`), embed+score every 60 s; later hunts and price drops.
 - `frontend/` — React + Vite + TS + Tailwind PWA, TanStack Query. Built into the backend image and
   served by FastAPI at `/` (single origin).
+- `shared/` — `@rack/shared`: plain TS both apps import (types, API client, pure logic; filled in
+  iOS step 2). No runtime deps, no DOM, no React Native: platform bits are passed in. Own Vitest
+  tests (`cd shared && npm test`, `npx tsc --noEmit`). Wired via tsconfig `paths` + Vite alias
+  (frontend), `paths` + Metro `watchFolders` + Jest `moduleNameMapper` (mobile); the Dockerfile
+  copies `shared/` to `/shared` next to `/web`.
+- `mobile/` — native iOS app (v2.0 work, `docs/ios-brief.md`): Expo SDK 58, RN 0.88, expo-router,
+  TypeScript, Jest via jest-expo (`npm test`, `npm run typecheck`, `npx expo-doctor`). Add packages
+  with `npx expo install`. Read `mobile/AGENTS.md` (Expo's own rules: check versioned docs, never
+  edit generated `ios/`). No Mac: test in Expo Go on the user's iPhone; builds are unsigned `.ipa`
+  from GitHub Actions, sideloaded with a free Apple ID. Font/icons: the user's own Neue Montreal
+  and Basil files in git-ignored `mobile/assets/private/` (user's choice 2026-11-17), never
+  committed; CI gets them from an encrypted secret and must encrypt the `.ipa` artifact (public
+  repo artifacts are downloadable). Fallback: SF Pro + SF Symbols.
 - Postgres 16 + pgvector (512-d, HNSW). No Redis.
 - Compose services: `db`, `api`, `worker`, `ntfy`, `cloudflared` (profile `tunnel`).
 

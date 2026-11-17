@@ -156,6 +156,11 @@ Optional paid extra: the Claude second opinion (capped per day).
 - Delivered-cost figures are estimates (UK VAT 20%; duty and a courier fee above £135, often £0 duty
   for EU-made goods). Check the checkout before buying.
 
+## iPhone app (in progress)
+A native iOS app (React Native + Expo) is being built in `mobile/`, sideloaded with a free Apple
+ID. The web app stays as it is. See `mobile/README.md` and `docs/ios-brief.md`.
+
 ## Development
 See `CLAUDE.md` for architecture, commands and conventions. Backend: `cd backend && uv run pytest`;
-frontend: `cd frontend && npm test`.
+frontend: `cd frontend && npm test`; shared code: `cd shared && npm test`; iOS app:
+`cd mobile && npm test`.

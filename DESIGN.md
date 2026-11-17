@@ -30,6 +30,13 @@ clothes are the interface, and the chrome stays quiet.
 - **Posture:** unified brand with Apple-style chrome.
 - **Dials:** expression 5 (branded content, native-feeling chrome), motion 4, density 3.
 
+## iOS app (mobile/, v2.0, in progress)
+The native app follows the same tokens, type roles and copy rules, but uses the real iOS
+components instead of the web's approximations: native tab bar (Liquid Glass on iOS 26), native
+large titles, native sheets and menus, haptics. Neue Montreal and Basil come from the user's own
+files in git-ignored `mobile/assets/private/`; without them it uses SF Pro and SF Symbols.
+Decisions specific to the app are added here as each step lands.
+
 ## Navigation
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.
 - On iPhone they're a bottom glass tab bar; on desktop a segmented control in the top glass bar.

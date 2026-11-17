@@ -1,0 +1,15 @@
+{
+  "name": "@rack/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Code both Rack apps use (web frontend and iOS app): API types, API client, pure logic. No runtime dependencies and no DOM or React Native APIs.",
+  "scripts": {
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.3",
+    "vitest": "4.1.12"
+  }
+}
