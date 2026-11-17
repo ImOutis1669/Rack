@@ -188,12 +188,24 @@ body {
    barely saturated, so photos scrolling under it never tint the title and buttons (v1.2 fix: at
    0.6 opacity and saturate(180%) they showed as a coloured band behind "Rack"). No rim or shadow,
    and a soft scroll edge (instead of a hairline) once content is scrolled under it. */
+/* The glass lives on ::before, a layer behind the bar's content, never on the bar itself: iOS
+   Safari let a sticky element's own backdrop blur pick up its title and icons while scrolling,
+   so they looked smeared ("bleeding"). z-index -1 paints it above the page but below the bar's
+   children; the bar needs its own stacking context (sticky + z-index, or isolate). */
 @utility glass-bar {
   position: relative;
-  background: var(--chrome-bar);
-  -webkit-backdrop-filter: blur(32px) saturate(120%);
-  backdrop-filter: blur(32px) saturate(120%);
-  box-shadow: inset 0 1px 0 var(--chrome-sheen);
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--chrome-bar);
+    -webkit-backdrop-filter: blur(32px) saturate(120%);
+    backdrop-filter: blur(32px) saturate(120%);
+    box-shadow: inset 0 1px 0 var(--chrome-sheen);
+  }
   &::after {
     content: "";
     position: absolute;
@@ -212,7 +224,7 @@ body {
 
 @media (prefers-reduced-transparency: reduce) {
   .glass-chrome,
-  .glass-bar {
+  .glass-bar::before {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -221,7 +233,7 @@ body {
 
 @media (prefers-contrast: more) {
   .glass-chrome,
-  .glass-bar {
+  .glass-bar::before {
     background: var(--background);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;

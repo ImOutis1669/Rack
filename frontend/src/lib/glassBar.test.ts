@@ -62,6 +62,16 @@ describe("top bar glass", () => {
     });
   }
 
+  it("blurs on a layer behind the content, never on the bar itself (iOS smeared its text)", () => {
+    const rule = css.slice(css.indexOf("@utility glass-bar"), css.indexOf("@media (prefers-reduced-transparency"));
+    const own = rule.slice(0, rule.indexOf("&::before"));
+    expect(own).not.toMatch(/backdrop-filter/);
+    expect(own).not.toMatch(/background:/);
+    const before = rule.slice(rule.indexOf("&::before"), rule.indexOf("&::after"));
+    expect(before).toMatch(/z-index: -1/);
+    expect(before).toMatch(/-webkit-backdrop-filter: blur/);
+  });
+
   it("uses the opaque bar material, not the dock's, and a mild saturation", () => {
     const rule = css.slice(css.indexOf("@utility glass-bar"));
     expect(rule).toMatch(/background: var\(--chrome-bar\)/);
