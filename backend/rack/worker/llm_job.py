@@ -1,4 +1,5 @@
-"""Worker job for the optional LLM re-rank (see rack/ranking/llm.py)."""
+"""Worker job for the optional LLM re-rank (see rack/ranking/llm.py). Owner only: it costs
+the owner money (v2.1)."""
 
 import logging
 from datetime import UTC, datetime, timedelta
@@ -8,17 +9,19 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.config import Settings
-from rack.models import ListingRow, ListingScoreRow, TasteItemRow
+from rack.models import ListingRow, ListingScoreRow, TasteItemRow, UserRow
 from rack.ranking.llm import Candidate, MessagesClient, adjusted_score, judge, taste_summary
 from rack.store import get_state, load_designers, load_profile, set_state
 
 log = logging.getLogger(__name__)
 
 
-async def _profile_text(s: AsyncSession) -> str:
-    profile, _ = await load_profile(s)
-    designers = await load_designers(s)
-    taste = (await s.execute(select(TasteItemRow))).scalars().all()
+async def _profile_text(s: AsyncSession, uid: int) -> str:
+    profile, _ = await load_profile(s, uid)
+    designers = await load_designers(s, uid)
+    taste = (
+        (await s.execute(select(TasteItemRow).where(TasteItemRow.user_id == uid))).scalars().all()
+    )
     wishlist = [t.text or t.note or "" for t in taste if t.kind == "wishlist"]
     wardrobe = [t.text or t.note or "" for t in taste if t.kind == "wardrobe"]
     m = profile.measurements
@@ -47,12 +50,16 @@ async def llm_rerank(
         calls = int(usage.get("calls", 0)) if usage.get("date") == today else 0
         if calls >= settings.llm_daily_call_cap:
             return 0
+        owner = await s.scalar(select(UserRow.id).where(UserRow.role == "owner"))
+        if owner is None:
+            return 0
         stale = now - timedelta(days=settings.llm_verdict_days)
         top = (
             await s.execute(
                 select(ListingRow, ListingScoreRow)
                 .join(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
                 .where(
+                    ListingScoreRow.user_id == owner,
                     ListingRow.active.is_(True),
                     ListingScoreRow.filtered_reason.is_(None),
                     or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
@@ -77,7 +84,7 @@ async def llm_rerank(
             )
             for r, sc in todo
         ]
-        profile_text = await _profile_text(s)
+        profile_text = await _profile_text(s, owner)
         await set_state(s, "llm_usage", {"date": today, "calls": calls + 1})
         await s.commit()  # count the call even if it fails, so a broken setup can't loop
 

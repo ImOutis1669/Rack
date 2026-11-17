@@ -74,3 +74,27 @@ def next_batch(queries: list[SearchQuery], cursor: int, size: int) -> tuple[list
 
 def fallback(seed: list[str]) -> list[SearchQuery]:
     return [SearchQuery(text=q, category=Category.ANY) for q in seed]
+
+
+def merge_plans(plans: list[list[SearchQuery]]) -> list[SearchQuery]:
+    """All users' queries as one rotation (v2.1): round-robin across users so everyone's taste
+    gets searched, the same search only once (by text and category, keeping the higher price
+    cap; no cap wins). More users means each search comes round less often, never more
+    requests per refresh."""
+    merged: dict[tuple[str, Category], SearchQuery] = {}
+    order: list[tuple[str, Category]] = []
+    for i in range(max((len(p) for p in plans), default=0)):
+        for plan in plans:
+            if i >= len(plan):
+                continue
+            q = plan[i]
+            key = (" ".join(q.text.lower().split()), q.category)
+            have = merged.get(key)
+            if have is None:
+                merged[key] = q
+                order.append(key)
+            elif have.max_price_gbp is not None and (
+                q.max_price_gbp is None or q.max_price_gbp > have.max_price_gbp
+            ):
+                merged[key] = have.model_copy(update={"max_price_gbp": q.max_price_gbp})
+    return [merged[k] for k in order]

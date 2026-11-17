@@ -15,14 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.api.taste import TasteItemOut, store_image, to_out
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import ImageError, fetch_user_image, is_listing_image_host
 from rack.models import ListingRow, SavedRow, TasteItemRow, utcnow
 from rack.sources.http import USER_AGENT
-from rack.store import bump_version
+from rack.store import bump_version, get_owned
 
 router = APIRouter(prefix="/api", tags=["purchases"], dependencies=[Depends(require_session)])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -58,14 +58,16 @@ def _snapshot(saved: SavedRow) -> dict[str, Any]:
 
 @router.post("/listings/{listing_id}/bought", response_model=TasteItemOut)
 async def bought(
-    listing_id: int, body: BoughtIn, session: Session, settings: Config
+    listing_id: int, body: BoughtIn, session: Session, settings: Config, user: User
 ) -> TasteItemOut:
     listing = await session.get(ListingRow, listing_id)
     if listing is None:
         raise HTTPException(404)
     dup = await session.execute(
         select(TasteItemRow.id).where(
-            TasteItemRow.listing_id == listing_id, TasteItemRow.purchased_at.is_not(None)
+            TasteItemRow.user_id == user.id,
+            TasteItemRow.listing_id == listing_id,
+            TasteItemRow.purchased_at.is_not(None),
         )
     )
     if dup.first() is not None:
@@ -75,12 +77,13 @@ async def bought(
     path: str | None = None
     if photo_url:
         try:
-            path = await store_image(await download_photo(photo_url), settings)
+            path = await store_image(await download_photo(photo_url), settings, user.id)
         except (ImageError, httpx.HTTPError):
             path = None  # still add it: the title shapes the feed through the text match
 
-    saved = await session.get(SavedRow, listing_id)
+    saved = await session.get(SavedRow, (user.id, listing_id))
     row = TasteItemRow(
+        user_id=user.id,
         kind="wardrobe",
         image_path=path,
         image_url=photo_url if path else None,
@@ -99,15 +102,15 @@ async def bought(
     session.add(row)
     if saved is not None:
         await session.delete(saved)  # leaves Saved, so price-drop checks stop too
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
     return to_out(row)
 
 
 @router.post("/taste/{item_id}/undo-bought", response_model=UndoOut)
-async def undo_bought(item_id: int, session: Session, settings: Config) -> UndoOut:
-    row = await session.get(TasteItemRow, item_id)
-    if row is None or row.purchased_at is None:
+async def undo_bought(item_id: int, session: Session, settings: Config, user: User) -> UndoOut:
+    row = await get_owned(session, TasteItemRow, item_id, user.id)
+    if row.purchased_at is None:
         raise HTTPException(404)
     restored = False
     snap = row.saved_snapshot
@@ -116,6 +119,7 @@ async def undo_bought(item_id: int, session: Session, settings: Config) -> UndoO
         await session.execute(
             insert(SavedRow)
             .values(
+                user_id=user.id,
                 listing_id=row.listing_id,
                 saved_at=datetime.fromisoformat(snap["saved_at"]),
                 price_gbp_at_save=snap.get("price_gbp_at_save"),
@@ -127,6 +131,6 @@ async def undo_bought(item_id: int, session: Session, settings: Config) -> UndoO
     if row.image_path:
         (settings.uploads_dir / row.image_path).unlink(missing_ok=True)
     await session.delete(row)
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
     return UndoOut(restored_to_saved=restored)

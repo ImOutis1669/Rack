@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Select, and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.config import get_settings
 from rack.db import get_session
 from rack.models import (
@@ -107,8 +107,10 @@ def to_out(
     )
 
 
-async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[ListingOut]:
-    """Attach score/why, your vote and saved state to listing rows (keeps order)."""
+async def hydrate(
+    session: AsyncSession, rows: Sequence[ListingRow], user_id: int
+) -> list[ListingOut]:
+    """Attach this user's score/why, vote and saved state to listing rows (keeps order)."""
     ids = [r.id for r in rows]
     if not ids:
         return []
@@ -116,7 +118,9 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
         s.listing_id: s
         for s in (
             await session.execute(
-                select(ListingScoreRow).where(ListingScoreRow.listing_id.in_(ids))
+                select(ListingScoreRow).where(
+                    ListingScoreRow.user_id == user_id, ListingScoreRow.listing_id.in_(ids)
+                )
             )
         ).scalars()
     }
@@ -124,7 +128,7 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
         (
             await session.execute(
                 select(FeedbackRow.listing_id, FeedbackRow.value).where(
-                    FeedbackRow.listing_id.in_(ids)
+                    FeedbackRow.user_id == user_id, FeedbackRow.listing_id.in_(ids)
                 )
             )
         ).all()
@@ -132,7 +136,9 @@ async def hydrate(session: AsyncSession, rows: Sequence[ListingRow]) -> list[Lis
     saved = {
         s.listing_id: s
         for s in (
-            await session.execute(select(SavedRow).where(SavedRow.listing_id.in_(ids)))
+            await session.execute(
+                select(SavedRow).where(SavedRow.user_id == user_id, SavedRow.listing_id.in_(ids))
+            )
         ).scalars()
     }
     firsts = await first_prices(session, ids)
@@ -204,14 +210,15 @@ def best_order(
     return out
 
 
-def bought_listing() -> Any:
-    """You bought this listing ("I bought it"): keep it out of the feed."""
-    return exists().where(TasteItemRow.listing_id == ListingRow.id)
+def bought_listing(user_id: int) -> Any:
+    """You bought this listing ("I bought it"): keep it out of your feed."""
+    return exists().where(TasteItemRow.user_id == user_id, TasteItemRow.listing_id == ListingRow.id)
 
 
 @router.get("/feed", response_model=FeedPage)
 async def feed(
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: User,
     sort: Sort = "best",
     source: Annotated[list[str] | None, Query()] = None,
     category: Category | None = None,
@@ -225,13 +232,16 @@ async def feed(
 ) -> FeedPage:
     stmt = (
         select(ListingRow)
-        .outerjoin(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
+        .outerjoin(
+            ListingScoreRow,
+            and_(ListingScoreRow.listing_id == ListingRow.id, ListingScoreRow.user_id == user.id),
+        )
         .where(
             ListingRow.active.is_(True),
             ListingScoreRow.filtered_reason.is_(None),
             # one card per cluster: only its representative (cheapest copy)
             or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
-            ~bought_listing(),
+            ~bought_listing(user.id),
         )
     )
     if source:
@@ -248,11 +258,15 @@ async def feed(
         stmt = stmt.where(ListingRow.first_seen_at > new_since)
     if hide_seen_before is not None:
         stmt = stmt.where(
-            ~exists().where(SeenRow.listing_id == ListingRow.id, SeenRow.seen_at < hide_seen_before)
+            ~exists().where(
+                SeenRow.user_id == user.id,
+                SeenRow.listing_id == ListingRow.id,
+                SeenRow.seen_at < hide_seen_before,
+            )
         )
 
     if sort == "best":
-        return await _best_page(session, stmt, cursor, limit)
+        return await _best_page(session, stmt, cursor, limit, user.id)
 
     if sort != "newest":
         stmt = stmt.where(ListingRow.price_gbp.is_not(None))
@@ -272,11 +286,11 @@ async def feed(
         last = page[-1]
         k = last.first_seen_at.isoformat() if sort == "newest" else str(last.price_gbp)
         next_cursor = encode_cursor({"k": k, "id": last.id})
-    return FeedPage(items=await hydrate(session, page), next_cursor=next_cursor)
+    return FeedPage(items=await hydrate(session, page, user.id), next_cursor=next_cursor)
 
 
 async def _best_page(
-    session: AsyncSession, stmt: Select[Any], cursor: str | None, limit: int
+    session: AsyncSession, stmt: Select[Any], cursor: str | None, limit: int, user_id: int
 ) -> FeedPage:
     c = decode_cursor(cursor) if cursor else {}
     offset = int(c.get("o", 0))
@@ -306,7 +320,7 @@ async def _best_page(
         ).all()
         if e is not None
     }
-    profile, _ = await load_profile(session)
+    profile, _ = await load_profile(session, user_id)
     order = best_order(ids, scores, embs, profile.exploration, seed)
     # Not scored yet (the worker scores within a minute or so): newest, after the scored ones.
     unscored = (
@@ -328,7 +342,7 @@ async def _best_page(
     page = [rows[i] for i in page_ids if i in rows]
     more = offset + limit < len(order)
     next_cursor = encode_cursor({"o": offset + limit, "s": seed}) if more else None
-    return FeedPage(items=await hydrate(session, page), next_cursor=next_cursor)
+    return FeedPage(items=await hydrate(session, page, user_id), next_cursor=next_cursor)
 
 
 def health_status(row: SourceHealthRow | None) -> str:
@@ -359,7 +373,9 @@ def ebay_usage_text(usage: dict[str, Any], limit: int, today: str) -> tuple[str 
 @router.get("/sources/health", response_model=list[SourceHealthOut])
 async def sources_health(
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: User,
 ) -> list[SourceHealthOut]:
+    """Every user sees source health; eBay's shared quota line is the owner's business."""
     rows = {r.source: r for r in (await session.execute(select(SourceHealthRow))).scalars()}
     usage, warn = ebay_usage_text(
         await get_state(session, "ebay_usage"), get_settings().ebay_daily_call_limit, quota_day()
@@ -380,8 +396,8 @@ async def sources_health(
                 blocked=row.blocked if row else False,
                 last_check_at=row.last_check_at if row else None,
                 status=health_status(row),
-                usage=usage if name == "ebay" else None,
-                usage_warning=warn if name == "ebay" else False,
+                usage=usage if name == "ebay" and user.is_owner else None,
+                usage_warning=warn if name == "ebay" and user.is_owner else False,
             )
         )
     return out

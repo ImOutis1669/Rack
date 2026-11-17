@@ -13,14 +13,14 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import MAX_BYTES, ImageError, fetch_user_image, sanitize_upload
 from rack.models import ListingRow, SoldListingRow, TasteItemRow
 from rack.pricing.resale import item_category
 from rack.sources.http import USER_AGENT
-from rack.store import bump_version
+from rack.store import bump_version, get_owned
 
 router = APIRouter(prefix="/api/taste", tags=["taste"], dependencies=[Depends(require_session)])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -133,13 +133,14 @@ def to_out(r: TasteItemRow) -> TasteItemOut:
     )
 
 
-async def store_image(data: bytes, settings: Settings) -> str:
+async def store_image(data: bytes, settings: Settings, user_id: int) -> str:
+    """Sanitised JPEG under uploads/<user id>/; returns its path relative to the uploads dir."""
     clean = await asyncio.to_thread(sanitize_upload, data)
-    d = settings.uploads_dir
+    d = settings.uploads_dir / str(user_id)
     d.mkdir(parents=True, exist_ok=True)
     name = f"{secrets.token_hex(16)}.jpg"
     await asyncio.to_thread((d / name).write_bytes, clean)
-    return name
+    return f"{user_id}/{name}"
 
 
 def _clean(s: str | None) -> str | None:
@@ -148,8 +149,12 @@ def _clean(s: str | None) -> str | None:
 
 
 @router.get("", response_model=list[TasteItemOut])
-async def list_items(session: Session, kind: Kind | None = None) -> list[TasteItemOut]:
-    stmt = select(TasteItemRow).order_by(TasteItemRow.created_at.desc())
+async def list_items(session: Session, user: User, kind: Kind | None = None) -> list[TasteItemOut]:
+    stmt = (
+        select(TasteItemRow)
+        .where(TasteItemRow.user_id == user.id)
+        .order_by(TasteItemRow.created_at.desc())
+    )
     if kind:
         stmt = stmt.where(TasteItemRow.kind == kind)
     return [to_out(r) for r in (await session.execute(stmt)).scalars()]
@@ -159,6 +164,7 @@ async def list_items(session: Session, kind: Kind | None = None) -> list[TasteIt
 async def upload(
     session: Session,
     settings: Config,
+    user: User,
     kind: Annotated[Kind, Form()],
     files: Annotated[list[UploadFile], File()],
     note: Annotated[str | None, Form(max_length=500)] = None,
@@ -171,28 +177,34 @@ async def upload(
     for f in files:
         data = await f.read(MAX_BYTES + 1)
         try:
-            path = await store_image(data, settings)
+            path = await store_image(data, settings, user.id)
         except ImageError as exc:
             raise HTTPException(400, f"{f.filename}: {exc}") from exc
         row = TasteItemRow(
-            kind=kind, image_path=path, note=_clean(note), text=_clean(text), name=_clean(name)
+            user_id=user.id,
+            kind=kind,
+            image_path=path,
+            note=_clean(note),
+            text=_clean(text),
+            name=_clean(name),
         )
         session.add(row)
         rows.append(row)
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
     return [to_out(r) for r in rows]
 
 
 @router.post("/url", response_model=TasteItemOut)
-async def add_url(body: UrlIn, session: Session, settings: Config) -> TasteItemOut:
+async def add_url(body: UrlIn, session: Session, settings: Config, user: User) -> TasteItemOut:
     try:
         async with httpx.AsyncClient(timeout=15, headers={"User-Agent": USER_AGENT}) as client:
             data = await fetch_user_image(body.url, client)
-        path = await store_image(data, settings)
+        path = await store_image(data, settings, user.id)
     except (ImageError, httpx.HTTPError) as exc:
         raise HTTPException(400, f"Couldn't use that link: {exc}") from exc
     row = TasteItemRow(
+        user_id=user.id,
         kind=body.kind,
         image_path=path,
         image_url=body.url,
@@ -201,30 +213,29 @@ async def add_url(body: UrlIn, session: Session, settings: Config) -> TasteItemO
         name=_clean(body.name),
     )
     session.add(row)
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
     return to_out(row)
 
 
 @router.post("/text", response_model=TasteItemOut)
-async def add_text(body: TextIn, session: Session) -> TasteItemOut:
-    row = TasteItemRow(kind=body.kind, text=_clean(body.text), name=_clean(body.text))
+async def add_text(body: TextIn, session: Session, user: User) -> TasteItemOut:
+    row = TasteItemRow(
+        user_id=user.id, kind=body.kind, text=_clean(body.text), name=_clean(body.text)
+    )
     session.add(row)
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
     return to_out(row)
 
 
-async def _get(session: AsyncSession, item_id: int) -> TasteItemRow:
-    row = await session.get(TasteItemRow, item_id)
-    if row is None:
-        raise HTTPException(404)
-    return row
+async def _get(session: AsyncSession, item_id: int, user_id: int) -> TasteItemRow:
+    return await get_owned(session, TasteItemRow, item_id, user_id)
 
 
 @router.patch("/{item_id}", response_model=TasteItemOut)
-async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItemOut:
-    row = await _get(session, item_id)
+async def patch_item(item_id: int, body: PatchIn, session: Session, user: User) -> TasteItemOut:
+    row = await _get(session, item_id, user.id)
     fields = body.model_fields_set
     money = {"purchase_price_gbp", "custom_value_gbp", "purchase_date"} & fields
     if money and row.kind != "wardrobe":
@@ -251,18 +262,18 @@ async def patch_item(item_id: int, body: PatchIn, session: Session) -> TasteItem
         row.estimate_at = None  # the label can name the brand/category
         taste_changed = True
     if taste_changed:  # prices don't change ranking: no rescore for them
-        await bump_version(session)
+        await bump_version(session, user.id)
     await session.commit()
     return to_out(row)
 
 
 @router.delete("/{item_id}", status_code=204)
-async def delete_item(item_id: int, session: Session, settings: Config) -> None:
-    row = await _get(session, item_id)
+async def delete_item(item_id: int, session: Session, settings: Config, user: User) -> None:
+    row = await _get(session, item_id, user.id)
     if row.image_path:
         (settings.uploads_dir / row.image_path).unlink(missing_ok=True)
     await session.delete(row)
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
 
 
@@ -278,9 +289,11 @@ class ComparableOut(BaseModel):
 
 
 @router.get("/{item_id}/comparables", response_model=list[ComparableOut])
-async def comparables(item_id: int, session: Session, limit: int = 3) -> list[ComparableOut]:
+async def comparables(
+    item_id: int, session: Session, user: User, limit: int = 3
+) -> list[ComparableOut]:
     """The listings behind the item's estimate, closest first (gone ones drop out)."""
-    row = await _get(session, item_id)
+    row = await _get(session, item_id, user.id)
     basis = (row.estimate_basis or {}).get("comparables") or []
     sims = {int(lid): float(sim) for lid, sim in basis}
     if not sims:
@@ -327,8 +340,8 @@ async def comparables(item_id: int, session: Session, limit: int = 3) -> list[Co
 
 
 @router.get("/{item_id}/image")
-async def item_image(item_id: int, session: Session, settings: Config) -> FileResponse:
-    row = await _get(session, item_id)
+async def item_image(item_id: int, session: Session, settings: Config, user: User) -> FileResponse:
+    row = await _get(session, item_id, user.id)
     if not row.image_path:
         raise HTTPException(404)
     path = settings.uploads_dir / row.image_path

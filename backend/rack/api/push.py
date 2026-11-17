@@ -8,7 +8,7 @@ from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.models import PushSubscriptionRow
@@ -37,23 +37,28 @@ async def public_key(settings: Annotated[Settings, Depends(get_settings)]) -> di
 
 
 @router.post("/subscribe", status_code=204)
-async def subscribe(body: SubscriptionIn, request: Request, session: Session) -> None:
+async def subscribe(body: SubscriptionIn, request: Request, session: Session, user: User) -> None:
+    """A browser's endpoint belongs to whoever subscribed it last (one account per browser)."""
     ins = insert(PushSubscriptionRow).values(
+        user_id=user.id,
         endpoint=body.endpoint,
         keys=body.keys.model_dump(),
         user_agent=(request.headers.get("user-agent") or "")[:300],
     )
     await session.execute(
         ins.on_conflict_do_update(
-            index_elements=[PushSubscriptionRow.endpoint], set_={"keys": ins.excluded["keys"]}
+            index_elements=[PushSubscriptionRow.endpoint],
+            set_={"keys": ins.excluded["keys"], "user_id": user.id},
         )
     )
     await session.commit()
 
 
 @router.post("/unsubscribe", status_code=204)
-async def unsubscribe(body: EndpointIn, session: Session) -> None:
+async def unsubscribe(body: EndpointIn, session: Session, user: User) -> None:
     await session.execute(
-        delete(PushSubscriptionRow).where(PushSubscriptionRow.endpoint == body.endpoint)
+        delete(PushSubscriptionRow).where(
+            PushSubscriptionRow.endpoint == body.endpoint, PushSubscriptionRow.user_id == user.id
+        )
     )
     await session.commit()

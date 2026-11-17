@@ -17,7 +17,7 @@ REFRESH_AFTER = timedelta(hours=6)
 async def refresh_estimates(sessions: async_sessionmaker[AsyncSession], now: datetime) -> int:
     """Re-estimates wardrobe items that are due. Returns how many were estimated."""
     async with sessions() as s:
-        designers = list(await load_designers(s))
+        designers: dict[int, list[str]] = {}
         due = (
             (
                 await s.execute(
@@ -35,6 +35,8 @@ async def refresh_estimates(sessions: async_sessionmaker[AsyncSession], now: dat
             .all()
         )
         for item in due:
-            await estimate_item(s, item, designers, now)
+            if item.user_id not in designers:  # an item's brand is read with its owner's designers
+                designers[item.user_id] = list(await load_designers(s, item.user_id))
+            await estimate_item(s, item, designers[item.user_id], now)
         await s.commit()
     return len(due)

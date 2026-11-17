@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session, sessionmaker
 from rack.models import NotificationRow, PushSubscriptionRow
@@ -35,11 +35,27 @@ class SentOut(BaseModel):
 
 @router.get("/status", response_model=list[ChannelStatus])
 async def status(
-    settings: Config, session: Annotated[AsyncSession, Depends(get_session)]
+    settings: Config, session: Annotated[AsyncSession, Depends(get_session)], user: User
 ) -> list[ChannelStatus]:
-    devices = (await session.execute(select(func.count(PushSubscriptionRow.id)))).scalar_one()
+    """The owner's channels; friends only have Web Push (their own devices)."""
+    devices = (
+        await session.execute(
+            select(func.count(PushSubscriptionRow.id)).where(PushSubscriptionRow.user_id == user.id)
+        )
+    ).scalar_one()
     push_keys = bool(settings.vapid_public_key and settings.vapid_private_key)
     ntfy_on = bool(settings.ntfy_url and settings.ntfy_topic)
+    webpush = ChannelStatus(
+        name="webpush",
+        configured=push_keys and devices > 0,
+        detail=(
+            f"{devices} device(s) enabled"
+            if push_keys
+            else "Run `rack vapid-keys` and add the keys to .env"
+        ),
+    )
+    if not user.is_owner:
+        return [webpush]
     return [
         ChannelStatus(
             name="ntfy",
@@ -57,21 +73,13 @@ async def status(
             if settings.telegram_bot_token and settings.telegram_chat_id
             else "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env",
         ),
-        ChannelStatus(
-            name="webpush",
-            configured=push_keys and devices > 0,
-            detail=(
-                f"{devices} device(s) enabled"
-                if push_keys
-                else "Run `rack vapid-keys` and add the keys to .env"
-            ),
-        ),
+        webpush,
     ]
 
 
 @router.post("/test", response_model=dict[str, str])
-async def test(settings: Config) -> dict[str, str]:
-    channels = build_channels(settings, sessionmaker())
+async def test(settings: Config, user: User) -> dict[str, str]:
+    channels = build_channels(settings, sessionmaker(), user_id=user.id, owner=user.is_owner)
     if not channels:
         return {"error": "No notification channel is configured"}
     return await send_all(
@@ -86,10 +94,15 @@ async def test(settings: Config) -> dict[str, str]:
 
 
 @router.get("/recent", response_model=list[SentOut])
-async def recent(session: Annotated[AsyncSession, Depends(get_session)]) -> list[SentOut]:
+async def recent(
+    session: Annotated[AsyncSession, Depends(get_session)], user: User
+) -> list[SentOut]:
     rows = (
         await session.execute(
-            select(NotificationRow).order_by(NotificationRow.sent_at.desc()).limit(30)
+            select(NotificationRow)
+            .where(NotificationRow.user_id == user.id)
+            .order_by(NotificationRow.sent_at.desc())
+            .limit(30)
         )
     ).scalars()
     return [

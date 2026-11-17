@@ -20,7 +20,7 @@ from rack.ingest import set_images
 from rack.models import ListingImageRow, ListingRow
 from rack.sources.base import SourceError
 from rack.sources.vinted import ItemDetails, VintedAdapter
-from rack.store import get_state, set_state
+from rack.store import mark_listings_changed
 
 router = APIRouter(prefix="/api", tags=["gallery"], dependencies=[Depends(require_session)])
 REFETCH_AFTER = timedelta(days=1)
@@ -81,8 +81,7 @@ async def gallery(
             if details.description:
                 row.description = details.description
                 # new text may contain measurements: let the worker rescore
-                state = await get_state(session, "scoring")
-                await set_state(session, "scoring", {**state, "dirty": True})
+                await mark_listings_changed(session)
             if details.available is False:
                 row.active = False
                 note = "This listing is no longer available."

@@ -25,7 +25,7 @@ MIGRATION = (
 
 
 async def test_backfill_moves_photo_labels_to_name_and_dates_purchases(
-    sessions: async_sessionmaker[AsyncSession],
+    sessions: async_sessionmaker[AsyncSession], owner_id: int
 ) -> None:
     spec = importlib.util.spec_from_file_location("m0015", MIGRATION)
     assert spec and spec.loader
@@ -34,12 +34,12 @@ async def test_backfill_moves_photo_labels_to_name_and_dates_purchases(
     bought_at = datetime(2026, 11, 16, 23, 30, tzinfo=UTC)
     async with sessions() as s:
         rows = [
-            TasteItemRow(kind="wardrobe", image_path="a.jpg", note="Gucci GG belt"),
-            TasteItemRow(kind="wardrobe", text="black overcoat", note="my favourite"),
+            TasteItemRow(user_id=owner_id, kind="wardrobe", image_path="a.jpg", note="Gucci GG belt"),
+            TasteItemRow(user_id=owner_id, kind="wardrobe", text="black overcoat", note="my favourite"),
             TasteItemRow(
-                kind="wardrobe", image_path="b.jpg", text="Junya jacket", purchased_at=bought_at
+                user_id=owner_id, kind="wardrobe", image_path="b.jpg", text="Junya jacket", purchased_at=bought_at
             ),
-            TasteItemRow(kind="wishlist", image_path="c.jpg"),
+            TasteItemRow(user_id=owner_id, kind="wishlist", image_path="c.jpg"),
         ]
         s.add_all(rows)
         await s.commit()

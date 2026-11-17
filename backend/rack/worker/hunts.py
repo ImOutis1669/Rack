@@ -9,6 +9,7 @@ from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from rack.config import Settings
 from rack.ingest import record_error, record_success, upsert_listings
 from rack.models import (
     HiddenRow,
@@ -17,9 +18,10 @@ from rack.models import (
     ListingRow,
     ListingScoreRow,
     TasteItemRow,
+    UserRow,
 )
 from rack.notify.base import Channel, Notification
-from rack.notify.dispatch import notify_once
+from rack.notify.dispatch import build_channels, notify_once
 from rack.parsing.categories import infer_category
 from rack.parsing.measurements import parse_measurements
 from rack.ranking.brands import match_designer
@@ -27,8 +29,9 @@ from rack.ranking.brands import normalize as normalize_name
 from rack.ranking.filters import Hidden, hard_filter
 from rack.ranking.hunt_match import HuntSpec, hunt_matches
 from rack.sources.base import Category, SearchQuery, SourceAdapter, SourceError, SourceNotConfigured
+from rack.sources.ebay import quota_day
 from rack.sources.registry import SOURCE_NAMES
-from rack.store import load_designers, load_profile
+from rack.store import get_user_state, load_designers, load_profile, set_user_state
 
 log = logging.getLogger(__name__)
 MIN_INTERVAL_MINUTES = 5
@@ -94,7 +97,8 @@ async def prune_matches(session: AsyncSession, hunt: HuntRow) -> int:
         for s in (
             await session.execute(
                 select(ListingScoreRow).where(
-                    ListingScoreRow.listing_id.in_([r.id for _, r in rows])
+                    ListingScoreRow.user_id == hunt.user_id,
+                    ListingScoreRow.listing_id.in_([r.id for _, r in rows]),
                 )
             )
         ).scalars()
@@ -140,6 +144,8 @@ async def run_hunt(
         if adapter is None:
             continue
         try:
+            if name == "ebay":
+                await count_ebay_search(session, hunt.user_id)
             listings = await adapter.search(q)
         except SourceNotConfigured:
             continue
@@ -153,16 +159,19 @@ async def run_hunt(
         await record_success(session, name, len(listings))
         await session.commit()
 
-    profile, _ = await load_profile(session)
-    designers = await load_designers(session)
+    uid = hunt.user_id
+    profile, _ = await load_profile(session, uid)
+    designers = await load_designers(session, uid)
     hidden = Hidden()
-    for h in (await session.execute(select(HiddenRow))).scalars():
+    for h in (await session.execute(select(HiddenRow).where(HiddenRow.user_id == uid))).scalars():
         (hidden.sellers if h.kind == "seller" else hidden.brands).add(normalize_name(h.value))
     scores = {
         s.listing_id: s.score
         for s in (
             await session.execute(
-                select(ListingScoreRow).where(ListingScoreRow.listing_id.in_(ids))
+                select(ListingScoreRow).where(
+                    ListingScoreRow.user_id == uid, ListingScoreRow.listing_id.in_(ids)
+                )
             )
         ).scalars()
     }
@@ -180,7 +189,9 @@ async def run_hunt(
                     ListingRow.id.in_(ids),
                     ListingRow.active,
                     # already bought ("I bought it"): never alert on it again
-                    ~exists().where(TasteItemRow.listing_id == ListingRow.id),
+                    ~exists().where(
+                        TasteItemRow.user_id == uid, TasteItemRow.listing_id == ListingRow.id
+                    ),
                 )
             )
         )
@@ -237,6 +248,7 @@ async def run_hunt(
             await notify_once(
                 session,
                 channels,
+                user_id=uid,
                 key=f"hunt:{hunt.id}:{row.source}:{row.source_id}",
                 kind="hunt",
                 n=match_notification(hunt, row),
@@ -246,26 +258,46 @@ async def run_hunt(
     return len(new)
 
 
+async def count_ebay_search(session: AsyncSession, user_id: int) -> None:
+    """eBay searches per user per eBay day, for the owner's admin view (quota is shared)."""
+    today = quota_day()
+    st = await get_user_state(session, user_id, "ebay_usage")
+    n = int(st.get("search", 0)) if st.get("day") == today else 0
+    await set_user_state(session, user_id, "ebay_usage", {"day": today, "search": n + 1})
+
+
 async def run_due_hunts(
     sessions: async_sessionmaker[AsyncSession],
     adapters: Mapping[str, SourceAdapter],
-    channels: Sequence[Channel],
+    settings: Settings,
+    channels_override: Sequence[Channel] | None = None,  # tests: the same channels for everyone
 ) -> int:
+    """Due hunts of enabled accounts, each alerting its own user's channels."""
     now = datetime.now(UTC)
     async with sessions() as s:
         hunts = (
-            (
-                await s.execute(
-                    select(HuntRow).where(
-                        or_(HuntRow.enabled.is_(True), HuntRow.run_requested_at.is_not(None))
+            await s.execute(
+                select(HuntRow, UserRow.role)
+                .join(UserRow, UserRow.id == HuntRow.user_id)
+                .where(
+                    UserRow.disabled_at.is_(None),
+                    or_(HuntRow.enabled.is_(True), HuntRow.run_requested_at.is_not(None)),
+                )
+                .order_by(HuntRow.id)
+            )
+        ).all()
+        channels: dict[int, list[Channel]] = {}
+        total = 0
+        for hunt, role in hunts:
+            if not due(hunt, now):
+                continue
+            if hunt.user_id not in channels:
+                channels[hunt.user_id] = (
+                    list(channels_override)
+                    if channels_override is not None
+                    else build_channels(
+                        settings, sessions, user_id=hunt.user_id, owner=role == "owner"
                     )
                 )
-            )
-            .scalars()
-            .all()
-        )
-        total = 0
-        for hunt in hunts:
-            if due(hunt, now):
-                total += await run_hunt(s, hunt, adapters, channels)
+            total += await run_hunt(s, hunt, adapters, channels[hunt.user_id])
         return total

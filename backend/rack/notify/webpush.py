@@ -46,6 +46,7 @@ class WebPushChannel:
         private_key: str,
         subject: str,
         sessions: async_sessionmaker[AsyncSession] | None,
+        user_id: int,
     ) -> None:
         self.public_key = public_key
         self._private = private_key
@@ -54,6 +55,7 @@ class WebPushChannel:
             subject if subject.startswith(("https://", "mailto:")) else "https://localhost"
         )
         self._sessions = sessions
+        self._user_id = user_id  # only this user's devices
 
     @property
     def configured(self) -> bool:
@@ -80,7 +82,17 @@ class WebPushChannel:
     async def send(self, n: Notification) -> None:
         assert self._sessions is not None
         async with self._sessions() as s:
-            subs = (await s.execute(select(PushSubscriptionRow))).scalars().all()
+            subs = (
+                (
+                    await s.execute(
+                        select(PushSubscriptionRow).where(
+                            PushSubscriptionRow.user_id == self._user_id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
             if not subs:
                 raise NotifyError("no device has enabled push yet")
             data = payload(n)

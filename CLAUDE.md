@@ -280,6 +280,30 @@ Security notes:
   used / revoked / expired codes give one answer and count in `signup_attempts`. Invite links
   are `/join#<code>` (fragment). `POST /api/auth/password` re-issues this device's cookie or
   token. CLI: `rack reset-password <user>`, `rack users`. Tests: `tests/test_accounts.py`.
+- Per-user data (v2.1 step 2, migration 0020): every personal table has `user_id` (FK users,
+  ON DELETE CASCADE, so deleting a user removes everything theirs): `profile` (one per user),
+  `designers`, `adjacent_designers`, `taste_items`, `hidden`, `hunts` (matches through the
+  hunt), `notifications` (key unique per user), `push_subscriptions` (an endpoint belongs to
+  whoever subscribed it last); `listing_scores`, `feedback`, `saved`, `seen` are keyed
+  (user_id, listing_id). `user_state` (user_id, key) holds visits, scoring version/at and eBay
+  searches per day; `app_state` keeps only global keys (`scoring.changed_at` = listings changed,
+  via `store.mark_listings_changed`). Shared: listings, images, embeddings, prices, sold
+  listings, source health. Every route takes `user: User` and filters by `user.id`;
+  `store.get_owned(session, Model, id, user_id)` = row or 404. Uploads go to
+  `uploads/<user id>/` (`image_path` is relative, older owner files stay at the top level).
+  Worker: `active_users` = enabled and seen in 30 days, plus the owner. `rescore` builds
+  listing features once and scores each due user (~17 s per user on 15k listings): at once
+  when their profile version moved; when only listings changed, the owner at once and friends
+  every `RACK_FRIEND_RESCORE_MINUTES`. Planner: `merge_plans` round-robins all active users'
+  queries, deduped by (text, category), higher price cap wins; same batch size and rate limits.
+  Hunts, price drops and estimates use the row's user (profile, designers, hidden, scores,
+  bought); `build_channels(..., user_id, owner)`: owner = ntfy + Telegram + Web Push, friends
+  = Web Push to their own devices. LLM re-rank: owner only. Friends' caps (`RACK_FRIEND_*`):
+  5 hunts, >= 60 min interval and run-now, sold-price checks for their first 30 wardrobe items.
+  Sources health: everyone; the eBay quota line owner only. Tests: `tests/test_multiuser.py`
+  (route-auth sweep, owned-table list, IDOR matrix, cascade delete, per-user scoring, planner,
+  caps, migration 0020 on single-user data). Dry run on a copy of the real DB (2026-11-17):
+  identical row counts after upgrade and after downgrade; everything owned by the owner.
 - iOS app auth (iOS step 1): `POST /api/auth/token` (same password check and rate limits as
   `/login`) returns a bearer token signed with salt `rack-app-token` (cookies use
   `rack-session`, so neither works as the other), same epoch + fingerprint claims, lifetime

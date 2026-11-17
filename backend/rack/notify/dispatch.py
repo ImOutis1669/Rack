@@ -1,4 +1,7 @@
-"""Send a notification once per key, on every configured channel."""
+"""Send a notification once per (user, key), on every channel that user has.
+
+The owner gets ntfy and Telegram (configured in .env) plus Web Push; friends get Web Push to
+their own devices only (user's choice, v2.1)."""
 
 import logging
 from collections.abc import Sequence
@@ -19,18 +22,27 @@ log = logging.getLogger(__name__)
 
 
 def build_channels(
-    settings: Settings, sessions: async_sessionmaker[AsyncSession] | None = None
+    settings: Settings,
+    sessions: async_sessionmaker[AsyncSession] | None,
+    *,
+    user_id: int,
+    owner: bool,
 ) -> list[Channel]:
     channels: list[Channel] = [
-        NtfyChannel(settings.ntfy_url, settings.ntfy_topic, settings.ntfy_token),
-        TelegramChannel(settings.telegram_bot_token, settings.telegram_chat_id),
         WebPushChannel(
             settings.vapid_public_key,
             settings.vapid_private_key,
             settings.rack_public_url,
             sessions,
-        ),
+            user_id,
+        )
     ]
+    if owner:
+        channels = [
+            NtfyChannel(settings.ntfy_url, settings.ntfy_topic, settings.ntfy_token),
+            TelegramChannel(settings.telegram_bot_token, settings.telegram_chat_id),
+            *channels,
+        ]
     return [c for c in channels if c.configured]
 
 
@@ -50,6 +62,7 @@ async def notify_once(
     session: AsyncSession,
     channels: Sequence[Channel],
     *,
+    user_id: int,
     key: str,
     kind: str,
     n: Notification,
@@ -62,6 +75,7 @@ async def notify_once(
     if not channels:
         return False
     values: dict[str, Any] = {
+        "user_id": user_id,
         "key": key[:200],
         "kind": kind,
         "listing_id": listing_id,
@@ -73,7 +87,7 @@ async def notify_once(
         await session.execute(
             insert(NotificationRow)
             .values(**values)
-            .on_conflict_do_nothing(index_elements=[NotificationRow.key])
+            .on_conflict_do_nothing(index_elements=[NotificationRow.user_id, NotificationRow.key])
             .returning(NotificationRow.id)
         )
     ).scalar_one_or_none()

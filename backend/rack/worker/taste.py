@@ -1,4 +1,4 @@
-"""Worker jobs for Phase 2: compute embeddings, then rescore every active listing."""
+"""Worker jobs: compute embeddings, then rescore every active listing for each active user."""
 
 import asyncio
 import logging
@@ -33,18 +33,21 @@ from rack.ranking.filters import Hidden
 from rack.ranking.llm import adjusted_score
 from rack.ranking.scoring import ListingFeatures, TasteContext, score_all
 from rack.ranking.vectors import as_matrix, normalize, rocchio
-from rack.store import get_state, load_designers, load_profile, set_state
+from rack.store import (
+    active_users,
+    bump_version,
+    get_state,
+    get_user_state,
+    load_designers,
+    load_profile,
+    mark_listings_changed,
+    set_user_state,
+)
 
 log = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
 Fetch = Callable[[str], Awaitable[bytes]]
-
-
-async def _mark_dirty(session: AsyncSession) -> None:
-    state = await get_state(session, "scoring")
-    state["dirty"] = True
-    await set_state(session, "scoring", state)
 
 
 async def embed_taste(
@@ -65,6 +68,7 @@ async def embed_taste(
             .scalars()
             .all()
         )
+        touched: set[int] = set()
         for it in items:
             it.embed_attempts += 1
             try:
@@ -74,6 +78,7 @@ async def embed_taste(
                 it.embedding = emb[0].tolist()
                 it.estimate_at = None  # new photo: re-estimate its resale value
                 it.embed_error = None
+                touched.add(it.user_id)
                 changed += 1
             except Exception as exc:  # noqa: BLE001 - recorded on the row, shown in the UI
                 it.embed_error = f"{type(exc).__name__}: {exc}"[:500]
@@ -95,9 +100,10 @@ async def embed_taste(
             embs = await asyncio.to_thread(embedder.embed_texts, [str(t.text) for t in texts])
             for t, e in zip(texts, embs, strict=True):
                 t.text_embedding = e.tolist()
+                touched.add(t.user_id)
             changed += len(texts)
-        if changed:
-            await _mark_dirty(s)
+        for uid in touched:  # only their owners' rankings change
+            await bump_version(s, uid)
         await s.commit()
     return changed
 
@@ -197,7 +203,7 @@ async def embed_listings(
                 r.text_embedding = e.tolist()
             changed += len(chunk)
         if changed:
-            await _mark_dirty(s)
+            await mark_listings_changed(s)
         await s.commit()
     return changed
 
@@ -270,76 +276,44 @@ async def rescore(
     *,
     force: bool = False,
 ) -> int | None:
-    """Score all active listings if anything changed. Returns count, or None if skipped."""
+    """Score all active listings for every active user whose ranking may have changed.
+
+    A user is due at once when their own profile version moved (taste, votes, saves, hides).
+    When only listings changed (new results, photos, prices), the owner is rescored at once as
+    before and friends at most every `rack_friend_rescore_minutes` (a full pass is ~17 s per
+    user on 15k listings). Listing features are built once and shared. Returns rows written,
+    or None if nobody was due."""
+    started = datetime.now(UTC)
+    friend_every = timedelta(minutes=get_settings().rack_friend_rescore_minutes)
     async with sessions() as s:
-        profile, version = await load_profile(s)
         state = await get_state(s, "scoring")
-        unscored = (
-            await s.execute(
-                select(
-                    exists().where(
-                        ListingRow.active.is_(True),
-                        ~exists().where(ListingScoreRow.listing_id == ListingRow.id),
+        changed_at = _ts(state.get("changed_at"))
+        todo: list[tuple[int, int]] = []  # (user id, profile version)
+        for uid, role in await active_users(s):
+            _, version = await load_profile(s, uid)
+            mine = await get_user_state(s, uid, "scoring")
+            last = _ts(mine.get("at"))
+            unscored = (
+                await s.execute(
+                    select(
+                        exists().where(
+                            ListingRow.active.is_(True),
+                            ~exists().where(
+                                ListingScoreRow.user_id == uid,
+                                ListingScoreRow.listing_id == ListingRow.id,
+                            ),
+                        )
                     )
                 )
+            ).scalar()
+            stale = bool(unscored) or (
+                changed_at is not None and (last is None or changed_at > last)
             )
-        ).scalar()
-        if not (force or unscored or state.get("dirty") or state.get("version") != version):
+            throttled = role != "owner" and last is not None and started - last < friend_every
+            if force or mine.get("version") != version or (stale and not throttled):
+                todo.append((uid, version))
+        if not todo:
             return None
-
-        designers = await load_designers(s)
-        taste = (await s.execute(select(TasteItemRow))).scalars().all()
-        img_items = [t for t in taste if t.embedding is not None]
-        txt_items = [t for t in taste if t.text_embedding is not None]
-        taste_images = as_matrix([list(t.embedding) for t in img_items])  # type: ignore[arg-type]
-        labels = [t.text or t.note or f"{t.kind} piece" for t in img_items]
-
-        text_vecs = [list(t.text_embedding) for t in txt_items]  # type: ignore[arg-type]
-        text_labels = [str(t.text) for t in txt_items]
-        if profile.context.strip() and embedder is not None:
-            ctx_emb = await asyncio.to_thread(embedder.embed_texts, [profile.context.strip()])
-            text_vecs.append(ctx_emb[0].tolist())
-            text_labels.append(_short(profile.context))
-        text_queries = as_matrix(text_vecs)
-
-        votes = (
-            await s.execute(
-                select(FeedbackRow.listing_id, FeedbackRow.value, ListingImageRow.embedding)
-                .join(ListingImageRow, ListingImageRow.listing_id == FeedbackRow.listing_id)
-                .where(ListingImageRow.position == 0, ListingImageRow.embedding.is_not(None))
-            )
-        ).all()
-        # Saving counts as a like, unless that listing has an explicit 👍/👎 (which wins).
-        voted = {lid for lid, _, _ in votes}
-        saves = (
-            await s.execute(
-                select(SavedRow.listing_id, ListingImageRow.embedding)
-                .join(ListingImageRow, ListingImageRow.listing_id == SavedRow.listing_id)
-                .where(ListingImageRow.position == 0, ListingImageRow.embedding.is_not(None))
-            )
-        ).all()
-        liked = as_matrix(
-            [list(e) for _, v, e in votes if v > 0 and e is not None]
-            + [list(e) for lid, e in saves if lid not in voted and e is not None]
-        )
-        disliked = as_matrix([list(e) for _, v, e in votes if v < 0 and e is not None])
-        centroid = normalize(taste_images.mean(axis=0)) if len(taste_images) else None
-        pref = rocchio(centroid, liked, disliked)
-
-        hidden = Hidden()
-        for h in (await s.execute(select(HiddenRow))).scalars():
-            (hidden.sellers if h.kind == "seller" else hidden.brands).add(normalize_name(h.value))
-
-        ctx = TasteContext(
-            profile=profile,
-            designers=designers,
-            taste_images=taste_images,
-            taste_labels=labels,
-            text_queries=text_queries,
-            text_labels=text_labels,
-            pref=pref,
-            hidden=hidden,
-        )
 
         rows = (
             (await s.execute(select(ListingRow).where(ListingRow.active.is_(True)))).scalars().all()
@@ -366,61 +340,147 @@ async def rescore(
             )
             for r in rows
         ]
-        results = await asyncio.to_thread(score_all, feats, ctx)
+        total = 0
+        for uid, version in todo:
+            total += await _score_user(s, uid, version, feats, embedder, started)
+        return total
 
-        now = datetime.now(UTC)
-        settings = get_settings()
-        fresh_after = now - timedelta(days=settings.llm_verdict_days)
-        verdicts = {
-            lid: (llm, why)
-            for lid, llm, why, at in (
-                await s.execute(
-                    select(
-                        ListingScoreRow.listing_id,
-                        ListingScoreRow.llm_score,
-                        ListingScoreRow.llm_why,
-                        ListingScoreRow.llm_at,
-                    ).where(ListingScoreRow.llm_score.is_not(None))
-                )
-            ).all()
-            if at and at > fresh_after
-        }
-        values = [
-            {
-                "listing_id": res.listing_id,
-                "score": round(
-                    adjusted_score(
-                        res.score,
-                        verdicts.get(res.listing_id, (None, None))[0],
-                        settings.llm_weight,
-                    ),
-                    5,
-                ),
-                "components": {**res.components, "base": res.score},
-                "why": _why(
-                    explain(res.components, res.details, profile.weights),
-                    verdicts.get(res.listing_id, (None, None))[1],
-                ),
-                "category": res.category.value,
-                "measurements": res.measurements,
-                "filtered_reason": res.filtered_reason,
-                "profile_version": version,
-                "computed_at": now,
-            }
-            for res in results
-        ]
-        for i in range(0, len(values), 500):
-            ins = insert(ListingScoreRow).values(values[i : i + 500])
-            await s.execute(
-                ins.on_conflict_do_update(
-                    index_elements=[ListingScoreRow.listing_id],
-                    set_={c: ins.excluded[c] for c in values[0] if c != "listing_id"},
-                )
+
+async def _score_user(
+    s: AsyncSession,
+    uid: int,
+    version: int,
+    feats: list[ListingFeatures],
+    embedder: Embedder | None,
+    started: datetime,
+) -> int:
+    """One user's taste context, scores for every listing, written as (user_id, listing_id)."""
+    profile, _ = await load_profile(s, uid)
+    designers = await load_designers(s, uid)
+    taste = (
+        (await s.execute(select(TasteItemRow).where(TasteItemRow.user_id == uid))).scalars().all()
+    )
+    img_items = [t for t in taste if t.embedding is not None]
+    txt_items = [t for t in taste if t.text_embedding is not None]
+    taste_images = as_matrix([list(t.embedding) for t in img_items])  # type: ignore[arg-type]
+    labels = [t.text or t.note or f"{t.kind} piece" for t in img_items]
+
+    text_vecs = [list(t.text_embedding) for t in txt_items]  # type: ignore[arg-type]
+    text_labels = [str(t.text) for t in txt_items]
+    if profile.context.strip() and embedder is not None:
+        ctx_emb = await asyncio.to_thread(embedder.embed_texts, [profile.context.strip()])
+        text_vecs.append(ctx_emb[0].tolist())
+        text_labels.append(_short(profile.context))
+    text_queries = as_matrix(text_vecs)
+
+    votes = (
+        await s.execute(
+            select(FeedbackRow.listing_id, FeedbackRow.value, ListingImageRow.embedding)
+            .join(ListingImageRow, ListingImageRow.listing_id == FeedbackRow.listing_id)
+            .where(
+                FeedbackRow.user_id == uid,
+                ListingImageRow.position == 0,
+                ListingImageRow.embedding.is_not(None),
             )
-        await set_state(s, "scoring", {"version": version, "dirty": False, "at": now.isoformat()})
-        await s.commit()
-        log.info("rescored %d listings (profile v%d)", len(values), version)
-        return len(values)
+        )
+    ).all()
+    # Saving counts as a like, unless that listing has an explicit 👍/👎 (which wins).
+    voted = {lid for lid, _, _ in votes}
+    saves = (
+        await s.execute(
+            select(SavedRow.listing_id, ListingImageRow.embedding)
+            .join(ListingImageRow, ListingImageRow.listing_id == SavedRow.listing_id)
+            .where(
+                SavedRow.user_id == uid,
+                ListingImageRow.position == 0,
+                ListingImageRow.embedding.is_not(None),
+            )
+        )
+    ).all()
+    liked = as_matrix(
+        [list(e) for _, v, e in votes if v > 0 and e is not None]
+        + [list(e) for lid, e in saves if lid not in voted and e is not None]
+    )
+    disliked = as_matrix([list(e) for _, v, e in votes if v < 0 and e is not None])
+    centroid = normalize(taste_images.mean(axis=0)) if len(taste_images) else None
+    pref = rocchio(centroid, liked, disliked)
+
+    hidden = Hidden()
+    for h in (await s.execute(select(HiddenRow).where(HiddenRow.user_id == uid))).scalars():
+        (hidden.sellers if h.kind == "seller" else hidden.brands).add(normalize_name(h.value))
+
+    ctx = TasteContext(
+        profile=profile,
+        designers=designers,
+        taste_images=taste_images,
+        taste_labels=labels,
+        text_queries=text_queries,
+        text_labels=text_labels,
+        pref=pref,
+        hidden=hidden,
+    )
+    results = await asyncio.to_thread(score_all, feats, ctx)
+
+    now = datetime.now(UTC)
+    settings = get_settings()
+    fresh_after = now - timedelta(days=settings.llm_verdict_days)
+    verdicts = {
+        lid: (llm, why)
+        for lid, llm, why, at in (
+            await s.execute(
+                select(
+                    ListingScoreRow.listing_id,
+                    ListingScoreRow.llm_score,
+                    ListingScoreRow.llm_why,
+                    ListingScoreRow.llm_at,
+                ).where(ListingScoreRow.user_id == uid, ListingScoreRow.llm_score.is_not(None))
+            )
+        ).all()
+        if at and at > fresh_after
+    }
+    values = [
+        {
+            "user_id": uid,
+            "listing_id": res.listing_id,
+            "score": round(
+                adjusted_score(
+                    res.score,
+                    verdicts.get(res.listing_id, (None, None))[0],
+                    settings.llm_weight,
+                ),
+                5,
+            ),
+            "components": {**res.components, "base": res.score},
+            "why": _why(
+                explain(res.components, res.details, profile.weights),
+                verdicts.get(res.listing_id, (None, None))[1],
+            ),
+            "category": res.category.value,
+            "measurements": res.measurements,
+            "filtered_reason": res.filtered_reason,
+            "profile_version": version,
+            "computed_at": now,
+        }
+        for res in results
+    ]
+    keys = ("user_id", "listing_id")
+    for i in range(0, len(values), 500):
+        ins = insert(ListingScoreRow).values(values[i : i + 500])
+        await s.execute(
+            ins.on_conflict_do_update(
+                index_elements=[ListingScoreRow.user_id, ListingScoreRow.listing_id],
+                set_={c: ins.excluded[c] for c in values[0] if c not in keys},
+            )
+        )
+    # `at` is when this pass started: listing changes during the pass count as not yet scored
+    await set_user_state(s, uid, "scoring", {"version": version, "at": started.isoformat()})
+    await s.commit()
+    log.info("rescored %d listings for user %d (profile v%d)", len(values), uid, version)
+    return len(values)
+
+
+def _ts(value: object) -> datetime | None:
+    return datetime.fromisoformat(value) if isinstance(value, str) else None
 
 
 def _why(template: str, llm_why: str | None) -> str:

@@ -45,9 +45,10 @@ MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0
 @pytest.mark.db
 async def test_migration_0017_rescores_and_recategorises_sold_items(
     sessions: async_sessionmaker[AsyncSession],
+    owner_id: int,
 ) -> None:
     async with sessions() as s:
-        before = (await get_profile_row(s)).version
+        before = (await get_profile_row(s, owner_id)).version
         now = datetime.now(UTC)
         for sid, title, cat in (("1", "Chrome Hearts cross ring", "any"), ("2", "Rick Owens tee", "any"), ("3", "Belt", "tops")):
             s.add(SoldListingRow(source="grailed", source_id=sid, title=title, category=cat,
@@ -68,7 +69,7 @@ async def test_migration_0017_rescores_and_recategorises_sold_items(
 
         await conn.run_sync(run)
         await s.commit()
-        assert (await get_profile_row(s)).version == before + 1  # the worker rescores everything
+        assert (await get_profile_row(s, owner_id)).version == before + 1  # the worker rescores everything
         cats = {r.source_id: r.category for r in (await s.execute(select(SoldListingRow))).scalars()}
         assert cats == {"1": "accessories", "2": "any", "3": "tops"}  # only "any" rows re-inferred
         assert (await s.execute(text("SELECT 1"))).scalar() == 1

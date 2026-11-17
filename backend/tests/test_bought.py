@@ -14,7 +14,7 @@ from rack.ingest import upsert_listings
 from rack.models import HuntRow, ListingRow, SavedRow, TasteItemRow
 from rack.sources.base import Listing, SearchQuery, Seller
 from rack.worker.hunts import run_hunt
-from tests.conftest import login
+from tests.conftest import db_owner, login
 from tests.fakes import png
 
 pytestmark = pytest.mark.db
@@ -76,7 +76,7 @@ async def test_bought_moves_saved_listing_into_the_wardrobe(
     assert Decimal(item["purchase_price_gbp"]) == Decimal("300")
     assert item["image"] and not item["photo_missing"] and item["purchased_at"]
     assert photos == ["https://images1.vinted.net/t/1/f800/a.jpeg"]
-    assert len(list((tmp_path / "data" / "uploads").iterdir())) == 1
+    assert len([p for p in (tmp_path / "data" / "uploads").rglob("*") if p.is_file()]) == 1
     # shapes the feed: the profile version moved, so the worker embeds it and rescores
     assert (await client.get("/api/profile")).json()["version"] > version
 
@@ -84,7 +84,7 @@ async def test_bought_moves_saved_listing_into_the_wardrobe(
     assert (await client.get("/api/saved")).json() == []
     assert lid not in [i["id"] for i in (await client.get("/api/feed?sort=newest")).json()["items"]]
     async with sessions() as s:
-        assert await s.get(SavedRow, lid) is None
+        assert await s.get(SavedRow, (await db_owner(s), lid)) is None
         assert await s.get(ListingRow, lid) is not None
 
     wardrobe = (await client.get("/api/taste?kind=wardrobe")).json()
@@ -104,7 +104,7 @@ async def test_undo_puts_it_back_in_saved_exactly(
     [lid] = await _ingest(sessions, vinted("2"))
     await client.put(f"/api/listings/{lid}/saved", headers=H)
     async with sessions() as s:
-        before = await s.get(SavedRow, lid)
+        before = await s.get(SavedRow, (await db_owner(s), lid))
         assert before is not None
         before.last_alert_price_gbp = Decimal("310")
         await s.commit()
@@ -116,11 +116,11 @@ async def test_undo_puts_it_back_in_saved_exactly(
     r = await client.post(f"/api/taste/{item['id']}/undo-bought", headers=H)
     assert r.json() == {"restored_to_saved": True}
     async with sessions() as s:
-        after = await s.get(SavedRow, lid)
+        after = await s.get(SavedRow, (await db_owner(s), lid))
         assert after is not None
         assert (after.saved_at, after.price_gbp_at_save, after.last_alert_price_gbp) == snapshot
         assert (await s.execute(select(TasteItemRow))).first() is None
-    assert list((tmp_path / "data" / "uploads").iterdir()) == []
+    assert [p for p in (tmp_path / "data" / "uploads").rglob("*") if p.is_file()] == []
     assert lid in [i["id"] for i in (await client.get("/api/saved")).json()]
 
 
@@ -231,7 +231,13 @@ async def test_hunts_never_alert_on_something_you_bought(
     await login(client)
     adapter, inbox = FakeVinted(), Inbox()
     async with sessions() as s:
-        hunt = HuntRow(name="Geo", query="geobasket", sources=["vinted"], interval_minutes=30)
+        hunt = HuntRow(
+            user_id=await db_owner(s),
+            name="Geo",
+            query="geobasket",
+            sources=["vinted"],
+            interval_minutes=30,
+        )
         s.add(hunt)
         await s.commit()
         hunt_id = hunt.id

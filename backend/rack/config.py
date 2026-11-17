@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     rack_password_hash: str = ""
     rack_owner_username: str = "owner"
     rack_invite_days: int = 7
+    # Friends' caps (the owner has none): hunts share eBay's daily quota and the sources' rate
+    # limits; sold-price checks hit Grailed once a day per branded wardrobe item.
+    rack_friend_max_hunts: int = 5
+    rack_friend_min_hunt_minutes: int = 60
+    rack_friend_sold_items: int = 30
+    # When only listings changed, friends' feeds are rescored at most this often (the owner's
+    # at once). Their own taste changes still rescore them at once.
+    rack_friend_rescore_minutes: int = 10
     rack_session_secret: str = ""
     rack_cookie_secure: bool = True
     rack_session_days: int = 30

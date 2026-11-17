@@ -112,11 +112,12 @@ class SourceHealthRow(Base):
 
 
 class ProfileRow(Base):
-    """Single row (id=1). `data` is validated by rack.profile.Profile."""
+    """One row per user. `data` is validated by rack.profile.Profile."""
 
     __tablename__ = "profile"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     data: Mapped[dict[str, Any]] = mapped_column(default=dict)
     version: Mapped[int] = mapped_column(Integer, default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -124,17 +125,20 @@ class ProfileRow(Base):
 
 class DesignerRow(Base):
     __tablename__ = "designers"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_designers_user_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
     weight: Mapped[str] = mapped_column(String(16))  # love | like | curious | exclude
 
 
 class AdjacentDesignerRow(Base):
     __tablename__ = "adjacent_designers"
-    __table_args__ = (UniqueConstraint("designer", "adjacent", name="uq_adjacent_pair"),)
+    __table_args__ = (UniqueConstraint("user_id", "designer", "adjacent", name="uq_adjacent_pair"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     designer: Mapped[str] = mapped_column(String(200), index=True)
     adjacent: Mapped[str] = mapped_column(String(200))
 
@@ -143,6 +147,7 @@ class TasteItemRow(Base):
     __tablename__ = "taste_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(16), index=True)  # wardrobe | wishlist
     image_path: Mapped[str | None] = mapped_column(Text)  # uploaded file under /data/uploads
     image_url: Mapped[str | None] = mapped_column(Text)  # pasted URL (wishlist)
@@ -185,10 +190,13 @@ class TasteItemRow(Base):
 class ListingScoreRow(Base):
     __tablename__ = "listing_scores"
 
-    listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    score: Mapped[float] = mapped_column(index=True)
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    score: Mapped[float] = mapped_column()
     components: Mapped[dict[str, Any]] = mapped_column(default=dict)
     why: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(16), default="any", index=True)
@@ -207,8 +215,11 @@ class FeedbackRow(Base):
 
     __tablename__ = "feedback"
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     value: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -217,8 +228,11 @@ class FeedbackRow(Base):
 class SavedRow(Base):
     __tablename__ = "saved"
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     price_gbp_at_save: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -228,9 +242,10 @@ class SavedRow(Base):
 
 class HiddenRow(Base):
     __tablename__ = "hidden"
-    __table_args__ = (UniqueConstraint("kind", "value", name="uq_hidden"),)
+    __table_args__ = (UniqueConstraint("user_id", "kind", "value", name="uq_hidden"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(16))  # seller | brand
     value: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -239,8 +254,11 @@ class HiddenRow(Base):
 class SeenRow(Base):
     __tablename__ = "seen"
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -261,6 +279,7 @@ class HuntRow(Base):
     __tablename__ = "hunts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     query: Mapped[str] = mapped_column(String(300))
     category: Mapped[str] = mapped_column(String(16), default="any")
@@ -295,9 +314,11 @@ class NotificationRow(Base):
     """One row per alert ever sent; the unique key is what stops duplicates."""
 
     __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_notifications_user_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    key: Mapped[str] = mapped_column(String(200), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(200))
     kind: Mapped[str] = mapped_column(String(16))  # hunt | price_drop | test
     listing_id: Mapped[int | None] = mapped_column(ForeignKey("listings.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(Text)
@@ -325,6 +346,7 @@ class PushSubscriptionRow(Base):
     __tablename__ = "push_subscriptions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     endpoint: Mapped[str] = mapped_column(Text, unique=True)
     keys: Mapped[dict[str, Any]] = mapped_column(default=dict)  # p256dh, auth
     user_agent: Mapped[str | None] = mapped_column(Text)
@@ -405,3 +427,15 @@ class InviteRow(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     used_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserStateRow(Base):
+    """Per-user key/value state (feed visits, scoring version, eBay searches today)."""
+
+    __tablename__ = "user_state"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(default=dict)

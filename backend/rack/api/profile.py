@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.db import get_session
 from rack.models import AdjacentDesignerRow, DesignerRow, TasteItemRow
 from rack.profile import Profile
@@ -41,11 +41,19 @@ class DesignerIn(BaseModel):
 
 
 @router.get("/profile", response_model=ProfileOut)
-async def get_profile(session: Session) -> ProfileOut:
-    row = await get_profile_row(session)
+async def get_profile(session: Session, user: User) -> ProfileOut:
+    row = await get_profile_row(session, user.id)
     await session.commit()
-    designers = (await session.execute(select(func.count(DesignerRow.id)))).scalar_one()
-    taste = (await session.execute(select(func.count(TasteItemRow.id)))).scalar_one()
+    designers = (
+        await session.execute(
+            select(func.count(DesignerRow.id)).where(DesignerRow.user_id == user.id)
+        )
+    ).scalar_one()
+    taste = (
+        await session.execute(
+            select(func.count(TasteItemRow.id)).where(TasteItemRow.user_id == user.id)
+        )
+    ).scalar_one()
     return ProfileOut(
         profile=Profile.model_validate(row.data),
         version=row.version,
@@ -55,64 +63,76 @@ async def get_profile(session: Session) -> ProfileOut:
 
 
 @router.put("/profile", response_model=ProfileOut)
-async def put_profile(body: Profile, session: Session) -> ProfileOut:
-    row = await get_profile_row(session)
+async def put_profile(body: Profile, session: Session, user: User) -> ProfileOut:
+    row = await get_profile_row(session, user.id)
     row.data = body.model_dump(mode="json")
-    await bump_version(session)
+    await bump_version(session, user.id)
     await session.commit()
-    return await get_profile(session)
+    return await get_profile(session, user)
 
 
 @router.get("/designers", response_model=list[DesignerIn])
-async def get_designers(session: Session) -> list[DesignerIn]:
-    return [DesignerIn(name=n, weight=w) for n, w in (await load_designers(session)).items()]
+async def get_designers(session: Session, user: User) -> list[DesignerIn]:
+    designers = await load_designers(session, user.id)
+    return [DesignerIn(name=n, weight=w) for n, w in designers.items()]
 
 
 @router.put("/designers", response_model=list[DesignerIn])
-async def put_designers(body: list[DesignerIn], session: Session) -> list[DesignerIn]:
-    before = {n.lower() for n in await load_designers(session)}
+async def put_designers(body: list[DesignerIn], session: Session, user: User) -> list[DesignerIn]:
+    before = {n.lower() for n in await load_designers(session, user.id)}
     seen: set[str] = set()
-    await session.execute(delete(DesignerRow))
+    await session.execute(delete(DesignerRow).where(DesignerRow.user_id == user.id))
     for d in body:
         name = " ".join(d.name.split())
         if name.lower() in seen:
             continue
         seen.add(name.lower())
-        session.add(DesignerRow(name=name, weight=d.weight))
+        session.add(DesignerRow(user_id=user.id, name=name, weight=d.weight))
         # first time we see a loved/liked designer: seed its adjacent designers (editable later)
         if name.lower() not in before and d.weight in ("love", "like"):
             existing = set(
                 (
                     await session.execute(
                         select(AdjacentDesignerRow.adjacent).where(
-                            AdjacentDesignerRow.designer == name
+                            AdjacentDesignerRow.user_id == user.id,
+                            AdjacentDesignerRow.designer == name,
                         )
                     )
                 ).scalars()
             )
             for adj in seed_adjacent().get(name.lower(), []):
                 if adj not in existing:
-                    session.add(AdjacentDesignerRow(designer=name, adjacent=adj))
-    await bump_version(session)
+                    session.add(AdjacentDesignerRow(user_id=user.id, designer=name, adjacent=adj))
+    await bump_version(session, user.id)
     await session.commit()
-    return await get_designers(session)
+    return await get_designers(session, user)
 
 
 @router.get("/adjacent", response_model=dict[str, list[str]])
-async def get_adjacent(session: Session) -> dict[str, list[str]]:
+async def get_adjacent(session: Session, user: User) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
-    rows = await session.execute(select(AdjacentDesignerRow).order_by(AdjacentDesignerRow.id))
+    rows = await session.execute(
+        select(AdjacentDesignerRow)
+        .where(AdjacentDesignerRow.user_id == user.id)
+        .order_by(AdjacentDesignerRow.id)
+    )
     for r in rows.scalars():
         out.setdefault(r.designer, []).append(r.adjacent)
     return out
 
 
 @router.put("/adjacent", response_model=dict[str, list[str]])
-async def put_adjacent(body: dict[str, list[str]], session: Session) -> dict[str, list[str]]:
-    await session.execute(delete(AdjacentDesignerRow))
+async def put_adjacent(
+    body: dict[str, list[str]], session: Session, user: User
+) -> dict[str, list[str]]:
+    await session.execute(delete(AdjacentDesignerRow).where(AdjacentDesignerRow.user_id == user.id))
     for designer, adjs in body.items():
         for adj in dict.fromkeys(a.strip() for a in adjs if a.strip()):
-            session.add(AdjacentDesignerRow(designer=designer.strip(), adjacent=adj[:200]))
-    await bump_version(session)
+            session.add(
+                AdjacentDesignerRow(
+                    user_id=user.id, designer=designer.strip()[:200], adjacent=adj[:200]
+                )
+            )
+    await bump_version(session, user.id)
     await session.commit()
-    return await get_adjacent(session)
+    return await get_adjacent(session, user)

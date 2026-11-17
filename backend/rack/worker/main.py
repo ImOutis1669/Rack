@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.config import get_settings
 from rack.db import sessionmaker
@@ -23,15 +24,14 @@ from rack.embeddings.images import (
     resolve_public,
 )
 from rack.models import AdjacentDesignerRow, TasteItemRow
-from rack.notify.dispatch import build_channels
 from rack.pricing.fx import fetch_rates, set_live_rates
 from rack.privacy import purge_ebay
-from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
+from rack.ranking.planner import PlannerInput, all_queries, fallback, merge_plans, next_batch
 from rack.sources.base import SearchQuery
 from rack.sources.ebay import EbayAdapter
 from rack.sources.grailed import GrailedAdapter
 from rack.sources.http import RateLimitedClient
-from rack.store import get_state, load_designers, load_profile, set_state
+from rack.store import active_user_ids, get_state, load_designers, load_profile, set_state
 from rack.thumbs import prune
 from rack.worker.adapters import shared_adapters
 from rack.worker.ebay_details import fetch_ebay_details
@@ -51,30 +51,40 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+async def user_queries(s: AsyncSession, uid: int) -> list[SearchQuery]:
+    """Every search one user's taste profile implies."""
+    profile, _ = await load_profile(s, uid)
+    designers = await load_designers(s, uid)
+    adjacent: dict[str, list[str]] = {}
+    for row in (
+        await s.execute(select(AdjacentDesignerRow).where(AdjacentDesignerRow.user_id == uid))
+    ).scalars():
+        adjacent.setdefault(row.designer, []).append(row.adjacent)
+    wish = (
+        (
+            await s.execute(
+                select(TasteItemRow.text).where(
+                    TasteItemRow.user_id == uid,
+                    TasteItemRow.kind == "wishlist",
+                    TasteItemRow.text.is_not(None),
+                    TasteItemRow.image_path.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return all_queries(PlannerInput(profile, designers, adjacent, [str(w) for w in wish]))
+
+
 async def plan_queries(state_key: str = "planner", size: int | None = None) -> list[SearchQuery]:
-    """Next `size` queries from the taste profile, rotating through them via a stored cursor."""
+    """Next `size` queries from every active user's taste, merged into one rotation and walked
+    through with a stored cursor (same batch size and rate limits as one user)."""
     settings = get_settings()
     size = size or settings.rack_queries_per_refresh
     async with sessionmaker()() as s:
-        profile, _ = await load_profile(s)
-        designers = await load_designers(s)
-        adjacent: dict[str, list[str]] = {}
-        for row in (await s.execute(select(AdjacentDesignerRow))).scalars():
-            adjacent.setdefault(row.designer, []).append(row.adjacent)
-        wish = (
-            (
-                await s.execute(
-                    select(TasteItemRow.text).where(
-                        TasteItemRow.kind == "wishlist",
-                        TasteItemRow.text.is_not(None),
-                        TasteItemRow.image_path.is_(None),
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        queries = all_queries(PlannerInput(profile, designers, adjacent, [str(w) for w in wish]))
+        plans = [await user_queries(s, uid) for uid in await active_user_ids(s)]
+        queries = merge_plans(plans)
         if not queries:
             return fallback(settings.seed_queries)[:size]
         state = await get_state(s, state_key)
@@ -142,9 +152,7 @@ async def load_fx() -> None:
 
 async def run_hunts() -> None:
     try:
-        await run_due_hunts(
-            sessionmaker(), shared_adapters(), build_channels(get_settings(), sessionmaker())
-        )
+        await run_due_hunts(sessionmaker(), shared_adapters(), get_settings())
     except Exception:
         log.exception("hunts run failed")
 
@@ -152,9 +160,7 @@ async def run_hunts() -> None:
 async def run_price_checks() -> None:
     settings = get_settings()
     try:
-        n = await check_saved_prices(
-            sessionmaker(), shared_adapters(), build_channels(settings, sessionmaker()), settings
-        )
+        n = await check_saved_prices(sessionmaker(), shared_adapters(), settings)
         if n:
             log.info("price drops: %d alerts sent", n)
     except Exception:
@@ -220,7 +226,9 @@ async def run_sold_prices() -> None:
     if not isinstance(adapter, GrailedAdapter):
         return
     try:
-        n = await fetch_sold(sessionmaker(), adapter, _now())
+        n = await fetch_sold(
+            sessionmaker(), adapter, _now(), friend_items=get_settings().rack_friend_sold_items
+        )
         if n:
             log.info("sold prices: %d new Grailed sales", n)
     except Exception:

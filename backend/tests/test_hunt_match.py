@@ -11,7 +11,7 @@ from rack.parsing.categories import shoe_sizes, size_matches
 from rack.ranking.hunt_match import HuntSpec, hunt_matches
 from rack.sources.base import Listing, SearchQuery
 from rack.worker.hunts import run_hunt
-from tests.conftest import login
+from tests.conftest import db_owner, login
 
 H = {"X-Requested-With": "rack"}
 
@@ -130,6 +130,7 @@ async def test_strict_hunt_waits_for_the_size_then_alerts(
     adapter, inbox = FakeVinted(), Inbox()
     async with sessions() as s:
         hunt = HuntRow(
+            user_id=await db_owner(s),
             name="Geo",
             query="geobasket",
             sources=["vinted"],
@@ -241,7 +242,12 @@ async def test_a_run_drops_a_match_whose_size_turns_out_wrong(
     adapter, inbox = FakeVinted(), Inbox()
     async with sessions() as s:
         hunt = HuntRow(
-            name="Geo", query="geobasket", sources=["vinted"], sizes=["43"], interval_minutes=30
+            user_id=await db_owner(s),
+            name="Geo",
+            query="geobasket",
+            sources=["vinted"],
+            sizes=["43"],
+            interval_minutes=30,
         )
         s.add(hunt)
         await s.commit()

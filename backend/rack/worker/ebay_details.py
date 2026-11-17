@@ -14,7 +14,7 @@ from rack.ingest import set_images
 from rack.models import ListingRow
 from rack.sources.base import SourceError
 from rack.sources.ebay import EbayAdapter, is_womens, parse_item
-from rack.store import get_state, set_state
+from rack.store import mark_listings_changed
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +71,6 @@ async def fetch_ebay_details(
                 await set_images(s, row.id, row.images, fresh.images)
             await s.commit()
         if done:  # sizes/brands changed: rescore
-            state = await get_state(s, "scoring")
-            await set_state(s, "scoring", {**state, "dirty": True})
+            await mark_listings_changed(s)
             await s.commit()
     return done

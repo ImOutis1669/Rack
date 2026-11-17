@@ -15,6 +15,7 @@ from rack.models import ListingRow, SavedRow
 from rack.privacy import purge_ebay, scrub
 from rack.sources.base import Listing, Seller
 from rack.sources.ebay import RAW_KEYS, parse_search
+from tests.conftest import db_owner
 
 BACKEND = Path(__file__).resolve().parent.parent
 MIGRATION = BACKEND / "alembic" / "versions" / "0008_ebay_no_user_data.py"
@@ -130,7 +131,7 @@ async def test_purge_deletes_inactive_and_stale_ebay_only(
         rows[stale].last_seen_at = now - timedelta(days=8)
         rows[saved_live].last_seen_at = now - timedelta(days=2)
         rows[old_vinted].last_seen_at = now - timedelta(days=30)
-        s.add(SavedRow(listing_id=saved_live))
+        s.add(SavedRow(user_id=await db_owner(s), listing_id=saved_live))
         await s.commit()
 
         assert await purge_ebay(s, 7, now) == 2

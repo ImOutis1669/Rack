@@ -47,6 +47,7 @@ async def test_subscribe_send_and_drop_expired(
     client: httpx.AsyncClient,
     sessions: async_sessionmaker[AsyncSession],
     monkeypatch: pytest.MonkeyPatch,
+    owner_id: int,
 ) -> None:
     await login(client)
     for i in (1, 2):
@@ -72,7 +73,7 @@ async def test_subscribe_send_and_drop_expired(
 
     monkeypatch.setattr(wp, "webpush", fake_webpush)
     public, private = wp.generate_vapid_keys()
-    ch = wp.WebPushChannel(public, private, "https://rack.example", sessions)
+    ch = wp.WebPushChannel(public, private, "https://rack.example", sessions, owner_id)
     await ch.send(Notification("Price drop", "£200 → £170"))
     assert len(calls) == 2
     assert calls[0]["vapid_claims"] == {"sub": "https://rack.example"}

@@ -122,6 +122,14 @@ async def candidates_for(session: AsyncSession, item: TasteItemRow, brand: str) 
         .limit(NEAREST_IMAGES)
         .subquery()
     )
+    # Scores are per user (v2.1) but a listing's category comes from its title, so any user's
+    # score row gives it; one per listing.
+    cats = (
+        select(ListingScoreRow.listing_id, func.min(ListingScoreRow.category).label("category"))
+        .where(ListingScoreRow.listing_id.in_(select(nearest.c.listing_id)))
+        .group_by(ListingScoreRow.listing_id)
+        .subquery()
+    )
     rows = (
         await session.execute(
             select(
@@ -129,13 +137,13 @@ async def candidates_for(session: AsyncSession, item: TasteItemRow, brand: str) 
                 ListingRow.brand,
                 ListingRow.title,
                 ListingRow.price_gbp,
-                ListingScoreRow.category,
+                cats.c.category,
                 func.min(nearest.c.d),
             )
             .join(nearest, nearest.c.listing_id == ListingRow.id)
-            .outerjoin(ListingScoreRow, ListingScoreRow.listing_id == ListingRow.id)
+            .outerjoin(cats, cats.c.listing_id == ListingRow.id)
             .where(ListingRow.price_gbp.is_not(None), ListingRow.excluded.is_(None))
-            .group_by(ListingRow.id, ListingScoreRow.category)
+            .group_by(ListingRow.id, cats.c.category)
         )
     ).all()
     category = item_category(item)

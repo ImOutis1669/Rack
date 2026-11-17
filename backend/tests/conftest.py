@@ -119,6 +119,59 @@ async def client(
     get_settings.cache_clear()  # env is restored by monkeypatch; don't keep test settings cached
 
 
+async def make_user(
+    sessions: async_sessionmaker[AsyncSession],
+    username: str,
+    role: str = "friend",
+    password: str = PASSWORD,
+) -> int:
+    """An account straight in the DB (the owner one matches what `login` sends)."""
+    from datetime import UTC, datetime
+
+    from rack.models import UserRow
+
+    async with sessions() as s:
+        row = UserRow(
+            username=username,
+            display_name=username,
+            password_hash=password_hash() if password == PASSWORD else _hash(password),
+            role=role,
+            last_active_at=datetime.now(UTC),
+        )
+        s.add(row)
+        await s.commit()
+        return row.id
+
+
+def _hash(password: str) -> str:
+    from rack.api.auth import hash_password
+
+    return hash_password(password)
+
+
+async def db_owner(s: AsyncSession) -> int:
+    """The owner's id, creating the account (same as `login` expects) if there isn't one."""
+    from sqlalchemy import select
+
+    from rack.models import UserRow
+
+    uid = await s.scalar(select(UserRow.id).where(UserRow.role == "owner"))
+    if uid is None:
+        row = UserRow(
+            username=OWNER, display_name=OWNER, password_hash=password_hash(), role="owner"
+        )
+        s.add(row)
+        await s.flush()
+        uid = row.id
+    return int(uid)
+
+
+@pytest.fixture
+async def owner_id(sessions: async_sessionmaker[AsyncSession]) -> int:
+    """The owner account, created up front (tests that write rows before logging in)."""
+    return await make_user(sessions, OWNER, "owner")
+
+
 def creds(password: str = PASSWORD, username: str = OWNER) -> dict[str, str]:
     return {"username": username, "password": password}
 

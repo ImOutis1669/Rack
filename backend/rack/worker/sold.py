@@ -10,13 +10,13 @@ import logging
 import re
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.embeddings.clip import Embedder
 from rack.embeddings.images import for_embedding
-from rack.models import SoldListingRow, TasteItemRow
+from rack.models import SoldListingRow, TasteItemRow, UserRow
 from rack.pricing.resale import item_brand, item_category, item_label
 from rack.sources.base import SourceError
 from rack.sources.grailed import GrailedAdapter
@@ -45,13 +45,40 @@ def label_words(item: TasteItemRow, brand: str) -> list[str]:
     return out[:6]
 
 
+async def _friend_allowance(s: AsyncSession, cap: int | None) -> tuple[set[int], set[int]] | None:
+    """(friend user ids, wardrobe item ids within their cap), or None when there is no cap."""
+    if cap is None:
+        return None
+    ranked = (
+        select(
+            TasteItemRow.id,
+            TasteItemRow.user_id,
+            func.row_number()
+            .over(partition_by=TasteItemRow.user_id, order_by=TasteItemRow.id)
+            .label("n"),
+        )
+        .join(UserRow, UserRow.id == TasteItemRow.user_id)
+        .where(UserRow.role == "friend", TasteItemRow.kind == "wardrobe")
+        .subquery()
+    )
+    rows = (await s.execute(select(ranked.c.id, ranked.c.user_id, ranked.c.n))).all()
+    return {u for _, u, _ in rows}, {i for i, _, n in rows if n <= cap}
+
+
 async def fetch_sold(
-    sessions: async_sessionmaker[AsyncSession], adapter: GrailedAdapter, now: datetime
+    sessions: async_sessionmaker[AsyncSession],
+    adapter: GrailedAdapter,
+    now: datetime,
+    friend_items: int | None = None,
 ) -> int:
-    """Query recent sales for wardrobe items that are due. Returns how many sales were new."""
+    """Query recent sales for wardrobe items that are due. Returns how many sales were new.
+
+    Friends' items count against Grailed's patience too: only each friend's first
+    `friend_items` wardrobe items (oldest first) get sold-price checks."""
     new = 0
     async with sessions() as s:
-        designers = list(await load_designers(s))
+        designers: dict[int, list[str]] = {}
+        allowed = await _friend_allowance(s, friend_items)
         due = (
             (
                 await s.execute(
@@ -69,7 +96,11 @@ async def fetch_sold(
             .all()
         )
         for item in due:
-            brand = item_brand(item, designers)
+            if allowed is not None and item.user_id in allowed[0] and item.id not in allowed[1]:
+                continue  # over this friend's cap
+            if item.user_id not in designers:
+                designers[item.user_id] = list(await load_designers(s, item.user_id))
+            brand = item_brand(item, designers[item.user_id])
             if not brand:
                 continue  # nothing to search for until it has a brand
             item.sold_checked_at = now

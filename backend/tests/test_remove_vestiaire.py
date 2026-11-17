@@ -27,7 +27,9 @@ def test_only_three_sources() -> None:
 
 
 @pytest.mark.db
-async def test_migration_0018_removes_vestiaire_data(sessions: async_sessionmaker[AsyncSession]) -> None:
+async def test_migration_0018_removes_vestiaire_data(
+    sessions: async_sessionmaker[AsyncSession], owner_id: int
+) -> None:
     now = datetime.now(UTC)
     async with sessions() as s:
         v = ListingRow(source="vestiaire", source_id="1", url="https://www.vestiairecollective.com/1",
@@ -39,7 +41,7 @@ async def test_migration_0018_removes_vestiaire_data(sessions: async_sessionmake
         s.add(ListingImageRow(listing_id=v.id, position=0, url="https://x/v.jpg", url_hash="v"))
         s.add(SourceHealthRow(source="vestiaire"))
         s.add(AppStateRow(key="recheck", value={"at": "x"}))
-        s.add(HuntRow(name="Rick", query="rick", sources=["vinted", "vestiaire"]))
+        s.add(HuntRow(user_id=owner_id, name="Rick", query="rick", sources=["vinted", "vestiaire"]))
         await s.commit()
 
     spec = importlib.util.spec_from_file_location("m0018", MIGRATION)

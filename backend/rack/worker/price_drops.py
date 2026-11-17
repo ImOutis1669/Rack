@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.config import Settings
-from rack.models import ListingRow, SavedRow
+from rack.models import ListingRow, SavedRow, UserRow
 from rack.notify.base import Channel, Notification
-from rack.notify.dispatch import notify_once
+from rack.notify.dispatch import build_channels, notify_once
 from rack.pricing.history import record_price
 from rack.sources.base import SourceAdapter, SourceError, SourceNotConfigured
 from rack.sources.vinted import VintedAdapter
@@ -57,21 +57,34 @@ async def _record(session: AsyncSession, row: ListingRow) -> None:
 async def check_saved_prices(
     sessions: async_sessionmaker[AsyncSession],
     adapters: Mapping[str, SourceAdapter],
-    channels: Sequence[Channel],
     settings: Settings,
+    channels_override: Sequence[Channel] | None = None,  # tests: the same channels for everyone
 ) -> int:
+    """Every enabled user's saved listings; a drop alerts the user who saved it. A listing
+    saved by two people is fetched once (the second sees it as freshly seen)."""
     now = datetime.now(UTC)
     stale = now - timedelta(hours=settings.rack_price_check_hours)
     alerts = 0
     async with sessions() as s:
         pairs = (
             await s.execute(
-                select(SavedRow, ListingRow)
+                select(SavedRow, ListingRow, UserRow.role)
                 .join(ListingRow, ListingRow.id == SavedRow.listing_id)
-                .where(ListingRow.active.is_(True))
+                .join(UserRow, UserRow.id == SavedRow.user_id)
+                .where(ListingRow.active.is_(True), UserRow.disabled_at.is_(None))
+                .order_by(SavedRow.listing_id, SavedRow.user_id)
             )
         ).all()
-        for saved, row in pairs:
+        channels: dict[int, list[Channel]] = {}
+        for saved, row, role in pairs:
+            if saved.user_id not in channels:
+                channels[saved.user_id] = (
+                    list(channels_override)
+                    if channels_override is not None
+                    else build_channels(
+                        settings, sessions, user_id=saved.user_id, owner=role == "owner"
+                    )
+                )
             if saved.price_checked_at and saved.price_checked_at > stale:
                 continue
             # seen in a search since the last check: that price is fresh enough
@@ -99,7 +112,8 @@ async def check_saved_prices(
             ):
                 sent = await notify_once(
                     s,
-                    channels,
+                    channels[saved.user_id],
+                    user_id=saved.user_id,
                     key=f"drop:{row.id}:{row.price_gbp}",
                     kind="price_drop",
                     n=Notification(

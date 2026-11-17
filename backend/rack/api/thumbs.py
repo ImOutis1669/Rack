@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rack.api.auth import require_session
+from rack.api.auth import User, require_session
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import ImageError, fetch_listing_image
@@ -92,12 +92,17 @@ async def listing_thumb(
 
 @router.get("/taste/{item_id}/thumb")
 async def taste_thumb(
-    item_id: int, session: Session, settings: Config, w: Width = 480, accept: Accept = None
+    item_id: int,
+    session: Session,
+    settings: Config,
+    user: User,
+    w: Width = 480,
+    accept: Accept = None,
 ) -> FileResponse:
     w = _width(w)
     fmt = pick_format(accept)
     row = await session.get(TasteItemRow, item_id)
-    if row is None or not row.image_path:
+    if row is None or row.user_id != user.id or not row.image_path:
         raise HTTPException(404)
     source = settings.uploads_dir / row.image_path
     if not source.is_file():

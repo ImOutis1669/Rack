@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from rack.config import Settings
+from rack.config import Settings, get_settings
 from rack.ingest import upsert_listings
 from rack.models import HiddenRow, HuntRow, NotificationRow, SavedRow
 from rack.notify.base import Notification, NotifyError
@@ -14,7 +14,7 @@ from rack.notify.dispatch import notify_once
 from rack.sources.base import Listing, SearchQuery, Seller
 from rack.worker.hunts import run_due_hunts, run_hunt
 from rack.worker.price_drops import check_saved_prices
-from tests.conftest import login
+from tests.conftest import db_owner, login
 
 pytestmark = pytest.mark.db
 H = {"X-Requested-With": "rack"}
@@ -95,11 +95,13 @@ async def test_hunt_baseline_then_alerts_once_and_respects_hides(
     adapter, channel = FakeAdapter(), FakeChannel()
     adapters = {"vinted": adapter}
     async with sessions() as s:
+        uid = await db_owner(s)
         hunt = HuntRow(
+            user_id=uid,
             name="Belas", query="rick owens belas", sources=["vinted"], interval_minutes=30
         )
         s.add(hunt)
-        s.add(HiddenRow(kind="seller", value="Bad Seller"))
+        s.add(HiddenRow(user_id=uid, kind="seller", value="Bad Seller"))
         await s.commit()
         hunt_id = hunt.id
 
@@ -129,16 +131,19 @@ async def test_hunt_baseline_then_alerts_once_and_respects_hides(
 
     # not due again for 30 minutes
     async with sessions() as s:
-        assert await run_due_hunts(sessions, adapters, [channel]) == 0
+        assert await run_due_hunts(sessions, adapters, get_settings(), [channel]) == 0
 
 
 async def test_failed_sends_release_the_key(sessions: async_sessionmaker[AsyncSession]) -> None:
     n = Notification("t", "b")
     async with sessions() as s:
-        assert await notify_once(s, [FakeChannel(fail=True)], key="k1", kind="test", n=n) is False
+        uid = await db_owner(s)
+        await s.commit()
+        fail = [FakeChannel(fail=True)]
+        assert await notify_once(s, fail, user_id=uid, key="k1", kind="test", n=n) is False
         ok = FakeChannel()
-        assert await notify_once(s, [ok], key="k1", kind="test", n=n) is True
-        assert await notify_once(s, [ok], key="k1", kind="test", n=n) is False
+        assert await notify_once(s, [ok], user_id=uid, key="k1", kind="test", n=n) is True
+        assert await notify_once(s, [ok], user_id=uid, key="k1", kind="test", n=n) is False
         rows = (await s.execute(select(NotificationRow))).scalars().all()
         assert len(rows) == 1 and rows[0].channels == {"fake": "ok"}
 
@@ -152,7 +157,8 @@ async def test_price_drop_alerts(sessions: async_sessionmaker[AsyncSession]) -> 
     item.source, item.url = "grailed", "https://www.grailed.com/listings/9"
     async with sessions() as s:
         [lid] = await upsert_listings(s, [item])
-        s.add(SavedRow(listing_id=lid, price_gbp_at_save=Decimal(200)))
+        uid = await db_owner(s)
+        s.add(SavedRow(user_id=uid, listing_id=lid, price_gbp_at_save=Decimal(200)))
         await s.commit()
 
     async def check(price: str | None, *, age_hours: int = 7) -> int:
@@ -160,7 +166,7 @@ async def test_price_drop_alerts(sessions: async_sessionmaker[AsyncSession]) -> 
             from rack.models import ListingRow
 
             row = await s.get(ListingRow, lid)
-            saved = await s.get(SavedRow, lid)
+            saved = await s.get(SavedRow, (uid, lid))
             assert row is not None and saved is not None
             row.last_seen_at = datetime.now(UTC) - timedelta(hours=age_hours)
             saved.price_checked_at = None
@@ -170,7 +176,7 @@ async def test_price_drop_alerts(sessions: async_sessionmaker[AsyncSession]) -> 
             if price is None
             else item.model_copy(update={"price": Decimal(price), "price_gbp": Decimal(price)})
         )
-        return await check_saved_prices(sessions, {"grailed": adapter}, [channel], settings)
+        return await check_saved_prices(sessions, {"grailed": adapter}, settings, [channel])
 
     assert await check("198") == 0  # 1% isn't a drop
     assert await check("170") == 1

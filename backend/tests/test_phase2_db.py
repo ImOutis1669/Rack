@@ -76,7 +76,8 @@ async def test_taste_upload_text_and_delete(client: httpx.AsyncClient, tmp_path:
     assert item["image"] and item["embedded"] is False
     img = await client.get(item["image"])
     assert img.headers["content-type"] == "image/jpeg"
-    assert len(list((tmp_path / "data" / "uploads").iterdir())) == 1
+    files = [p for p in (tmp_path / "data" / "uploads").rglob("*") if p.is_file()]
+    assert len(files) == 1 and files[0].parent.name.isdigit()  # uploads/<user id>/
 
     bad = await client.post(
         "/api/taste/upload",
@@ -93,7 +94,7 @@ async def test_taste_upload_text_and_delete(client: httpx.AsyncClient, tmp_path:
     assert len((await client.get("/api/taste")).json()) == 2
 
     assert (await client.delete(f"/api/taste/{item['id']}", headers=H)).status_code == 204
-    assert list((tmp_path / "data" / "uploads").iterdir()) == []
+    assert [p for p in (tmp_path / "data" / "uploads").rglob("*") if p.is_file()] == []
 
 
 async def test_taste_url_rejects_private_hosts(client: httpx.AsyncClient) -> None:

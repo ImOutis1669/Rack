@@ -23,7 +23,7 @@ from rack.sources.grailed import (
     parse_sold,
 )
 from rack.worker.sold import fetch_sold
-from tests.conftest import login
+from tests.conftest import db_owner, login
 from tests.test_resale import BASE, COATS, _seed, vec
 
 NOW = datetime(2026, 11, 16, 12, tzinfo=UTC)
@@ -178,7 +178,9 @@ async def _sold_rows(
 
 async def _item(sessions: async_sessionmaker[AsyncSession]) -> int:
     async with sessions() as s:
-        item = TasteItemRow(kind="wardrobe", text="leather jacket", brand="Rick Owens")
+        item = TasteItemRow(
+            user_id=await db_owner(s), kind="wardrobe", text="leather jacket", brand="Rick Owens"
+        )
         item.embedding = BASE
         s.add(item)
         await s.commit()
@@ -260,7 +262,7 @@ async def test_fetch_sold_once_a_day_for_branded_items(
 ) -> None:
     item_id = await _item(sessions)
     async with sessions() as s:
-        anon = TasteItemRow(kind="wardrobe", text="mystery coat")
+        anon = TasteItemRow(user_id=await db_owner(s), kind="wardrobe", text="mystery coat")
         anon.embedding = BASE
         s.add(anon)
         await s.commit()

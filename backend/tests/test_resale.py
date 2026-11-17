@@ -20,7 +20,7 @@ from rack.pricing.resale import (
 )
 from rack.sources.base import Listing
 from rack.worker.resale import refresh_estimates
-from tests.conftest import login
+from tests.conftest import db_owner, login
 
 H = {"X-Requested-With": "rack"}
 DIM = 512
@@ -106,6 +106,7 @@ async def _seed(
             img.embedding = vec(cos)
             s.add(
                 ListingScoreRow(
+                    user_id=await db_owner(s),
                     listing_id=lid,
                     score=0.5,
                     components={},
@@ -136,7 +137,12 @@ async def test_estimate_uses_same_brand_category_and_similar_photos(
     ids = await _seed(sessions, COATS)
     now = datetime.now(UTC)
     async with sessions() as s:
-        item = TasteItemRow(kind="wardrobe", text="black leather jacket", brand="Rick Owens")
+        item = TasteItemRow(
+            user_id=await db_owner(s),
+            kind="wardrobe",
+            text="black leather jacket",
+            brand="Rick Owens",
+        )
         item.embedding = BASE
         s.add(item)
         await s.flush()
@@ -157,10 +163,11 @@ async def test_brand_from_your_designers_and_none_without_one(
     await _seed(sessions, COATS)
     now = datetime.now(UTC)
     async with sessions() as s:
-        s.add(DesignerRow(name="Rick Owens", weight="love"))
-        named = TasteItemRow(kind="wardrobe", text="my rick owens leather jacket")
+        uid = await db_owner(s)
+        s.add(DesignerRow(user_id=uid, name="Rick Owens", weight="love"))
+        named = TasteItemRow(user_id=uid, kind="wardrobe", text="my rick owens leather jacket")
         named.embedding = BASE
-        anon = TasteItemRow(kind="wardrobe", text="black leather jacket")
+        anon = TasteItemRow(user_id=uid, kind="wardrobe", text="black leather jacket")
         anon.embedding = BASE
         s.add_all([named, anon])
         await s.commit()
@@ -217,7 +224,11 @@ async def test_the_listing_you_bought_it_from_is_not_a_comparable(
     ids = await _seed(sessions, COATS)
     async with sessions() as s:
         item = TasteItemRow(
-            kind="wardrobe", text="leather jacket", brand="Rick Owens", listing_id=ids["1"]
+            user_id=await db_owner(s),
+            kind="wardrobe",
+            text="leather jacket",
+            brand="Rick Owens",
+            listing_id=ids["1"],
         )
         item.embedding = BASE
         s.add(item)
