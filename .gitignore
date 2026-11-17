@@ -16,3 +16,6 @@ uploads/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# Neue Montreal (Pangram Pangram): free for personal use, never redistribute. The user supplies the files.
+frontend/public/fonts/

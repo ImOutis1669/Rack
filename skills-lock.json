@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "skills": {
+    "algorithmic-color-palette": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/algorithmic-color-palette",
+      "sourceType": "well-known",
+      "computedHash": "39b3023a60ff6f4babea5afd9be99d5b7625a19b3ca906bb3b2b61e45ebd4587",
+      "wellKnownDigest": "sha256:058846a24021d9e6e34530fa6e847f7b3315e978afeed8e7a119fcfa9fdadcbe"
+    },
+    "emil-animate": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/emil-animate",
+      "sourceType": "well-known",
+      "computedHash": "d17dd72236090f28b04cb28c38d727107c46c62961d60cb006e5712ba2742f26",
+      "wellKnownDigest": "sha256:04979c93de48444036d29d82b8009fd38e8ab203d5a5474ad05b9b3d21c02b74"
+    },
+    "mobile-native-web": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/mobile-native-web",
+      "sourceType": "well-known",
+      "computedHash": "2d4e839e1b4cc317a37a7cfdbb1b4e98c392b500b6cb845e2e00e1b6f7e85d87",
+      "wellKnownDigest": "sha256:3c478ea26c4e1c2ed833611aacefb41c5f27538e3e7383b318cc99023b10fd42"
+    },
+    "modular-scale-typography": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/modular-scale-typography",
+      "sourceType": "well-known",
+      "computedHash": "8cb74cb6dbbff3f9f74f2c00d114d5fe4f90b49966332d157a001be9b0844fcf",
+      "wellKnownDigest": "sha256:d067ce23c2c0dc669eaacb7b764e24e758f40d4c39bd3daad27dc3dd440a78d4"
+    },
+    "shadcn": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/shadcn",
+      "sourceType": "well-known",
+      "computedHash": "d897b2abc669ee7d8361e033accb9922fa5dba792d05a6c1eb0a38890739230a",
+      "wellKnownDigest": "sha256:a7674de82fb740ef3f1ebe7a6b9262deb400b555473cfa95ab9386c6ffb37331"
+    }
+  }
+}

@@ -12,6 +12,14 @@ candidates:
 - the "tells" catalogue from `mobile-taste-skill`, adapted for the web.
 
 Where this file and the skill disagree, the skill wins unless a decision below says otherwise.
+
+From v1.2 (2026-11-17) the user added five MIT skills from craftwork.design, also in
+`.claude/skills/` (versions pinned in `skills-lock.json`): `modular-scale-typography`,
+`algorithmic-color-palette`, `emil-animate` (skill name `animate`), `mobile-native-web` (skill
+name `mobile-native`) and `shadcn`. They refine `rack-apple-design`; where they disagree with it,
+`rack-apple-design` wins (it targets iOS, e.g. its SF text sizes over the modular scale's 16 px
+floor for captions). Rack is not a shadcn project: use that skill only for its composition and
+token rules, never its CLI.
 The open conflicts with the v1.0 design are listed at the end of this file.
 
 ## App read
@@ -109,7 +117,10 @@ blur strip with sharp content below it looked messy on iPhone.
   replay while scrolling.
 - **Score:** Magic UI `AnimatedCircularProgressBar` in the listing detail.
 - **Hunt counts:** Magic UI `NumberTicker`.
-- **Login:** Magic UI `MagicCard`, with just the name: no slogan anywhere in the app.
+- **Login:** Magic UI `MagicCard` in `orb` mode (v1.2: a soft accent glow follows the pointer,
+  plus the border spotlight), with just the name: no slogan anywhere in the app. Orb colours are
+  the `--glow-from` / `--glow-to` tokens: the accent hue and its +30° neighbour, light tints for
+  `multiply` in light mode, full strength for `screen` in dark mode.
 - **Springs** (`lib/motion.ts`): `SPRING` (bounce 0, 0.35 s) by default and for the sliding tab
   pill, `SHEET_SPRING` (bounce 0.2, 0.3 s) for sheets, `INSTANT` with reduced motion.
 - **Implementation:** Motion runs under `LazyMotion` (strict), so components use `m.*` elements.

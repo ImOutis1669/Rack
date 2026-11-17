@@ -25,7 +25,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="flex min-h-dvh items-center justify-center px-4 pt-safe pb-safe">
       <div className="w-full max-w-sm rounded-sheet">
-        <MagicCard className="rounded-sheet" gradientSize={260}>
+        <MagicCard mode="orb" className="rounded-sheet" gradientSize={260} glowSize={240} glowOpacity={0.35}>
           <form onSubmit={submit} className="flex flex-col gap-4 p-7">
             <div className="mb-2 text-center">
               <h1 className="font-display text-largetitle font-bold">Rack</h1>

@@ -26,6 +26,9 @@
   --chrome-shadow: rgb(0 0 0 / 0.16);
   --chrome-fade: rgb(0 0 0 / 0.06); /* soft scroll edge under the top bar */
   --scrim: rgb(0 0 0 / 0.4);
+  /* Magic Card orb: the accent hue (136) and a +30deg neighbour, tinted for multiply on light */
+  --glow-from: hsl(136 59% 62%);
+  --glow-to: hsl(166 59% 66%);
   color-scheme: light;
 }
 
@@ -51,6 +54,9 @@
     --chrome-shadow: rgb(0 0 0 / 0.55);
     --chrome-fade: rgb(0 0 0 / 0.55);
     --scrim: rgb(0 0 0 / 0.6);
+    /* screen blend on dark: the dark accent (135) and its +30deg neighbour */
+    --glow-from: hsl(135 63% 50%);
+    --glow-to: hsl(165 63% 45%);
     color-scheme: dark;
   }
 }
