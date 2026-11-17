@@ -64,3 +64,17 @@ tiles because they finally carry real detail; a few sellers' originals are only 
 
 Side-by-side at iPhone tile size (516 px = ~172 pt at 3x): `ebay-before-after.png`, made with
 `side_by_side.py` (not in the repo: it shows marketplace photos).
+
+## JavaScript (vite build, with the Basil icons generated)
+
+| Main JS | v1.1 | v1.2 first build | v1.2 final |
+|---|---|---|---|
+| Minified | 393 kB | 512 kB | **462 kB** |
+| Gzip (over the wire) | 128 kB | 166 kB | **148 kB** |
+
+The first v1.2 build imported Motion's `animate` for the sheet swipe's release spring, which
+pulled the animation engine into the main bundle (+18 kB gzip). It now comes from the
+late-loaded Motion chunk (`lib/motionFeatures.ts`, 38 kB gzip, fetched after startup, long before
+any swipe). What remains over v1.1 is mostly the Basil icon data (53 kB minified, ~15 kB gzip;
+needed for the first screen) plus the swipe gesture and the Icon component. Without the generated
+icons the main bundle is ~459 kB / ~150 kB gzip before this fix.

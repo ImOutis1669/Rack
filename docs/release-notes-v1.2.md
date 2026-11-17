@@ -56,6 +56,7 @@ Measured in `docs/perf-v1.2.md`:
 | eBay tile sharpness (SSIM, 1.0 = perfect) | 0.910 | 0.989 |
 | 12 newest eBay tiles, 640 px | 55 kB (blurry) | 444 kB (10–92 kB each) |
 | First screen, 8 tiles, 640 px | 451 kB (v1.1: 506 kB) | 521 kB |
+| Main JavaScript, gzip | 128 kB (v1.1) | 148 kB (+15 kB is the icon data) |
 
 - Tiles are **AVIF** (quality 70) on the iPhone and other browsers that support it, about as good
   as WebP 85 for 13–15% fewer bytes; others get WebP 85 (was 78).

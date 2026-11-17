@@ -1,7 +1,11 @@
-import { animate, type MotionValue, useMotionValue } from "motion/react";
+import { type MotionValue, useMotionValue } from "motion/react";
 import { type RefObject, useEffect, useRef } from "react";
 import { SHEET_SPRING } from "../../lib/motion";
 import { type DragStart, decide, releaseVelocity, resist, shouldDismiss } from "../../lib/sheetDrag";
+
+// From the late-loaded Motion chunk (already fetched by LazyMotion long before any swipe), so the
+// animation engine stays out of the main bundle.
+const loadAnimate = () => import("../../lib/motionFeatures").then((m) => m.animate);
 
 /**
  * Swipe down to close a sheet, like iOS (v1.2). The panel follows the finger 1:1 from the
@@ -100,13 +104,13 @@ export function useSheetDrag(
           dismissRef.current();
           return;
         }
-        void animate(y, height + 40, { type: "spring", bounce: 0, duration: 0.3, velocity }).then(() =>
-          dismissRef.current(),
-        );
+        void loadAnimate()
+          .then((animate) => animate(y, height + 40, { type: "spring", bounce: 0, duration: 0.3, velocity }))
+          .then(() => dismissRef.current());
       } else if (reduce) {
         y.set(0);
       } else {
-        void animate(y, 0, { ...SHEET_SPRING, velocity });
+        void loadAnimate().then((animate) => animate(y, 0, { ...SHEET_SPRING, velocity }));
       }
     };
 
