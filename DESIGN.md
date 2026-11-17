@@ -82,7 +82,7 @@ SF Pro on iPhone/Mac, Segoe UI on Windows.
 
 | Role | Size | Weight | Use |
 |---|---|---|---|
-| Page title (iPhone) | 30, -0.03em, leading 1.15 | bold | top bar: Rack, Saved, Hunts, Wardrobe, Settings (`text-pagetitle`) |
+| Page title (iPhone) | 35, -0.03em, leading 1.25 | bold | top bar: Rack, Saved, Hunts, Wardrobe, Settings (`text-pagetitle`) |
 | Large title | 32 | bold | desktop page titles, login |
 | Title | 20 | bold / semibold | sheet titles |
 | Headline | 15 | semibold | prices |
@@ -90,7 +90,7 @@ SF Pro on iPhone/Mac, Segoe UI on Windows.
 | Footnote | 13 | regular | |
 | Caption | 11 | regular | |
 
-Page titles (v1.2): bigger and the font's real Bold, in the same 56px bar row. Don't fake a
+Page titles (v1.2): 35px (user's choice) in the font's real Bold, in the same 56px bar row. Don't fake a
 heavier weight: `-webkit-text-stroke` drew Neue Montreal's overlapping inner contours (letters
 looked doubled) and sub-pixel `text-shadow` copies rendered as a blurry halo on the iPhone. For
 more weight, a heavier font file is the only clean way.

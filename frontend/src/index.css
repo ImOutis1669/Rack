@@ -142,10 +142,10 @@
     "Rack Tabular", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui,
     "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* iPhone page titles in the top bar (v1.2): 30px genuine Bold, still in the 56px bar row. No
-     fake extra weight: stroke and text-shadow tricks both rendered blurry/doubled on iOS. 1.15 leading so descenders ("Settings") aren't clipped by truncate. */
-  --text-pagetitle: 1.875rem;
-  --text-pagetitle--line-height: 1.15;
+  /* iPhone page titles in the top bar (v1.2): 35px genuine Bold, still in the 56px bar row. No
+     fake extra weight: stroke and text-shadow tricks both rendered blurry/doubled on iOS. 1.25 leading so descenders ("Settings") aren't clipped by truncate. */
+  --text-pagetitle: 2.1875rem;
+  --text-pagetitle--line-height: 1.25;
   --text-pagetitle--letter-spacing: -0.03em;
   --text-largetitle: 2rem;
   --text-largetitle--line-height: 1.15;
