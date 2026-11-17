@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
+import { StatusBanner } from '@/components/StatusBanner';
 import { ListingGrid } from '@/components/ListingGrid';
 import { useFeedParams } from '@/features/feed/FeedParams';
 import { CATEGORY_LABEL, SORTS } from '@/features/feed/options';
@@ -16,7 +17,7 @@ import { font } from '@/theme/type';
 export default function FeedScreen() {
   const { colors, text, customFont } = useTheme();
   const { params, setParams, filterCount } = useFeedParams();
-  const { query, items, loadMore, onSeen, needsSetup } = useFeed();
+  const { query, items, loadMore, onSeen, needsSetup, showingSaved } = useFeed();
   const { refresh, refreshing } = useRefresh();
 
   const sortLabel = SORTS.find(([s]) => s === params.sort)?.[1] ?? 'For you';
@@ -37,6 +38,7 @@ export default function FeedScreen() {
             />
           ))}
         </ScrollView>
+        <StatusBanner error={query.isError ? query.error : null} showingSaved={showingSaved} />
         {needsSetup ? (
           <View style={[styles.setup, { backgroundColor: colors.surface }]}>
             <Text style={[text('headline'), { color: colors.foreground }]}>Teach Rack your taste</Text>
@@ -52,11 +54,11 @@ export default function FeedScreen() {
         ) : null}
       </View>
     ),
-    [params.category, setParams, needsSetup, colors, text],
+    [params.category, setParams, needsSetup, colors, text, query.isError, query.error, showingSaved],
   );
 
   const empty = query.isError ? (
-    <State title="Couldn't load the feed" body={(query.error as Error).message} action={{ label: 'Try again', onPress: () => void query.refetch() }} />
+    <State title="Couldn't load the feed" body="Nothing saved from the last 24 hours to show instead." action={{ label: 'Try again', onPress: () => void query.refetch() }} />
   ) : query.isPending ? (
     <View style={styles.loading}>
       <ActivityIndicator color={colors.muted} />
@@ -132,6 +134,6 @@ const styles = StyleSheet.create({
   setupButtons: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
   loading: { paddingTop: 80, alignItems: 'center' },
   state: { paddingTop: 64, paddingHorizontal: 24, alignItems: 'center', gap: 8 },
-  retry: { marginTop: 8, height: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center' },
+  retry: { marginTop: 8, minHeight: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center' },
   more: { textAlign: 'center', paddingVertical: 16 },
 });

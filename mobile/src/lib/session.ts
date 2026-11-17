@@ -4,6 +4,8 @@
 // every token on the server. Any 401 signs the app out and clears what it cached.
 import { createApi, type Api, UnauthorizedError } from '@rack/shared/client';
 
+import { recordRequest } from './perfStore';
+
 export const TOKEN_KEY = 'rack.token';
 export const SERVER_KEY = 'rack.server';
 
@@ -96,7 +98,9 @@ export class Session {
         baseUrl: server,
         credentials: 'omit', // never a cookie: the token is the only credential
         fetch: async (input, init) => {
+          const t0 = Date.now();
           const res = await base(input, init);
+          recordRequest(String(input), Date.now() - t0, res.status); // only when the readout is on
           // a revoked or expired token: forget it (login attempts have no token, so they don't count)
           if (res.status === 401 && this.token) void this.signOut();
           return res;

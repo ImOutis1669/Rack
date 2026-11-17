@@ -11,12 +11,14 @@ import { PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSession } from '@/lib/auth';
 import { apiImage } from '@/lib/images';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font, tabular } from '@/theme/type';
 
 export const TasteTile = memo(function TasteTile({ item, width }: { item: TasteItem; width: number }) {
   const session = useSession();
   const { colors, text, customFont } = useTheme();
+  const reduceMotion = useReduceMotion();
   const value = tileValue(item);
   const badge = item.kind === 'wardrobe' ? tileBadge(item.trend) : null;
   const state = photoState(item);
@@ -34,42 +36,45 @@ export const TasteTile = memo(function TasteTile({ item, width }: { item: TasteI
       style={({ pressed }) => ({ width, marginBottom: 20, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
       <View style={[styles.photo, { backgroundColor: colors.fill }]}>
         {thumb ? (
-          <Image source={apiImage(session, thumb)} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={String(item.id)} />
+          <Image source={apiImage(session, thumb)} style={StyleSheet.absoluteFill} contentFit="cover" transition={reduceMotion ? 0 : 150} recyclingKey={String(item.id)} />
         ) : (
           <View style={styles.textPhoto}>
-            <Text style={[text('footnote'), font('medium', customFont), { color: colors.foreground, textAlign: 'center' }]}>
+            <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('footnote'), font('medium', customFont), { color: colors.foreground, textAlign: 'center' }]}>
               “{displayName(item)}”
             </Text>
           </View>
         )}
         {state ? (
           <View style={[styles.state, { backgroundColor: colors.background + 'CC' }]}>
-            <Text style={[text('caption'), font('medium', customFont), { color: item.embed_error ? colors.danger : colors.muted }]}>{state}</Text>
+            <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('caption'), font('medium', customFont), { color: item.embed_error ? colors.danger : colors.muted }]}>{state}</Text>
           </View>
         ) : null}
       </View>
       <View style={styles.textBlock}>
         {item.brand ? (
-          <Text numberOfLines={1} style={[text('caption'), font('medium', customFont), styles.brand, { color: colors.muted }]}>
+          <Text maxFontSizeMultiplier={TILE_TEXT_MAX} numberOfLines={1} style={[text('caption'), font('medium', customFont), styles.brand, { color: colors.muted }]}>
             {item.brand.toUpperCase()}
           </Text>
         ) : null}
         {name ? (
-          <Text numberOfLines={1} style={[text('footnote'), { color: colors.foreground }]}>
+          <Text maxFontSizeMultiplier={TILE_TEXT_MAX} numberOfLines={1} style={[text('footnote'), { color: colors.foreground }]}>
             {name}
           </Text>
         ) : null}
         {value ? (
           <View style={styles.valueRow}>
-            <Text style={[text('headline'), tabular, { color: colors.foreground }]}>{value}</Text>
+            <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('headline'), tabular, { color: colors.foreground }]}>{value}</Text>
             {rough ? <View accessibilityLabel="rough estimate" style={[styles.rough, { backgroundColor: colors.subtle }]} /> : null}
-            {badge ? <Text style={[text('caption'), font('medium', customFont), tabular, { color: badgeColor }]}>{badge.text}</Text> : null}
+            {badge ? <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('caption'), font('medium', customFont), tabular, { color: badgeColor }]}>{badge.text}</Text> : null}
           </View>
         ) : null}
       </View>
     </Pressable>
   );
 });
+
+/** Dynamic Type grows tile text up to 1.4x: beyond that two columns can't hold it (the sheet shows everything at full size). */
+const TILE_TEXT_MAX = 1.4;
 
 const styles = StyleSheet.create({
   photo: { aspectRatio: 4 / 5, borderRadius: 12, borderCurve: 'continuous', overflow: 'hidden' },

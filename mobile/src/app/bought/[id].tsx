@@ -91,7 +91,7 @@ export default function BoughtSheet() {
 
 const styles = StyleSheet.create({
   body: { padding: 16, gap: 12 },
-  field: { flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: 12, paddingHorizontal: 14, gap: 6, borderCurve: 'continuous' },
+  field: { flexDirection: 'row', alignItems: 'center', minHeight: 50, borderRadius: 12, paddingHorizontal: 14, gap: 6, borderCurve: 'continuous' },
   input: { flex: 1, fontSize: 17, height: 50 },
-  button: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  button: { minHeight: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
 });

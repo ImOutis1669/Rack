@@ -104,9 +104,9 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   field: { gap: 6 },
-  input: { height: 44, borderRadius: 12, paddingHorizontal: 12, borderCurve: 'continuous' },
-  money: { flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 12, paddingHorizontal: 12, gap: 6, borderCurve: 'continuous' },
+  input: { minHeight: 44, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderCurve: 'continuous' },
+  money: { flexDirection: 'row', alignItems: 'center', minHeight: 44, borderRadius: 12, paddingHorizontal: 12, gap: 6, borderCurve: 'continuous' },
   moneyInput: { flex: 1, fontSize: 17, height: 44 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 44 },
-  button: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
 });

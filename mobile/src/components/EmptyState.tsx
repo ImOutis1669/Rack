@@ -37,5 +37,5 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   wrap: { paddingTop: 64, paddingHorizontal: 24, alignItems: 'center', gap: 8 },
-  button: { marginTop: 8, height: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center' },
+  button: { marginTop: 8, minHeight: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center' },
 });

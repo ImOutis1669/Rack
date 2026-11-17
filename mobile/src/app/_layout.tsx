@@ -5,12 +5,16 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useState } from 'react';
 
+import { PerfOverlay } from '@/components/PerfOverlay';
 import { ToastProvider } from '@/components/Toast';
+import { AppLock } from '@/features/lock/AppLock';
 import { SessionProvider, useSession } from '@/lib/auth';
+import { wireQueryToDevice } from '@/lib/online';
 import { makeQueryClient } from '@/lib/queryClient';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
 SplashScreen.preventAutoHideAsync();
+wireQueryToDevice();
 
 export default function RootLayout() {
   const [queryClient] = useState(makeQueryClient);
@@ -23,7 +27,10 @@ export default function RootLayout() {
       <SessionProvider queryClient={queryClient}>
         <ThemeProvider customFont={customFont}>
           <ToastProvider>
-            <RootStack />
+            <AppLock>
+              <RootStack />
+              <PerfOverlay />
+            </AppLock>
           </ToastProvider>
         </ThemeProvider>
       </SessionProvider>

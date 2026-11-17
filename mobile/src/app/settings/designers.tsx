@@ -151,6 +151,6 @@ const styles = StyleSheet.create({
   box: { borderRadius: 16, overflow: 'hidden', borderCurve: 'continuous' },
   row: { paddingHorizontal: 16, paddingVertical: 10 },
   line: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 32 },
-  weight: { height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center' },
+  weight: { minHeight: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center' },
   add: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 16 },
 });

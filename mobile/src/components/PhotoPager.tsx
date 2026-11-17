@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { DoubleTap } from '@/lib/doubleTap';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font, tabular } from '@/theme/type';
 
@@ -22,6 +23,7 @@ function ZoomablePhoto({ uri, width, height, placeholder, label }: { uri: string
   const zoom = useRef<ScrollViewInstance>(null);
   const taps = useRef(new DoubleTap()).current;
   const scale = useRef(1);
+  const reduceMotion = useReduceMotion();
   return (
     <ScrollView
       ref={zoom}
@@ -46,10 +48,10 @@ function ZoomablePhoto({ uri, width, height, placeholder, label }: { uri: string
         if (!taps.end(n.touches.length, n.pageX, n.pageY, n.timestamp)) return;
         // double-tap: zoomed in -> back to the whole photo; else 2x around the finger (like Photos)
         if (scale.current > 1.01) {
-          zoom.current?.scrollResponderZoomTo({ x: 0, y: 0, width, height, animated: true });
+          zoom.current?.scrollResponderZoomTo({ x: 0, y: 0, width, height, animated: !reduceMotion });
         } else {
           const { locationX: x, locationY: y } = n;
-          zoom.current?.scrollResponderZoomTo({ x: x - width / 4, y: y - height / 4, width: width / 2, height: height / 2, animated: true });
+          zoom.current?.scrollResponderZoomTo({ x: x - width / 4, y: y - height / 4, width: width / 2, height: height / 2, animated: !reduceMotion });
         }
       }}>
       <Image
@@ -58,7 +60,7 @@ function ZoomablePhoto({ uri, width, height, placeholder, label }: { uri: string
         placeholderContentFit="contain"
         style={{ width, height }}
         contentFit="contain"
-        transition={120}
+        transition={reduceMotion ? 0 : 120}
         accessible
         accessibilityLabel={label}
         accessibilityIgnoresInvertColors

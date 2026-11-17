@@ -104,8 +104,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pair: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, gap: 8 },
-  input: { height: 44, borderRadius: 12, paddingHorizontal: 12, borderCurve: 'continuous' },
+  input: { minHeight: 44, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderCurve: 'continuous' },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   buttons: { flexDirection: 'row', gap: 8 },
-  button: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  button: { flex: 1, minHeight: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
 });

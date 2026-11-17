@@ -8,7 +8,7 @@ import { AppTabs } from "./components/AppShell";
 import { PerfHud } from "./components/PerfHud";
 import { Toaster } from "./components/Toast";
 import "./index.css";
-import { perfEnabled } from "./lib/perf";
+import { perfEnabled } from "@rack/shared/perf";
 import { installViewportFix } from "./lib/viewport";
 import { Feed } from "./pages/Feed";
 

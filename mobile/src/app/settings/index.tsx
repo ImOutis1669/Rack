@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Alert, ScrollView } from 'react-native';
+import { Alert, ScrollView, Switch } from 'react-native';
 
 import { Row, Section } from '@/components/Grouped';
+import { useAppLock } from '@/features/lock/AppLock';
 import { useProfile } from '@/features/settings/useProfile';
 import { overallColor } from '@/features/settings/sources';
 import { useSession } from '@/lib/auth';
+import { setPerfEnabled, usePerf } from '@/lib/perfStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function SettingsScreen() {
@@ -17,6 +19,8 @@ export default function SettingsScreen() {
   const hidden = useQuery({ queryKey: ['hidden'], queryFn: api.hidden });
   const health = useQuery({ queryKey: ['health'], queryFn: api.health, refetchInterval: 60_000 });
   const notify = useQuery({ queryKey: ['notify-status'], queryFn: api.notifyStatus });
+  const lock = useAppLock();
+  const perf = usePerf();
   const p = profile.data?.profile;
   const go = (path: string) => () => router.push(path as never);
 
@@ -62,8 +66,35 @@ export default function SettingsScreen() {
         title="Account"
         footer="Log out forgets the password on this iPhone only. Log out everywhere ends every session and app login, including this one: use it if a device is lost. Changing your password does the same.">
         <Row label="Server" value={session.server?.replace('https://', '') ?? ''} />
+        {lock.available ? (
+          <Row
+            label={lock.biometryName === 'passcode' ? 'Require passcode' : `Require ${lock.biometryName}`}
+            detail="When Rack opens, and after a minute away"
+            right={
+              <Switch
+                style={{ marginLeft: 'auto' }}
+                value={lock.enabled}
+                accessibilityLabel={`Require ${lock.biometryName}`}
+                onValueChange={(v) => void lock.setEnabled(v)}
+              />
+            }
+          />
+        ) : null}
         <Row label="Log out" onPress={() => void session.signOut()} />
         <Row label="Log out everywhere" destructive onPress={logOutEverywhere} />
+      </Section>
+      <Section title="Developer" footer="Frame rate, time to the first feed and API timings, drawn over the app. Nothing is stored or sent.">
+        <Row
+          label="Performance readout"
+          right={
+            <Switch
+              style={{ marginLeft: 'auto' }}
+              value={perf.enabled}
+              accessibilityLabel="Performance readout"
+              onValueChange={setPerfEnabled}
+            />
+          }
+        />
       </Section>
     </ScrollView>
   );

@@ -69,6 +69,22 @@ Feed (iOS step 4, checked on the user's iPhone):
 - **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
   messages show as a toast above the tab bar.
 
+Native polish (iOS step 8, checked on the user's iPhone):
+- **Face ID lock:** a full-screen gate (icon on #0A0A0A, "Rack is locked", one capsule button)
+  on cold start with a saved login and after 1 minute in the background; the same cover hides
+  the app in the app switcher. Passcode fallback. On by default where the phone can lock;
+  Settings > Account switch (turning it off asks first). The Keychain token is not itself
+  Face ID-bound (that would lose the passcode fallback).
+- **Offline:** lists keep the last snapshot (<= 24 h) with a quiet `fill` banner ("You're
+  offline." / "Can't reach Rack. Check that Tailscale is on."). Queries pause offline, refetch
+  on reconnect and on returning to the app.
+- **Dynamic Type:** controls use min heights so text grows; grid tile text caps at 1.4x.
+  **Reduce Motion:** no toast fade, image fades or zoom animation.
+- **Developer readout:** Settings > Developer, a small black box top-left (JS fps, slow
+  frames, time to first feed, API timings). Off by default.
+- **App icon:** `mobile/assets/icon.svg` (the web icon redrawn as vector), rendered to 1024 px
+  by `npm run app-icon`; splash is the icon on #0A0A0A.
+
 Settings (iOS step 7, checked on the user's iPhone):
 - A modal with a native stack: the home list (Taste: style, designers, fit, sizes, budget,
   feed; Rack: alerts, hidden, sources with an overall status dot; Account) as inset grouped

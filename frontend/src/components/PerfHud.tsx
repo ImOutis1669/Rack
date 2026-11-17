@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { frameStats, type FrameStats } from "../lib/perf";
+import { frameStats, type FrameStats } from "@rack/shared/perf";
 
 /**
  * Small on-screen readout for measuring on the iPhone (?perf=1): time to the first tile and its

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font } from '@/theme/type';
 
@@ -19,20 +20,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
   const { colors, text, customFont } = useTheme();
+  const reduceMotion = useReduceMotion();
 
   const show = useCallback(
     (t: ToastMsg | string) => {
       const m = typeof t === 'string' ? { text: t } : t;
       setMsg(m);
       AccessibilityInfo.announceForAccessibility(m.text);
-      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      Animated.timing(opacity, { toValue: 1, duration: reduceMotion ? 0 : 150, useNativeDriver: true }).start();
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(
-        () => Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setMsg(null)),
+        () => Animated.timing(opacity, { toValue: 0, duration: reduceMotion ? 0 : 200, useNativeDriver: true }).start(() => setMsg(null)),
         m.ms ?? 3500,
       );
     },
-    [opacity],
+    [opacity, reduceMotion],
   );
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 

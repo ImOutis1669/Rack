@@ -83,6 +83,13 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   `useProfile.tsx` (`WithProfile`, `useSaveProfile`, header `SaveButton`). Headers are
   transparent on iOS 26: every vertical ScrollView under one needs
   `contentInsetAdjustmentBehavior="automatic"` (first rows were hidden, step 7).
+  Polish (step 8): `features/lock/AppLock.tsx` (expo-local-authentication; RN `Modal` so it
+  covers native sheets; policy in `lib/lockPolicy.ts`), `lib/online.ts` (TanStack
+  online/focus managers from expo-network + AppState), `lib/errors.ts` + `StatusBanner`
+  (snapshot fallback when a list fails), `lib/useReduceMotion.ts` (one shared subscription),
+  `lib/perfStore.ts` + `components/PerfOverlay.tsx` (frame maths in `shared/perf`, moved from
+  the web), app icon from `assets/icon.svg` via `npm run app-icon`. jest.mock factories may
+  only use variables named `mock*`.
   The browser pane's web
   build of the app errors (no Keychain/SQLite on web): ignore it, the app is iOS only. Expo Go on the user's iPhone: Metro with
   `REACT_NATIVE_PACKAGER_HOSTNAME` = this PC's Tailscale IP (launch.json "mobile"; 8081 is often

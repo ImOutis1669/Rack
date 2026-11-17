@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { EmptyState } from '@/components/EmptyState';
+import { StatusBanner } from '@/components/StatusBanner';
 import { ListingGrid } from '@/components/ListingGrid';
 import { useSession } from '@/lib/auth';
 import { getListingState, useHiddenIds } from '@/lib/listingState';
@@ -34,16 +35,18 @@ export default function SavedScreen() {
     if (q.data && !q.isPlaceholderData) saveSnapshot('saved', q.data);
   }, [q.data, q.isPlaceholderData]);
   // unsaved or bought in this session: gone at once, before the list reloads
+  // couldn't load: keep showing the last Saved list (<= 24 h), with a banner saying why
+  const fallback = useMemo(() => (q.isError && !q.data ? loadSnapshot<Listing[]>('saved') : undefined), [q.isError, q.data]);
   const items = useMemo(
-    () => (q.data ?? []).filter((i) => !hidden.has(i.id) && getListingState(i.id)?.saved !== false),
-    [q.data, hidden],
+    () => (q.data ?? fallback ?? []).filter((i) => !hidden.has(i.id) && getListingState(i.id)?.saved !== false),
+    [q.data, fallback, hidden],
   );
 
   const empty = q.isError ? (
     <EmptyState
       icon="search"
       title="Couldn't load Saved"
-      body={(q.error as Error).message}
+      body="Nothing saved from the last 24 hours to show instead."
       action={{ label: 'Try again', onPress: () => void q.refetch() }}
     />
   ) : q.isPending ? (
@@ -61,6 +64,7 @@ export default function SavedScreen() {
   return (
     <ListingGrid
       items={items}
+      header={<StatusBanner error={q.isError ? q.error : null} showingSaved={Boolean(fallback)} />}
       empty={empty}
       showBought
       refreshing={q.isRefetching && !q.isPlaceholderData}

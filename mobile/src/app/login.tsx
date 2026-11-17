@@ -104,8 +104,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
   title: { textAlign: 'center', marginBottom: 16 },
-  field: { height: 50, borderRadius: 12, paddingHorizontal: 16, borderCurve: 'continuous' },
-  button: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  field: { minHeight: 50, borderRadius: 12, paddingHorizontal: 16, borderCurve: 'continuous' },
+  button: { minHeight: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   error: { textAlign: 'center' },
   serverLink: { alignSelf: 'center', padding: 12, minHeight: 44, justifyContent: 'center' },
 });

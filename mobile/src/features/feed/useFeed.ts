@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 
 import { useSession } from '@/lib/auth';
+import { recordFirstFeed } from '@/lib/perfStore';
 import { useHiddenIds } from '@/lib/listingState';
 import { loadSnapshot, saveSnapshot } from '@/lib/storage';
 
@@ -41,6 +42,9 @@ export function useFeed() {
   });
   const firstPage = query.isPlaceholderData ? undefined : query.data?.pages[0];
   useEffect(() => {
+    if (query.data?.pages[0]) recordFirstFeed(); // snapshot or live, whichever shows first
+  }, [query.data]);
+  useEffect(() => {
     if (firstPage && isDefaultFeed(params, newOnly)) saveSnapshot('feed', firstPage);
   }, [firstPage, params, newOnly]);
 
@@ -60,10 +64,16 @@ export function useFeed() {
     if (hasNextPage && !isFetchingNextPage && !isPlaceholderData) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, isPlaceholderData, fetchNextPage]);
 
+  // couldn't load (offline, Tailscale off): keep showing the last default feed (<= 24 h) rather
+  // than an empty error page; the banner says why
+  const fallback = useMemo(
+    () => (query.isError && !query.data && isDefaultFeed(params, newOnly) ? loadSnapshot<FeedPage>('feed') : undefined),
+    [query.isError, query.data, params, newOnly],
+  );
   const items = useMemo(
-    () => (query.data?.pages.flatMap((p) => p.items) ?? []).filter((i) => !hiddenIds.has(i.id)),
-    [query.data, hiddenIds],
+    () => (query.data?.pages.flatMap((p) => p.items) ?? fallback?.items ?? []).filter((i) => !hiddenIds.has(i.id)),
+    [query.data, fallback, hiddenIds],
   );
   const needsSetup = profile.data && profile.data.designer_count === 0 && profile.data.taste_count === 0;
-  return { query, items, loadMore, onSeen, needsSetup: Boolean(needsSetup), visit };
+  return { query, items, loadMore, onSeen, needsSetup: Boolean(needsSetup), visit, showingSaved: Boolean(fallback) };
 }

@@ -15,6 +15,7 @@ import { SOURCE_DOT } from '@/features/feed/options';
 import { useListingActions } from '@/features/feed/useListingActions';
 import { useSession } from '@/lib/auth';
 import { font, tabular } from '@/theme/type';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { Icon } from './Icon';
@@ -41,6 +42,7 @@ export const ListingTile = memo(function ListingTile({ item, width, showBought }
   const qc = useQueryClient();
   const { colors, scheme, text, customFont } = useTheme();
   const medium = font('medium', customFont);
+  const reduceMotion = useReduceMotion();
   const actions = useListingActions(item);
 
   const thumb = listingThumb(item, thumbWidthFor(width * PixelRatio.get()));
@@ -71,40 +73,40 @@ export const ListingTile = memo(function ListingTile({ item, width, showBought }
                   source={{ uri, headers: session.imageHeaders(), cacheKey: uri }}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
-                  transition={150}
+                  transition={reduceMotion ? 0 : 150}
                   recyclingKey={String(item.id)}
                   accessible={false}
                 />
               ) : null}
               <Overlay style={styles.badge}>
                 <View style={[styles.dot, { backgroundColor: SOURCE_DOT[item.source][scheme] }]} />
-                <Text style={[text('caption'), medium, { color: colors.foreground }]}>
+                <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('caption'), medium, { color: colors.foreground }]}>
                   {SOURCE_LABEL[item.source] ?? item.source}
                 </Text>
               </Overlay>
               {was != null ? (
                 <Overlay style={styles.cut}>
-                  <Text style={[text('caption'), medium, { color: colors.accent }]}>Price cut</Text>
+                  <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('caption'), medium, { color: colors.accent }]}>Price cut</Text>
                 </Overlay>
               ) : null}
             </View>
             <View style={styles.textBlock}>
               {item.brand ? (
-                <Text numberOfLines={1} style={[text('caption'), medium, styles.brand, { color: colors.muted }]}>
+                <Text maxFontSizeMultiplier={TILE_TEXT_MAX} numberOfLines={1} style={[text('caption'), medium, styles.brand, { color: colors.muted }]}>
                   {item.brand.toUpperCase()}
                 </Text>
               ) : null}
-              <Text numberOfLines={1} style={[text('footnote'), { color: colors.foreground }]}>
+              <Text maxFontSizeMultiplier={TILE_TEXT_MAX} numberOfLines={1} style={[text('footnote'), { color: colors.foreground }]}>
                 {item.title}
               </Text>
               <View style={styles.priceRow}>
-                <Text style={[text('headline'), tabular, { color: colors.foreground }]}>{price}</Text>
+                <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('headline'), tabular, { color: colors.foreground }]}>{price}</Text>
                 {was != null ? (
-                  <Text style={[text('caption'), tabular, styles.was, { color: colors.muted }]}>{formatGBP(was)}</Text>
+                  <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('caption'), tabular, styles.was, { color: colors.muted }]}>{formatGBP(was)}</Text>
                 ) : null}
               </View>
               {meta ? (
-                <Text numberOfLines={1} style={[text('caption'), { color: colors.muted }]}>
+                <Text maxFontSizeMultiplier={TILE_TEXT_MAX} numberOfLines={1} style={[text('caption'), { color: colors.muted }]}>
                   {meta}
                 </Text>
               ) : null}
@@ -139,7 +141,7 @@ export const ListingTile = memo(function ListingTile({ item, width, showBought }
           }}
           style={({ pressed }) => [styles.bought, { backgroundColor: colors.fill, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
           <Icon name="bought" size={15} color={colors.foreground} />
-          <Text style={[text('footnote'), medium, { color: colors.foreground }]}>I bought it</Text>
+          <Text maxFontSizeMultiplier={TILE_TEXT_MAX} style={[text('footnote'), medium, { color: colors.foreground }]}>I bought it</Text>
         </Pressable>
       ) : null}
       {/* save stays one tap away, like the web's bookmark on the photo */}
@@ -158,6 +160,9 @@ export const ListingTile = memo(function ListingTile({ item, width, showBought }
   );
 });
 
+/** Dynamic Type grows tile text up to 1.4x: beyond that two columns can't hold it (the sheet shows everything at full size). */
+const TILE_TEXT_MAX = 1.4;
+
 const styles = StyleSheet.create({
   photo: { aspectRatio: 4 / 5, borderRadius: 12, borderCurve: 'continuous', overflow: 'hidden' },
   overlay: { borderRadius: 999, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
@@ -170,5 +175,5 @@ const styles = StyleSheet.create({
   brand: { letterSpacing: 0.4 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
   was: { textDecorationLine: 'line-through' },
-  bought: { marginTop: 6, height: 44, alignSelf: 'flex-start', paddingHorizontal: 14, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bought: { marginTop: 6, minHeight: 44, alignSelf: 'flex-start', paddingHorizontal: 14, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

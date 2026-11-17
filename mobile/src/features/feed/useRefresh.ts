@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
 
 import { useToast } from '@/components/Toast';
@@ -29,6 +30,7 @@ export function useRefresh() {
     mutationFn: api.refresh,
     onMutate: reloadFeed,
     onSuccess: (s) => {
+      void Haptics.selectionAsync();
       qc.setQueryData(['refresh'], s);
       toast(s.message);
     },

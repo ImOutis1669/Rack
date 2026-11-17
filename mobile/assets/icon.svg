@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Rack's icon (frontend/public/icon-*.png), redrawn as vector from its 512 px PNG so the
+       iOS app icon (1024 px) stays sharp. Three tags on hangers under a rail. -->
+  <rect width="512" height="512" fill="#0A0A0A"/>
+  <g fill="#F5F5F5">
+    <rect x="75" y="126" width="362" height="19"/>
+    <g id="hanger">
+      <path d="M143.5 114 A13 13 0 1 1 161 122.5 L156.5 126" fill="none" stroke="#F5F5F5" stroke-width="9.5" stroke-linecap="butt"/>
+      <rect x="152" y="144" width="9.5" height="27"/>
+      <path d="M156.5 169 L195.5 197 L195.5 385 L118 385 L118 197 Z"/>
+    </g>
+    <use href="#hanger" x="99.5"/>
+    <use href="#hanger" x="198.5"/>
+  </g>
+</svg>

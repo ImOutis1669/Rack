@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   body: { padding: 16, gap: 20 },
   gap4: { gap: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingHorizontal: 8, borderRadius: 12 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24, paddingHorizontal: 8, borderRadius: 12 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -291,6 +291,6 @@ const styles = StyleSheet.create({
   details: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 },
   detail: { width: '50%', paddingRight: 16, gap: 2 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  buy: { height: 50, borderRadius: 25, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  buy: { minHeight: 50, borderRadius: 25, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   buyLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
 });

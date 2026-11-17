@@ -151,5 +151,5 @@ const styles = StyleSheet.create({
   or: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   line: { flex: 1, height: StyleSheet.hairlineWidth },
   inline: { flexDirection: 'row', gap: 8 },
-  small: { height: 44, paddingHorizontal: 16, borderRadius: 22, justifyContent: 'center' },
+  small: { minHeight: 44, paddingHorizontal: 16, borderRadius: 22, justifyContent: 'center' },
 });
