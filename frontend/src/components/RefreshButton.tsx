@@ -6,7 +6,8 @@ import { toast } from "./Toast";
 import { IconButton } from "./ui";
 import { Icon } from "./icons/Icon";
 
-/** Re-ranks the feed now and asks the worker to search the sources (with a cooldown). */
+/** Reloads the feed now and asks the worker to search your own designers and wishlist on every
+ *  source (per-person cooldown; see backend api/refresh.py). */
 export function RefreshButton() {
   const qc = useQueryClient();
   const status = useQuery({
@@ -48,7 +49,7 @@ export function RefreshButton() {
 
   return (
     <IconButton
-      label={busy ? "Searching the sources" : "Refresh"}
+      label={busy ? "Searching for you" : "Refresh"}
       onClick={() => request.mutate()}
       disabled={request.isPending}
     >

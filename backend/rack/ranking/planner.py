@@ -98,3 +98,70 @@ def merge_plans(plans: list[list[SearchQuery]]) -> list[SearchQuery]:
             ):
                 merged[key] = have.model_copy(update={"max_price_gbp": q.max_price_gbp})
     return [merged[k] for k in order]
+
+
+# The Refresh button (v2.1): only the asking user's own searches, most-wanted first. Each batch
+# fills its slots in this order (two for loved designers, one wishlist, one for the rest), and
+# each stream keeps its own cursor, so repeated refreshes move on instead of repeating.
+TAILORED_SLOTS = ("love", "love", "wish", "more")
+TAILORED_STREAMS = ("love", "wish", "more")
+
+
+def tailored_streams(inp: PlannerInput) -> dict[str, list[SearchQuery]]:
+    """One user's searches split by how much they want them: loved designers in each of their
+    categories (category-major, so a batch spans designers), wishlist texts, then liked,
+    curious and adjacent designers."""
+    p = inp.profile
+    loved = [n for n, w in inp.designers.items() if w == "love"]
+    if p.categories:
+        love = [
+            SearchQuery(text=n, category=c, max_price_gbp=p.budget.max_for(c))
+            for c in p.categories
+            for n in loved
+        ]
+    else:
+        love = [SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp) for n in loved]
+    wish = [
+        SearchQuery(text=t.strip(), max_price_gbp=p.budget.default_max_gbp)
+        for t in inp.wishlist_texts
+        if t.strip()
+    ]
+    known = {n.lower() for n in inp.designers}
+    more_names = [n for w in ("like", "curious") for n, wt in inp.designers.items() if wt == w]
+    for name, weight in inp.designers.items():
+        if weight in ("love", "like"):
+            for a in inp.adjacent.get(name, []):
+                if a.lower() not in known and a not in more_names:
+                    more_names.append(a)
+    more = [SearchQuery(text=n, max_price_gbp=p.budget.default_max_gbp) for n in more_names]
+    return {"love": love, "wish": wish, "more": more}
+
+
+def tailored_batch(
+    streams: dict[str, list[SearchQuery]], cursors: dict[str, int], size: int
+) -> tuple[list[SearchQuery], dict[str, int]]:
+    """The next `size` searches for one user. A slot whose stream is empty goes to the next
+    stream in TAILORED_STREAMS order; the same search never appears twice in a batch."""
+    cur = {k: int(cursors.get(k, 0)) for k in TAILORED_STREAMS}
+    used: set[tuple[str, Category]] = set()
+
+    def take(kind: str) -> SearchQuery | None:
+        stream = streams.get(kind, [])
+        for _ in range(len(stream)):
+            i = cur[kind] % len(stream)
+            cur[kind] = (i + 1) % len(stream)
+            q = stream[i]
+            key = (" ".join(q.text.lower().split()), q.category)
+            if key not in used:
+                used.add(key)
+                return q
+        return None
+
+    out: list[SearchQuery] = []
+    for n in range(size):
+        slot = TAILORED_SLOTS[n % len(TAILORED_SLOTS)]
+        for kind in (slot, *(k for k in TAILORED_STREAMS if k != slot)):
+            if (q := take(kind)) is not None:
+                out.append(q)
+                break
+    return out, cur

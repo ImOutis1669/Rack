@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -275,14 +275,15 @@ async def rescore(
     embedder: Embedder | None,
     *,
     force: bool = False,
+    unthrottled: Collection[int] = (),
 ) -> int | None:
     """Score all active listings for every active user whose ranking may have changed.
 
     A user is due at once when their own profile version moved (taste, votes, saves, hides).
     When only listings changed (new results, photos, prices), the owner is rescored at once as
     before and friends at most every `rack_friend_rescore_minutes` (a full pass is ~17 s per
-    user on 15k listings). Listing features are built once and shared. Returns rows written,
-    or None if nobody was due."""
+    user on 15k listings), except those in `unthrottled` (they just pressed Refresh). Listing
+    features are built once and shared. Returns rows written, or None if nobody was due."""
     started = datetime.now(UTC)
     friend_every = timedelta(minutes=get_settings().rack_friend_rescore_minutes)
     async with sessions() as s:
@@ -309,7 +310,12 @@ async def rescore(
             stale = bool(unscored) or (
                 changed_at is not None and (last is None or changed_at > last)
             )
-            throttled = role != "owner" and last is not None and started - last < friend_every
+            throttled = (
+                role != "owner"
+                and uid not in unthrottled
+                and last is not None
+                and started - last < friend_every
+            )
             if force or mine.get("version") != version or (stale and not throttled):
                 todo.append((uid, version))
         if not todo:

@@ -6,8 +6,8 @@ import { useToast } from '@/components/Toast';
 import { useSession } from '@/lib/auth';
 
 /**
- * Pull to refresh (the web's Refresh button): re-ranks the feed now and asks the worker to search
- * the sources, which the server allows once per cooldown (its message says when). When a search
+ * Pull to refresh (the web's Refresh button): reloads the feed now and asks the worker to search
+ * your own designers and wishlist on every source, once per cooldown (its message says when). When a search
  * finishes, the feed reloads now and again a minute later, once new items are scored.
  */
 export function useRefresh() {

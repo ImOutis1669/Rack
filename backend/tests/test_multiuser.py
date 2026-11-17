@@ -328,6 +328,10 @@ async def test_scores_are_per_user(
         await mark_listings_changed(s)
         await s.commit()
     assert await rescore(sessions, FakeEmbedder()) == 2
+    async with sessions() as s:  # a friend who just pressed Refresh isn't throttled
+        await mark_listings_changed(s)
+        await s.commit()
+    assert await rescore(sessions, FakeEmbedder(), unthrottled={sam_id}) == 4
     async with sessions() as s:  # the friend's own taste changed: at once
         await bump_version(s, sam_id)
         await s.commit()

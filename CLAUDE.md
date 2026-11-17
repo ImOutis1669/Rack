@@ -209,9 +209,14 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
 - Dedupe (`ranking/dedupe.py`): pHash ≤ 6 bits AND CLIP ≥ 0.96 AND compatible brands (checked per
   group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:
   near-identical photos + titles of genuinely different items (e.g. two lookbooks) still merge.
-- The worker stores the last refresh time; restarts don't re-run searches early. Manual refresh: `api/refresh.py` writes
-  `app_state['refresh_request']`; the worker's `ManualRefresh` job (every 10 s) runs it, then
-  embeds/scores. Cooldown `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES`.
+- The worker stores the last refresh time; restarts don't re-run searches early. Manual refresh
+  (per person): `api/refresh.py` writes `requested_at` in the asker's `user_state['refresh']`; the
+  worker's `ManualRefresh` job (every 10 s) runs the oldest waiting request (one at a time, shared
+  lock with the 30-min refresh) with only that person's searches (`planner.tailored_streams` /
+  `tailored_batch`: 2 loved-designer slots, 1 wishlist, 1 liked/curious/adjacent, each stream with
+  its own cursor), counts their eBay searches, then embeds and scores them unthrottled. Cooldowns
+  `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES` (owner) / `RACK_FRIEND_REFRESH_COOLDOWN_MINUTES`;
+  `RACK_MANUAL_QUERIES` (4) searches per refresh. The 30-min background refresh stays shared.
 - Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
   ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all

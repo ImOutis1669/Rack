@@ -218,6 +218,8 @@ export interface GalleryInfo {
 export interface RefreshStatus {
   running: boolean;
   queued: boolean;
+  /** When your latest refresh started: listings first seen after it are "new for you". */
+  started_at: string | null;
   last_at: string | null;
   next_allowed_at: string | null;
   results: Record<string, number>;

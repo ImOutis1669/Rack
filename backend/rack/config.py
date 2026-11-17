@@ -106,11 +106,13 @@ class Settings(BaseSettings):
     # Worker
     rack_refresh_minutes: int = 30
     rack_queries_per_refresh: int = 12
-    # The Refresh button runs a shorter batch so results land in about a minute; the planner
-    # cursor carries on from there, so the background refreshes still cover everything.
-    rack_manual_queries: int = 6
+    # The Refresh button searches only the asking person's own taste (loved designers first, then
+    # wishlist, then the rest), a short batch so results land in under a minute. Cooldowns are
+    # per person; one refresh runs at a time.
+    rack_manual_queries: int = 4
     rack_score_seconds: int = 60
     rack_manual_refresh_cooldown_minutes: int = 5
+    rack_friend_refresh_cooldown_minutes: int = 15
     # Used only until you've added designers / wishlist text.
     rack_seed_queries: str = "maison margiela,rick owens,our legacy"
 

@@ -23,19 +23,35 @@ from rack.embeddings.images import (
     pinned_request,
     resolve_public,
 )
-from rack.models import AdjacentDesignerRow, TasteItemRow
+from rack.models import AdjacentDesignerRow, TasteItemRow, UserRow, UserStateRow
 from rack.pricing.fx import fetch_rates, set_live_rates
 from rack.privacy import purge_ebay
-from rack.ranking.planner import PlannerInput, all_queries, fallback, merge_plans, next_batch
+from rack.ranking.planner import (
+    PlannerInput,
+    all_queries,
+    fallback,
+    merge_plans,
+    next_batch,
+    tailored_batch,
+    tailored_streams,
+)
 from rack.sources.base import SearchQuery
 from rack.sources.ebay import EbayAdapter
 from rack.sources.grailed import GrailedAdapter
 from rack.sources.http import RateLimitedClient
-from rack.store import active_user_ids, get_state, load_designers, load_profile, set_state
+from rack.store import (
+    active_user_ids,
+    get_state,
+    get_user_state,
+    load_designers,
+    load_profile,
+    set_state,
+    set_user_state,
+)
 from rack.thumbs import prune
 from rack.worker.adapters import shared_adapters
 from rack.worker.ebay_details import fetch_ebay_details
-from rack.worker.hunts import run_due_hunts
+from rack.worker.hunts import count_ebay_search, run_due_hunts
 from rack.worker.live_search import run_live_searches
 from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
@@ -52,8 +68,8 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-async def user_queries(s: AsyncSession, uid: int) -> list[SearchQuery]:
-    """Every search one user's taste profile implies."""
+async def planner_input(s: AsyncSession, uid: int) -> PlannerInput:
+    """One user's taste, as the query planner reads it."""
     profile, _ = await load_profile(s, uid)
     designers = await load_designers(s, uid)
     adjacent: dict[str, list[str]] = {}
@@ -75,7 +91,12 @@ async def user_queries(s: AsyncSession, uid: int) -> list[SearchQuery]:
         .scalars()
         .all()
     )
-    return all_queries(PlannerInput(profile, designers, adjacent, [str(w) for w in wish]))
+    return PlannerInput(profile, designers, adjacent, [str(w) for w in wish])
+
+
+async def user_queries(s: AsyncSession, uid: int) -> list[SearchQuery]:
+    """Every search one user's taste profile implies."""
+    return all_queries(await planner_input(s, uid))
 
 
 async def plan_queries(state_key: str = "planner", size: int | None = None) -> list[SearchQuery]:
@@ -100,6 +121,25 @@ async def _update_state(key: str, **values: Any) -> None:
         state = await get_state(s, key)
         await set_state(s, key, {**state, **values})
         await s.commit()
+
+
+async def _update_user_state(uid: int, key: str, **values: Any) -> None:
+    async with sessionmaker()() as s:
+        state = await get_user_state(s, uid, key)
+        await set_user_state(s, uid, key, {**state, **values})
+        await s.commit()
+
+
+async def tailored_queries(uid: int, size: int) -> list[SearchQuery]:
+    """The next `size` searches from one user's own taste, most-wanted first (the Refresh
+    button). Their stream cursors live in their user state, so each refresh moves on."""
+    async with sessionmaker()() as s:
+        streams = tailored_streams(await planner_input(s, uid))
+        state = await get_user_state(s, uid, "refresh")
+        batch, cursors = tailored_batch(streams, state.get("cursors") or {}, size)
+        await set_user_state(s, uid, "refresh", {**state, "cursors": cursors})
+        await s.commit()
+    return batch or fallback(get_settings().seed_queries)[:size]
 
 
 async def run_refresh(size: int | None = None) -> None:
@@ -281,6 +321,7 @@ class EmbedAndScore:
         self.embedder = ClipEmbedder(settings.clip_model, settings.clip_pretrained)
         self.images: dict[str, RateLimitedClient] = {}
         self._lock = asyncio.Lock()
+        self.prioritise: set[int] = set()  # users to score on the next run (just refreshed)
         self.llm = make_client(settings) if settings.llm_enabled else None
 
     async def fetch(self, url: str) -> bytes:
@@ -324,7 +365,9 @@ class EmbedAndScore:
                 )
                 await embed_sold(sessions, self.embedder, self.fetch)
                 await assign_clusters(sessions)
-                await rescore(sessions, self.embedder)
+                due = set(self.prioritise)
+                await rescore(sessions, self.embedder, unthrottled=due)
+                self.prioritise -= due
                 if self.llm is not None:
                     await llm_rerank(sessions, self.settings, self.llm)
             except Exception:
@@ -332,22 +375,69 @@ class EmbedAndScore:
             return n
 
 
+async def run_user_refresh(uid: int, size: int) -> dict[str, int]:
+    """One person's Refresh: their own next searches on every source, at the same rate limits
+    and never alongside another refresh. Their eBay searches count towards their usage."""
+    async with _refresh_lock:
+        await _update_user_state(uid, "refresh", running=True, started_at=_now().isoformat())
+        results: dict[str, int] = {}
+        try:
+            adapters = list(shared_adapters().values())
+            queries = await tailored_queries(uid, size)
+            log.info(
+                "refresh for user %d: %d queries (%s)",
+                uid,
+                len(queries),
+                ", ".join(q.text for q in queries),
+            )
+            if any(a.name == "ebay" for a in adapters):
+                async with sessionmaker()() as s:
+                    for _ in queries:
+                        await count_ebay_search(s, uid)
+                    await s.commit()
+            results = await refresh_all(adapters, queries, sessionmaker())
+            log.info("refresh for user %d done: %s", uid, results)
+        finally:
+            await _update_user_state(
+                uid, "refresh", running=False, at=_now().isoformat(), results=results
+            )
+        return results
+
+
+async def next_refresh_request() -> int | None:
+    """The user whose Refresh request has waited longest (enabled accounts only)."""
+    async with sessionmaker()() as s:
+        rows = (
+            await s.execute(
+                select(UserStateRow.user_id, UserStateRow.value)
+                .join(UserRow, UserRow.id == UserStateRow.user_id)
+                .where(UserStateRow.key == "refresh", UserRow.disabled_at.is_(None))
+            )
+        ).all()
+    waiting = [
+        (str(v["requested_at"]), int(uid))
+        for uid, v in rows
+        if v.get("requested_at")
+        and (not v.get("started_at") or str(v["requested_at"]) > str(v["started_at"]))
+    ]
+    return min(waiting)[1] if waiting else None
+
+
 class ManualRefresh:
-    """Runs a refresh when the app's Refresh button asked for one (see api/refresh.py)."""
+    """Runs a person's refresh when their Refresh button asked for one (see api/refresh.py)."""
 
     def __init__(self, embed: EmbedAndScore) -> None:
         self.embed = embed
 
     async def run(self) -> None:
-        async with sessionmaker()() as s:
-            request = await get_state(s, "refresh_request")
-            done = await get_state(s, "refresh")
-        asked = request.get("at")
-        started = done.get("started_at")
-        if not asked or (started and started >= asked) or _refresh_lock.locked():
+        if _refresh_lock.locked():
             return
-        log.info("manual refresh requested at %s", asked)
-        await run_refresh(get_settings().rack_manual_queries)
+        uid = await next_refresh_request()
+        if uid is None:
+            return
+        log.info("manual refresh requested by user %d", uid)
+        await run_user_refresh(uid, get_settings().rack_manual_queries)
+        self.embed.prioritise.add(uid)  # score their new results now, whatever their role
         # A run embeds up to 200 photos; go straight on to the next batch rather than waiting
         # for the scheduled pass, so new results show up as soon as possible.
         for _ in range(4):
