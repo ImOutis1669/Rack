@@ -82,18 +82,18 @@ SF Pro on iPhone/Mac, Segoe UI on Windows.
 
 | Role | Size | Weight | Use |
 |---|---|---|---|
-| Page title (iPhone) | 30, -0.03em, leading 1.15 | bold + `heavy` | top bar: Rack, Saved, Hunts, Wardrobe, Settings (`text-pagetitle`) |
-| Large title | 32 | bold + `heavy` | desktop page titles, login |
+| Page title (iPhone) | 30, -0.03em, leading 1.15 | bold | top bar: Rack, Saved, Hunts, Wardrobe, Settings (`text-pagetitle`) |
+| Large title | 32 | bold | desktop page titles, login |
 | Title | 20 | bold / semibold | sheet titles |
 | Headline | 15 | semibold | prices |
 | Body | 15 | regular | text; 16 for inputs, so iOS doesn't zoom on focus |
 | Footnote | 13 | regular | |
 | Caption | 11 | regular | |
 
-Page titles (user's pick "C", v1.2): bigger and heavier than the font's Bold while staying in
-the 56px bar row. `heavy` thickens with sub-pixel `text-shadow` copies in the text colour, not
-`-webkit-text-stroke`: Neue Montreal's outlines overlap inside glyphs, and a stroke draws those
-edges so the letters look doubled.
+Page titles (v1.2): bigger and the font's real Bold, in the same 56px bar row. Don't fake a
+heavier weight: `-webkit-text-stroke` drew Neue Montreal's overlapping inner contours (letters
+looked doubled) and sub-pixel `text-shadow` copies rendered as a blurry halo on the iPhone. For
+more weight, a heavier font file is the only clean way.
 
 Use tabular figures for prices and numbers.
 

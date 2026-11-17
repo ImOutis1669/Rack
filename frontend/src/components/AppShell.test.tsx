@@ -1,8 +1,12 @@
+// @ts-expect-error: the app has no Node types; Vitest runs in Node (and blanks CSS imports)
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { AppTabs, PageShell } from "./AppShell";
+
+const css: string = readFileSync(new URL("../index.css", import.meta.url), "utf8");
 
 function render(path: string): string {
   return renderToStaticMarkup(
@@ -78,10 +82,12 @@ describe("page titles", () => {
     expect(shell().match(/<h1/g)).toHaveLength(2);
   });
 
-  it("draws the iPhone title big and extra heavy (v1.2 option C) in the 56px bar row", () => {
+  it("draws the iPhone title big and bold in the 56px bar row, with no fake-weight effect", () => {
     const html = shell(false);
     const h1 = html.match(/<h1 class="([^"]*)">Rack<\/h1>/)?.[1] ?? "";
-    expect(h1.split(" ")).toEqual(expect.arrayContaining(["text-pagetitle", "font-bold", "heavy", "truncate"]));
+    expect(h1.split(" ")).toEqual(expect.arrayContaining(["text-pagetitle", "font-bold", "truncate"]));
+    expect(h1).not.toMatch(/\bheavy\b/); // iOS drew its text-shadow copies as a blurry halo
+    expect(css).not.toMatch(/@utility heavy|-webkit-text-stroke/);
     expect(html).toMatch(/class="[^"]*\bh-14\b/);
   });
 });

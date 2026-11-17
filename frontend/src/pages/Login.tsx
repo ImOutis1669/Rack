@@ -28,7 +28,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         <MagicCard mode="orb" className="rounded-sheet" gradientSize={260} glowSize={240} glowOpacity={0.35}>
           <form onSubmit={submit} className="flex flex-col gap-4 p-7">
             <div className="mb-2 text-center">
-              <h1 className="font-display text-largetitle font-bold heavy">Rack</h1>
+              <h1 className="font-display text-largetitle font-bold">Rack</h1>
             </div>
             <Input
               type="password"

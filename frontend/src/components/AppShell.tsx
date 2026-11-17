@@ -154,7 +154,7 @@ export function PageShell({
           <Link to="/" className="hidden font-display text-[19px] font-bold tracking-tight md:block">
             Rack
           </Link>
-          <h1 className="truncate font-display text-pagetitle font-bold heavy md:hidden">{title}</h1>
+          <h1 className="truncate font-display text-pagetitle font-bold md:hidden">{title}</h1>
           {/* room for the desktop tabs, which AppTabs draws over the bar */}
           <div className="flex-1" />
           <div className="-mr-2 flex items-center">
@@ -174,7 +174,7 @@ export function PageShell({
           wide ? "max-w-7xl" : "max-w-3xl",
         )}
       >
-        {desktopTitle && <h1 className="mb-4 hidden font-display text-largetitle font-bold heavy md:block">{title}</h1>}
+        {desktopTitle && <h1 className="mb-4 hidden font-display text-largetitle font-bold md:block">{title}</h1>}
         {children}
       </main>
     </div>
