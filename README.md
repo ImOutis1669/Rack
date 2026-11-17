@@ -2,7 +2,8 @@
 
 A personal, self-hosted feed of second-hand menswear from eBay UK, Vinted UK and Grailed. It ranks listings by **your** taste profile, not your click history: your
 wardrobe photos, designers, style notes and fit. Saved hunts and price drops alert your phone.
-It's for a single user, and it runs in Docker on your own PC.
+It runs in Docker on your own PC, for you and a few friends you invite (v2.1): each has their own
+account and taste, and one crawler serves everyone.
 
 ## What it does
 - **One ranked feed** across marketplaces. Each card shows the price, a delivered-cost estimate for
@@ -33,11 +34,18 @@ It's for a single user, and it runs in Docker on your own PC.
 - **Fast on the phone**: small cached WebP thumbnails for tiles, the last feed shown instantly on
   open, only the tiles near the screen kept in the page, details prefetched on touch, compressed
   and split JavaScript. Add `?perf=1` to the address to see timings on the device.
+- **Accounts (v2.1)**: invite friends with single-use links; each gets their own feed, taste,
+  wardrobe, Saved, hunts and alerts. Your photo or initials open **Profile** (photo, name,
+  password, log out everywhere, and Settings inside it).
+- **Search across all sources (v2.1)**: everything Rack has found, as you type (typos included),
+  plus "Search eBay, Vinted and Grailed now" to ask the sites directly; save any search as a hunt.
 - **eBay without storing eBay users' data**: listings come from eBay's official API; seller names
   and locations are never stored, and eBay listings are deleted a week after they go.
 
-What's new in v1.2: [docs/release-notes-v1.2.md](docs/release-notes-v1.2.md)
-(v1.1: [docs/release-notes-v1.1.md](docs/release-notes-v1.1.md)).
+What's new in v2.1: [docs/release-notes-v2.1.md](docs/release-notes-v2.1.md)
+(v2.0: [docs/release-notes-v2.0.md](docs/release-notes-v2.0.md),
+v1.2: [docs/release-notes-v1.2.md](docs/release-notes-v1.2.md),
+v1.1: [docs/release-notes-v1.1.md](docs/release-notes-v1.1.md)).
 
 ## Requirements
 Windows 10/11 with **Docker Desktop** (WSL 2 backend) and a few GB of disk for the images, the model
@@ -107,6 +115,9 @@ checks them all. Each alert is sent once.
 - **ntfy**: set `NTFY_TOPIC` to a long random name and subscribe to it in the ntfy app. ntfy.sh is
   public: anyone who knows the topic can read your alerts.
 - **Telegram**: create a bot with @BotFather; set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
+
+ntfy and Telegram are the owner's (they come from `.env`). Friends get Web Push on their own
+devices, and each person's alerts go only to them.
 
 ## Using it from your phone (Cloudflare Tunnel)
 Rack listens only on this PC by default. To reach it from anywhere over HTTPS without opening router

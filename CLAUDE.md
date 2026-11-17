@@ -254,7 +254,13 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: v2.0 done (2026-11-17), tagged `v2.0`: the native iOS app (`mobile/`, docs/ios-brief.md
+Status: v2.1 done (2026-11-17), tagged `v2.1`: friends' accounts by invite (per-user data,
+scoring and alerts, one shared crawler), Profile in place of the gear (web + iOS, profile photos),
+search across all sources (instant + live), owner-only font/icons, iOS inline titles, security
+audit RACK-21..30. Plan docs/v2.1-plan.md, release notes docs/release-notes-v2.1.md. Cloudflare
+Tunnel / public access moved to a later version. The live server still ran v2.0 at release (the
+user rebuilds when they choose; owner username `RACK_OWNER_USERNAME=Outis` is in `.env.api`).
+Earlier: v2.0 done (2026-11-17), tagged `v2.0`: the native iOS app (`mobile/`, docs/ios-brief.md
 steps 0-9), shared code in `shared/`, the app's bearer-token login, and the hunt-match pruning
 fix. Built by GitHub Actions and sideloaded (docs/ios-sideload.md); release notes
 docs/release-notes-v2.0.md. Earlier: v1.2 done (2026-11-17), tagged `v1.2`: docs/v1.2-brief.md features 1-7 (top-bar glass,
