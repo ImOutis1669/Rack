@@ -360,27 +360,59 @@ export function Menu({
   align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<MenuPosition | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const toggle = () => {
+    if (!open && ref.current) {
+      setPos(menuPosition(ref.current.getBoundingClientRect(), items.length, align, window.innerWidth, window.innerHeight));
+    }
+    setOpen((o) => !o);
+  };
+
   useEffect(() => {
     if (!open) return;
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
+    const inside = (t: EventTarget | null) => ref.current?.contains(t as Node) || menuRef.current?.contains(t as Node);
+    const onDown = (e: PointerEvent) => !inside(e.target) && setOpen(false);
+    // fixed to where the button was: close rather than float away when anything scrolls
+    const onScroll = (e: Event) => !inside(e.target) && setOpen(false);
+    const onClose = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
+
   return (
     <div ref={ref} className="relative">
-      {trigger({ onClick: () => setOpen((o) => !o), "aria-expanded": open })}
+      {trigger({ onClick: toggle, "aria-expanded": open })}
+      {/* Portalled with fixed position: menus sit in horizontally scrolling chip rows and inside
+          sheets, whose overflow would otherwise clip them (the sort menu was invisible, v1.2). */}
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
-        {open && (
+        {open && pos && (
           <m.div
+            ref={menuRef}
             role="menu"
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+            data-testid="menu"
+            initial={{ opacity: 0, scale: 0.95, y: pos.up ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.12 }}
+            style={pos.style}
             className={cn(
-              "absolute top-full z-40 mt-1 min-w-52 overflow-hidden rounded-photo bg-elevated py-1 shadow-xl ring-1 ring-border",
-              align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left",
+              "fixed z-[60] min-w-52 overflow-hidden rounded-photo bg-elevated py-1 shadow-xl ring-1 ring-border",
+              pos.up
+                ? align === "right" ? "origin-bottom-right" : "origin-bottom-left"
+                : align === "right" ? "origin-top-right" : "origin-top-left",
             )}
           >
             {items.map((it) => (
@@ -403,9 +435,36 @@ export function Menu({
             ))}
           </m.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
     </div>
   );
+}
+
+export interface MenuPosition {
+  up: boolean;
+  style: { top?: number; bottom?: number; left?: number; right?: number };
+}
+
+const MENU_ITEM_H = 44;
+const MENU_GAP = 4;
+const EDGE = 8;
+
+/** Where a fixed menu goes for a trigger at `rect`: below it, or above when there's no room. */
+export function menuPosition(
+  rect: { top: number; bottom: number; left: number; right: number },
+  itemCount: number,
+  align: "left" | "right",
+  vw: number,
+  vh: number,
+): MenuPosition {
+  const height = itemCount * MENU_ITEM_H + 8;
+  const up = rect.bottom + MENU_GAP + height > vh - EDGE && rect.top - MENU_GAP - height >= EDGE;
+  const vertical = up ? { bottom: vh - rect.top + MENU_GAP } : { top: rect.bottom + MENU_GAP };
+  const horizontal =
+    align === "right" ? { right: Math.max(EDGE, vw - rect.right) } : { left: Math.max(EDGE, rect.left) };
+  return { up, style: { ...vertical, ...horizontal } };
 }
 
 /* ---------- states ---------- */

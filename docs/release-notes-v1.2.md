@@ -19,6 +19,11 @@ login card and five design skills the user added along the way.
   stores that size for every eBay photo (all 17,691 existing rows converted). A second bug went
   with it: a search refresh used to swap a looked-up 1600 px gallery back to 225 px.
 
+- **The sort menu ("For you") opens again.** It was drawn inside the sideways-scrolling chip
+  row, which clipped it to the row's height, so tapping it seemed to do nothing. Menus now float
+  above the page under their button (opening upwards when there's no room), close when you
+  scroll, tap elsewhere or press Escape, and show above sheets.
+
 ## New
 - **Swipe down to close** any sheet, like iOS. It follows your finger from the grabber or header,
   and from the content once it's scrolled to the top. A long drag or a quick flick closes it
