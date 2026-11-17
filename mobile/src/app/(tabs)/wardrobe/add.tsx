@@ -12,7 +12,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { Field, Input, PrimaryButton } from '@/components/Form';
 import { Icon } from '@/components/Icon';
 import { useToast } from '@/components/Toast';
-import { toUpload } from '@/features/wardrobe/upload';
+import { pickedFile } from '@/lib/uploadFile';
 import { useSession } from '@/lib/auth';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font } from '@/theme/type';
@@ -44,7 +44,7 @@ export default function AddSheet() {
     toast(msg);
   };
   const upload = useMutation({
-    mutationFn: () => api.uploadTaste(kind, photos.map(toUpload), name.trim() || undefined),
+    mutationFn: () => api.uploadTaste(kind, photos.map((p) => pickedFile(p.uri)), name.trim() || undefined),
     onSuccess: (added) => done(`Added ${added.length} photo${added.length === 1 ? '' : 's'}`),
   });
   const byUrl = useMutation({ mutationFn: () => api.addTasteUrl(kind, url.trim(), name.trim() || undefined), onSuccess: () => done('Added') });

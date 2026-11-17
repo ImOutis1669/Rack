@@ -13,9 +13,9 @@ import { Row, Section } from '@/components/Grouped';
 import { Icon } from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { overallColor } from '@/features/settings/sources';
-import { toUpload } from '@/features/wardrobe/upload';
 import { useAppLock } from '@/features/lock/AppLock';
 import { useSession } from '@/lib/auth';
+import { pickedFile } from '@/lib/uploadFile';
 import { useAccount } from '@/lib/useAccount';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font } from '@/theme/type';
@@ -33,7 +33,7 @@ const PICKER: ImagePicker.ImagePickerOptions = {
 export default function ProfileScreen() {
   const session = useSession();
   const api = session.api();
-  const { colors } = useTheme();
+  const { colors, text } = useTheme();
   const account = useAccount();
   const lock = useAppLock();
   const health = useQuery({ queryKey: ['health'], queryFn: api.health, refetchInterval: 60_000 });
@@ -55,7 +55,15 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }}>
-      {a ? <Header account={a} /> : <View style={{ height: 200 }} />}
+      {a ? (
+        <Header account={a} />
+      ) : account.isError ? (
+        <Text style={[text('footnote'), styles.unavailable, { color: colors.muted }]}>
+          Your account details didn't load. This server may be running an older Rack.
+        </Text>
+      ) : (
+        <View style={{ height: 200 }} />
+      )}
       {a ? <NameRow account={a} /> : null}
       <Section>
         <Row label="Settings" detail="Taste, sizes, budget, alerts" chevron onPress={() => router.push('/profile/settings')} />
@@ -110,7 +118,7 @@ function Header({ account }: { account: Account }) {
   const { colors, text, customFont } = useTheme();
   const done = (a: Account) => qc.setQueryData(['account'], a);
   const fail = (e: unknown) => Alert.alert("Couldn't change your photo", e instanceof Error ? e.message : undefined);
-  const upload = useMutation({ mutationFn: (asset: ImagePicker.ImagePickerAsset) => session.api().uploadAvatar(toUpload(asset, 0)), onSuccess: done, onError: fail });
+  const upload = useMutation({ mutationFn: (asset: ImagePicker.ImagePickerAsset) => session.api().uploadAvatar(pickedFile(asset.uri)), onSuccess: done, onError: fail });
   const remove = useMutation({ mutationFn: () => session.api().removeAvatar(), onSuccess: done, onError: fail });
   const busy = upload.isPending || remove.isPending;
 
@@ -208,4 +216,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nameRow: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center' },
+  unavailable: { textAlign: 'center', paddingHorizontal: 32, paddingVertical: 24 },
 });

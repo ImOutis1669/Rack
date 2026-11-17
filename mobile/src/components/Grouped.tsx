@@ -126,9 +126,10 @@ const styles = StyleSheet.create({
   box: { borderRadius: 16, overflow: 'hidden', borderCurve: 'continuous' },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
   row: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  labels: { flexShrink: 1, gap: 2 },
+  // the label takes the free space, so a chevron or control always sits at the right edge
+  labels: { flexGrow: 1, flexShrink: 1, gap: 2 },
   dot: { width: 8, height: 8, borderRadius: 4, marginLeft: 'auto' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
-  value: { flex: 1, textAlign: 'right', marginLeft: 4 },
+  value: { flexShrink: 1, maxWidth: '60%', textAlign: 'right', marginLeft: 4 },
   footer: { marginLeft: 16, marginTop: 6 },
 });
