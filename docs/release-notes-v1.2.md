@@ -43,7 +43,7 @@ login card and five design skills the user added along the way.
 - **Neue Montreal** (Pangram Pangram) as the app font, from your own font files (see Setup), with
   the system font as the fallback. Medium for semibold labels; numbers keep tabular figures
   (the font has none, so digits come from the system font).
-- **Page titles** are 35 px in real Bold, in the same 56 px bar. Faking a heavier weight was tried
+- **Page titles** are 40 px in real Bold, in the same 56 px bar. Faking a heavier weight was tried
   and dropped: both ways looked doubled or blurry on the iPhone.
 - **Basil Icons** (Craftwork) from your own copy of the pack: outline at rest, solid when active
   (the selected tab, a saved bookmark), 22 px in bars and the dock. Lucide fills the gaps
