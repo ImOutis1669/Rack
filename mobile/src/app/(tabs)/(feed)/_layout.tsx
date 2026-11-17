@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { useHeaderOptions } from '@/components/TabStack';
+import { tabPageOptions, useHeaderOptions } from '@/components/TabStack';
 import { FeedParamsProvider } from '@/features/feed/FeedParams';
 
 // The feed tab: the feed (its header buttons live in the page, they depend on its filters) and
@@ -10,7 +10,8 @@ export default function FeedLayout() {
   return (
     <FeedParamsProvider>
       <Stack screenOptions={header}>
-        <Stack.Screen name="index" options={{ title: 'Rack' }} />
+        <Stack.Screen name="index" options={tabPageOptions('Rack')} />
+        <Stack.Screen name="search" options={{ title: 'Search' }} />
         <Stack.Screen
           name="filters"
           options={{

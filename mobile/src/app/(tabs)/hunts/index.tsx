@@ -33,7 +33,7 @@ export default function HuntsScreen() {
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={styles.body}
       refreshControl={<RefreshControl refreshing={hunts.isRefetching} onRefresh={() => void hunts.refetch()} />}>
-      <HeaderButtons>
+      <HeaderButtons title="Hunts">
         <Stack.Toolbar.Button icon="plus" accessibilityLabel="New hunt" onPress={() => router.push('/hunts/form')} />
       </HeaderButtons>
       <Text style={[text('footnote'), { color: colors.muted }]}>

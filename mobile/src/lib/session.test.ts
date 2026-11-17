@@ -79,6 +79,27 @@ describe('Session', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('changing the password keeps this phone signed in with the new token', async () => {
+    const store = memoryStore();
+    const fetch = jest.fn(async (url: string) =>
+      url.endsWith('/api/auth/token')
+        ? json(200, { token: 'old', expires_in: 60 })
+        : url.endsWith('/api/auth/password')
+          ? json(200, { token: 'new' })
+          : json(200, []),
+    );
+    const s = new Session(store, { fetch: fetch as unknown as typeof globalThis.fetch });
+    await s.load();
+    await s.signIn('rack.tail.ts.net', 'sam', 'pw');
+    await s.changePassword('pw', 'a-new-long-password');
+    const call = fetch.mock.calls[1] as unknown as [string, RequestInit];
+    expect(call[1].headers).toMatchObject({ Authorization: 'Bearer old' });
+    expect(store.m.get(TOKEN_KEY)).toBe('new');
+    await s.api().saved();
+    const after = fetch.mock.calls[2] as unknown as [string, RequestInit];
+    expect(after[1].headers).toMatchObject({ Authorization: 'Bearer new' });
+  });
+
   it('a wrong password leaves the app signed out', async () => {
     const store = memoryStore();
     const s = new Session(store, { fetch: jest.fn(async () => json(401, { detail: 'Wrong password' })) });

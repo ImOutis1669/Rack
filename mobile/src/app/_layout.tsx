@@ -67,7 +67,7 @@ function RootStack() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="profile" options={{ presentation: 'modal' }} />
           <Stack.Screen name="listing/[id]" options={{ presentation: 'modal', headerShown: true }} />
           <Stack.Screen
             name="bought/[id]"

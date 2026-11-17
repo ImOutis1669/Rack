@@ -61,7 +61,7 @@ export default function WardrobeScreen() {
 
   return (
     <>
-      <HeaderButtons>
+      <HeaderButtons title="Wardrobe">
         <Stack.Toolbar.Button icon="plus" accessibilityLabel={`Add to ${kind}`} onPress={add} />
       </HeaderButtons>
       <FlashList

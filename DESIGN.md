@@ -42,11 +42,22 @@ App shell (iOS step 3, checked on the user's iPhone in Expo Go):
   down, monochrome tint (`foreground`). Feed and Hunts are Basil icons rendered to template PNGs
   (outline at rest, solid when selected); Saved is the SF `bookmark` (user's choice) and Wardrobe
   the SF `tshirt` (Basil has no shirt).
-- **Titles:** native large titles (34 pt, iOS's own size; the web's 40 px is not used) in Neue
-  Montreal Bold; the collapsed title in Medium. The feed is titled "Rack".
-- **Settings:** the gear is a native header button (`Stack.Toolbar`) on every tab; Settings opens
-  as a modal sheet with a Done button. Header buttons are SF Symbols (`gearshape`): a Basil image
-  there got its own tinted background apart from the other buttons (iOS step 4).
+- **Titles (v2.1):** every tab's title sits inline in the header row, left, like Grailed's logo:
+  "Rack", "Hunts", "Saved", "Wardrobe" in Neue Montreal Bold 28 pt (`Stack.Toolbar.View` with
+  `hidesSharedBackground`, so no glass behind it), the page's glass button group on the right.
+  No large titles; content scrolls under the transparent bar. Pushed pages and sheets keep a
+  centred native title in Medium. (v2.0 had native 34 pt large titles.)
+- **Profile (v2.1):** the gear became your avatar (photo, or initials on `fillStrong`) at the end
+  of each tab's glass button group. It opens Profile as a modal sheet with Done: a 96 pt photo
+  with a camera badge (action sheet: take, choose with the square crop, remove), name, @username,
+  member since; a Name field; Settings, Sources, Friends and invites (opens the web app);
+  Security (server, change password, Face ID, log out, log out everywhere in red); Privacy.
+  Settings and its sections push inside that same sheet (`app/profile/settings/*`), never a sheet
+  on a sheet. Header buttons stay SF Symbols.
+- **Search (v2.1):** the feed's header has a magnifier first in its glass group; Search pushes in
+  the feed stack with the native search bar in the header (focused), source chips, a "Search
+  eBay, Vinted and Grailed now" capsule and "Save as hunt", results in the feed's grid, recent
+  searches when empty (device only, cleared on log out).
 - **Colours:** `mobile/src/theme/colors.ts` mirrors the tokens table above, light and dark,
   following the system. Type roles in `mobile/src/theme/type.ts`: each Neue Montreal weight is its
   own family (never a `fontWeight` on top, which iOS would fake); numbers use the system font's

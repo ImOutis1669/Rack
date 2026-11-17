@@ -48,7 +48,17 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   `index.ts`); import as `@rack/private` (Metro `resolveRequest` / tsconfig paths fall back to
   `src/private/fallback.ts`; Jest always uses the fallback).
   Shell (step 3): `src/app/_layout.tsx` (fonts, `Stack.Protected` login guard), `(tabs)/`
-  NativeTabs with one large-title stack per tab, `settings/` modal, `login.tsx`. Auth:
+  NativeTabs with one stack per tab, `profile/` modal (v2.1: was `settings/`), `login.tsx`.
+  v2.1 (step 6): tab pages render `components/HeaderButtons` (`title` = inline title on the left
+  via `Stack.Toolbar.View hidesSharedBackground`; right group = the page's buttons + the avatar
+  `Stack.Toolbar.View` that pushes `/profile`); `tabPageOptions(title)` hides the native title,
+  large titles are off everywhere. `app/profile/_layout.tsx` is one flat stack: index (photo via
+  expo-image-picker square crop, name, rows), password (`Session.changePassword` stores the new
+  token the server returns), privacy, and `settings/*` (moved from `app/settings`; paths are
+  `/profile/settings/...`). `app/(tabs)/(feed)/search.tsx` = `/search` with `Stack.SearchBar`;
+  "Save as hunt" uses the `['huntPrefill']` cache like the listing sheet. `lib/useAccount.ts`,
+  `components/Avatar.tsx` (expo-image with the bearer headers). The project has no ESLint:
+  `npx expo lint` tries to install it and rewrites package.json, so don't run it. Auth:
   `src/lib/session.ts` (`Session`: token + server in expo-secure-store,
   WHEN_UNLOCKED_THIS_DEVICE_ONLY; any 401 with a token signs out and clears the query cache;
   https servers only). Server from `EXPO_PUBLIC_RACK_URL` in git-ignored `mobile/.env.local`.

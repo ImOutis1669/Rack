@@ -133,6 +133,15 @@ export class Session {
     this.set({ status: 'signedOut' });
   }
 
+  /** Change the password. The server ends every other session and hands this phone a new
+   *  token (the old one stops working), which replaces the one in the Keychain. */
+  async changePassword(current: string, next: string): Promise<void> {
+    const { token } = await this.api().changePassword(current, next);
+    if (!token) throw new Error('The server sent no new token');
+    await this.store.setItemAsync(TOKEN_KEY, token);
+    this.token = token;
+  }
+
   /** End every session and token on every device, then log out here. */
   async logOutEverywhere(): Promise<void> {
     await this.api().logoutAll();

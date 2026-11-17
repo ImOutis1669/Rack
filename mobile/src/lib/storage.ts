@@ -23,6 +23,7 @@ async function clearImages(): Promise<void> {
 /** Log out, log out everywhere, any 401: forget the feed snapshot and every cached photo. */
 export async function clearDeviceData(): Promise<void> {
   snap.clearSnapshots(kv);
+  kv.removeItem('rack.recentSearches'); // search history is the account's too (v2.1)
   await clearImages();
 }
 

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Chip } from '@/components/Chip';
+import { HeaderButtons } from '@/components/HeaderButtons';
 import { Icon } from '@/components/Icon';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ListingGrid } from '@/components/ListingGrid';
@@ -47,7 +48,7 @@ export default function FeedScreen() {
               then the feed is unranked.
             </Text>
             <View style={styles.setupButtons}>
-              <Chip label="Designers and fit" selected onPress={() => router.push('/settings')} />
+              <Chip label="Designers and fit" selected onPress={() => router.push('/profile/settings')} />
               <Chip label="Add photos" onPress={() => router.navigate('/wardrobe')} />
             </View>
           </View>
@@ -72,7 +73,8 @@ export default function FeedScreen() {
 
   return (
     <>
-      <Stack.Toolbar placement="right">
+      <HeaderButtons title="Rack">
+        <Stack.Toolbar.Button icon="magnifyingglass" accessibilityLabel="Search" onPress={() => router.push('/search')} />
         <Stack.Toolbar.Menu icon="arrow.up.arrow.down" accessibilityLabel={`Sort: ${sortLabel}`} title="Sort">
           {SORTS.map(([s, label]) => (
             <Stack.Toolbar.MenuAction
@@ -89,12 +91,7 @@ export default function FeedScreen() {
           onPress={() => router.push('/filters')}>
           {filterCount ? <Stack.Toolbar.Badge>{String(filterCount)}</Stack.Toolbar.Badge> : null}
         </Stack.Toolbar.Button>
-        <Stack.Toolbar.Button
-          icon="gearshape"
-          accessibilityLabel="Settings"
-          onPress={() => router.push('/settings')}
-        />
-      </Stack.Toolbar>
+      </HeaderButtons>
       <ListingGrid
         items={items}
         header={header}
