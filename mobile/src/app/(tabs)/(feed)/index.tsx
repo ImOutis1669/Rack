@@ -1,3 +1,4 @@
+import { isDefaultFeed } from '@rack/shared/snapshot';
 import { CATEGORIES, type Category } from '@rack/shared/types';
 import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
@@ -9,6 +10,7 @@ import { Icon } from '@/components/Icon';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ListingGrid } from '@/components/ListingGrid';
 import { useFeedParams } from '@/features/feed/FeedParams';
+import { NewForYou } from '@/features/feed/NewForYou';
 import { CATEGORY_LABEL, SORTS } from '@/features/feed/options';
 import { useFeed } from '@/features/feed/useFeed';
 import { useRefresh } from '@/features/feed/useRefresh';
@@ -17,7 +19,8 @@ import { font } from '@/theme/type';
 
 export default function FeedScreen() {
   const { colors, text, customFont } = useTheme();
-  const { params, setParams, filterCount } = useFeedParams();
+  const { params, setParams, filterCount, newOnly } = useFeedParams();
+  const defaultFeed = isDefaultFeed(params, newOnly);
   const { query, items, loadMore, onSeen, needsSetup, showingSaved } = useFeed();
   const { refresh, refreshing } = useRefresh();
 
@@ -53,9 +56,10 @@ export default function FeedScreen() {
             </View>
           </View>
         ) : null}
+        {defaultFeed ? <NewForYou /> : null}
       </View>
     ),
-    [params.category, setParams, needsSetup, colors, text, query.isError, query.error, showingSaved],
+    [params.category, setParams, needsSetup, colors, text, query.isError, query.error, showingSaved, defaultFeed],
   );
 
   const empty = query.isError ? (
@@ -67,7 +71,7 @@ export default function FeedScreen() {
   ) : (
     <State
       title="You're all caught up"
-      body="Sources are searched every 30 minutes, and things you've already seen stay hidden until your next visit. Pull down to search for new listings."
+      body="Sources are searched every 30 minutes, and things you've already seen stay hidden. Pull down to search your designers now."
     />
   );
 

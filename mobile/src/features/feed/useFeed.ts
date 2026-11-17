@@ -1,3 +1,4 @@
+import { hideSeenSince } from '@rack/shared/fresh';
 import { isDefaultFeed } from '@rack/shared/snapshot';
 import { SeenBatcher } from '@rack/shared/seen';
 import type { FeedPage, FeedParams } from '@rack/shared/types';
@@ -20,10 +21,12 @@ export function useFeed() {
 
   const visit = useQuery({ queryKey: ['visit'], queryFn: api.visit, staleTime: Infinity });
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile });
+  const refresh = useQuery({ queryKey: ['refresh'], queryFn: api.refreshStatus });
 
   const effective: FeedParams = {
     ...params,
-    hideSeenBefore: visit.data?.visit_start ?? null,
+    // from your latest Refresh on, what you've already seen stays hidden
+    hideSeenBefore: hideSeenSince(visit.data?.visit_start, refresh.data),
     newSince: newOnly ? (visit.data?.last_visit ?? null) : null,
   };
   const query = useInfiniteQuery({

@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import Select, and_, exists, or_, select
+from sqlalchemy import Select, and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import User, require_session
@@ -33,11 +33,19 @@ from rack.pricing.history import first_prices, price_cut
 from rack.pricing.landed import estimate
 from rack.ranking.mmr import interleave_exploration, mmr
 from rack.ranking.vectors import as_matrix
-from rack.schemas import BuyLink, FeedPage, LandedOut, ListingOut, SellerOut, SourceHealthOut
+from rack.schemas import (
+    BuyLink,
+    FeedPage,
+    FreshPage,
+    LandedOut,
+    ListingOut,
+    SellerOut,
+    SourceHealthOut,
+)
 from rack.sources.base import Category
 from rack.sources.ebay import quota_day
 from rack.sources.registry import SOURCE_NAMES
-from rack.store import get_state, load_profile
+from rack.store import get_state, get_user_state, load_profile
 
 router = APIRouter(prefix="/api", tags=["feed"], dependencies=[Depends(require_session)])
 
@@ -45,6 +53,8 @@ Sort = Literal["best", "newest", "price_asc", "price_desc"]
 MMR_HEAD = 300
 MMR_LAMBDA = 0.7
 BEST_POOL = 3000
+# "New for you" after a Refresh: new listings that score at least as well as your 300th best.
+FRESH_TOP = 300
 
 
 def to_out(
@@ -215,6 +225,66 @@ def bought_listing(user_id: int) -> Any:
     return exists().where(TasteItemRow.user_id == user_id, TasteItemRow.listing_id == ListingRow.id)
 
 
+def visible_listings(user_id: int) -> Select[ListingRow]:
+    """Listings this user's feed may show: active, not hidden by their filters, one card per
+    cluster (its cheapest copy), not one they bought."""
+    return (
+        select(ListingRow)
+        .outerjoin(
+            ListingScoreRow,
+            and_(ListingScoreRow.listing_id == ListingRow.id, ListingScoreRow.user_id == user_id),
+        )
+        .where(
+            ListingRow.active.is_(True),
+            ListingScoreRow.filtered_reason.is_(None),
+            or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
+            ~bought_listing(user_id),
+        )
+    )
+
+
+@router.get("/feed/fresh", response_model=FreshPage)
+async def fresh(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: User,
+    limit: Annotated[int, Query(ge=1, le=100)] = 12,
+) -> FreshPage:
+    """ "New for you": listings first found since your latest Refresh started that score as
+    well as your FRESH_TOP best, best first. Not-yet-scored ones join once they're scored."""
+    started = (await get_user_state(session, user.id, "refresh")).get("started_at")
+    if not started:
+        return FreshPage(since=None, total=0, items=[])
+    since = datetime.fromisoformat(str(started))
+    bar = (
+        await session.execute(
+            visible_listings(user.id)
+            .with_only_columns(ListingScoreRow.score)
+            .where(ListingScoreRow.score.is_not(None))
+            .order_by(ListingScoreRow.score.desc())
+            .offset(FRESH_TOP - 1)
+            .limit(1)
+        )
+    ).scalar()
+    stmt = visible_listings(user.id).where(
+        ListingRow.first_seen_at > since, ListingScoreRow.score.is_not(None)
+    )
+    if bar is not None:
+        stmt = stmt.where(ListingScoreRow.score >= bar)
+    total = (
+        await session.execute(stmt.with_only_columns(func.count()).order_by(None))
+    ).scalar_one()
+    rows = (
+        (
+            await session.execute(
+                stmt.order_by(ListingScoreRow.score.desc(), ListingRow.id.desc()).limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return FreshPage(since=since, total=total, items=await hydrate(session, rows, user.id))
+
+
 @router.get("/feed", response_model=FeedPage)
 async def feed(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -230,20 +300,7 @@ async def feed(
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
 ) -> FeedPage:
-    stmt = (
-        select(ListingRow)
-        .outerjoin(
-            ListingScoreRow,
-            and_(ListingScoreRow.listing_id == ListingRow.id, ListingScoreRow.user_id == user.id),
-        )
-        .where(
-            ListingRow.active.is_(True),
-            ListingScoreRow.filtered_reason.is_(None),
-            # one card per cluster: only its representative (cheapest copy)
-            or_(ListingRow.cluster_id.is_(None), ListingRow.cluster_id == ListingRow.id),
-            ~bought_listing(user.id),
-        )
-    )
+    stmt = visible_listings(user.id)
     if source:
         stmt = stmt.where(ListingRow.source.in_(source))
     if category and category != Category.ANY:

@@ -82,5 +82,24 @@ Public access through Cloudflare Tunnel (and the notes on moving to a dedicated 
 a later version. Until then friends can reach Rack only over your tailnet. When it goes public,
 add a Cloudflare rate limit on `/api/auth/*` (audit RACK-25).
 
+## Added after release (17 November)
+- **Maximum top length** in Settings > Fit: tops and outerwear longer than it (beyond your 3 cm
+  tolerance) are hidden, like the pit-to-pit maximum.
+- **Refresh searches for you.** It used to take the next 6 searches from the rotation shared with
+  your friends. Now it runs 4 of your own: two loved designers (across your categories), a wishlist
+  item and one liked or related designer, moving on to the next ones each time (about 40 s).
+  Cooldowns are per person (5 minutes for you, 15 for friends) and one refresh runs at a time.
+  Friends' new finds are scored straight away after their refresh.
+- **New for you.** After a refresh, its best finds (scoring as well as your top 300) sit in a strip
+  at the top of the feed, with "Show all" and a close button; from then on things you've already
+  seen stay hidden. Web and iPhone.
+- **Grailed shoe sizes are US sizes.** Rack read Grailed's "14" as UK 14, so with "Size must
+  match" it hid Grailed's US 14s (a UK 13) and showed US 13s (a UK 12). They're now stored as
+  "US 14" (migration 0022 fixes what's stored), and a shoe size that names its system is compared
+  by size, never by its number. With "Size must match", your refreshes ask Grailed for your sizes
+  only; Vinted and eBay can't be asked, so they're still filtered after fetching.
+- Rebuilding the server runs migration 0022 and re-scores everyone's feed.
+
 ## Numbers
-Backend 304 tests, web 63, shared 115, iOS 47. Main web script 137 kB gzipped (v1.2: 148 kB).
+Backend 304 tests, web 63, shared 115, iOS 47 at release; 317, 63, 118 and 47 after the additions.
+Main web script 137 kB gzipped (v1.2: 148 kB).

@@ -61,6 +61,13 @@ export interface FeedPage {
   next_cursor: string | null;
 }
 
+/** "New for you": strong new finds since your latest Refresh started (GET /api/feed/fresh). */
+export interface FreshPage {
+  since: string | null;
+  total: number;
+  items: Listing[];
+}
+
 export type Sort = "best" | "newest" | "price_asc" | "price_desc";
 
 export interface FeedParams {

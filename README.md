@@ -17,7 +17,7 @@ account and taste, and one crawler serves everyone.
   listings with no measurements never are.
 - **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches. Turn on
   "Size must match" to skip listings without your size; UK, EU and US shoe sizes are compared
-  (UK 9 = EU 43) and W32 matches 32.
+  (UK 9 = EU 43 = US 10; Grailed's shoe sizes are US) and W32 matches 32.
 - **I bought it**: move a saved item into your wardrobe with the price you paid (its photo then
   shapes the feed, and its price alerts stop). Undo puts it back in Saved.
 - **Wardrobe value**: add what you paid and what each item is worth now, or let Rack estimate it
@@ -97,7 +97,12 @@ and rebuild. Without it Rack uses lucide icons.
 | Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env.worker`). If Grailed rotates it, source health shows the error; update the key. Cover photo only, no descriptions. |
 
 Tap the coloured dots under the header for each source's status, last run and last error.
-**Refresh** re-ranks now and searches the sources (at most every 5 minutes).
+**Refresh** searches every source for *you*: two of your loved designers (in your categories), a
+wishlist item and one liked or related designer, moving on to the next ones each time (about 40
+seconds; once every 5 minutes for you, 15 for friends). With "Size must match" on, Grailed is
+asked for your sizes only. The best of what it finds, those scoring as well as your top few
+hundred, appear in a **New for you** strip at the top of the feed, and from then on things you've
+already seen stay hidden. The 30-minute background search stays shared by everyone.
 
 ## Teaching it your taste
 1. **Settings**: designers (love / like / curious / exclude), a few words about your style, minimum

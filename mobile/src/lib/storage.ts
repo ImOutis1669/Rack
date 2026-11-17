@@ -24,6 +24,7 @@ async function clearImages(): Promise<void> {
 export async function clearDeviceData(): Promise<void> {
   snap.clearSnapshots(kv);
   kv.removeItem('rack.recentSearches'); // search history is the account's too (v2.1)
+  kv.removeItem('rack.freshDismissed');
   await clearImages();
 }
 

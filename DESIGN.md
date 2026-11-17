@@ -77,8 +77,8 @@ Feed (iOS step 4, checked on the user's iPhone):
 - **Tile actions:** tap opens the listing; the bookmark saves in one tap; long-press is a native
   context menu (Save, More like this, Less like this). Haptics: selection for votes, light /
   medium impact for unsave / save, error notification when an action fails and is undone.
-- **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
-  messages show as a toast above the tab bar.
+- **Pull to refresh** = the web's Refresh button (a search of your own designers with your own
+  cooldown); messages show as a toast above the tab bar; the New for you strip heads the feed.
 
 Native polish (iOS step 8, checked on the user's iPhone):
 - **Face ID lock:** a full-screen gate (icon on #0A0A0A, "Rack is locked", one capsule button)
@@ -152,6 +152,11 @@ Listing sheet (iOS step 5, checked on the user's iPhone):
 - **Search (v2.1)**: a magnifier in the feed's top bar opens `/search`: a search field and chips
   (sort, filters, sources) in the bar, recent searches when empty, results in the same grid as
   the feed, and a "Search eBay, Vinted and Grailed now" capsule with "Save as hunt" beside it.
+- **New for you (v2.1):** after a Refresh, a strip at the top of the default feed (not with
+  filters, a sort or a category): "N new for you", "From your refresh 3m ago, best matches first",
+  "Show all" (a full sheet; iPhone: a pushed page) when there are more than 12, and a close button
+  that hides it until the next refresh. Its listings aren't repeated in the grid below. Tiles are
+  the feed's own (web 144 / 176 px wide, iPhone 150 pt), scrolling sideways with snap.
 - Settings (taste, sizes, budget, alerts, hidden) is reached from Profile.
 - The feed is titled **Rack** (the app name) on iPhone; on desktop the "Rack" wordmark in the bar
   is its title and the feed has no large heading. The sort menu keeps "For you".

@@ -145,3 +145,58 @@ async def test_worker_runs_the_oldest_request_with_the_askers_own_searches(
         await set_user_state(s, sam_id, "refresh", {**st, "started_at": now.isoformat()})
         await s.commit()
     assert await next_refresh_request() == owner_id
+
+
+@pytest.mark.db
+async def test_new_for_you_shows_strong_new_finds_since_your_refresh(
+    client: httpx.AsyncClient,
+    sessions: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sqlalchemy import update
+
+    from rack.api import feed
+    from rack.ingest import upsert_listings
+    from rack.models import ListingRow, ListingScoreRow
+    from tests.test_multiuser import _listing
+
+    monkeypatch.setattr(feed, "FRESH_TOP", 3)  # "as good as your 3rd best"
+    owner_id = await make_user(sessions, OWNER, "owner")
+    await login(client)
+    assert (await client.get("/api/feed/fresh")).json() == {"since": None, "total": 0, "items": []}
+
+    now = datetime.now(UTC)
+    started = now - timedelta(minutes=2)
+    # (title, score, found after the refresh started, filtered out)
+    rows = [
+        ("old great", 0.95, False, None),
+        ("old good", 0.90, False, None),
+        ("new great", 0.92, True, None),
+        ("new fine", 0.91, True, None),  # the 3rd best itself: in
+        ("new weak", 0.20, True, None),
+        ("new wrong size", 0.99, True, "size_mismatch"),
+    ]
+    async with sessions() as s:
+        ids = await upsert_listings(s, [_listing(str(i), t) for i, (t, *_) in enumerate(rows)])
+        for lid, (_, score, new, reason) in zip(ids, rows, strict=True):
+            seen = now if new else now - timedelta(days=1)
+            await s.execute(
+                update(ListingRow).where(ListingRow.id == lid).values(first_seen_at=seen)
+            )
+            s.add(
+                ListingScoreRow(
+                    user_id=owner_id,
+                    listing_id=lid,
+                    score=score,
+                    profile_version=1,
+                    filtered_reason=reason,
+                )
+            )
+        await set_user_state(s, owner_id, "refresh", {"started_at": started.isoformat()})
+        await s.commit()
+
+    r = (await client.get("/api/feed/fresh")).json()
+    assert [i["title"] for i in r["items"]] == ["new great", "new fine"]
+    assert r["total"] == 2 and r["since"] is not None
+    one = (await client.get("/api/feed/fresh", params={"limit": 1})).json()
+    assert one["total"] == 2 and len(one["items"]) == 1

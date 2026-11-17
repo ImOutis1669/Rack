@@ -12,6 +12,7 @@ export default function FeedLayout() {
       <Stack screenOptions={header}>
         <Stack.Screen name="index" options={tabPageOptions('Rack')} />
         <Stack.Screen name="search" options={{ title: 'Search' }} />
+        <Stack.Screen name="new" options={{ title: 'New for you' }} />
         <Stack.Screen
           name="filters"
           options={{

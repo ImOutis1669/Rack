@@ -18,6 +18,7 @@ import type {
   HuntInput,
   SentNotification,
   RefreshStatus,
+  FreshPage,
   Hidden,
   Listing,
   Profile,
@@ -236,6 +237,7 @@ export function createApi(cfg: ApiConfig) {
     notifyRecent: () => request<SentNotification[]>("/api/notify/recent"),
     refreshStatus: () => request<RefreshStatus>("/api/refresh"),
     refresh: () => request<RefreshStatus>("/api/refresh", json("POST")),
+    fresh: (limit = 12) => request<FreshPage>(`/api/feed/fresh?limit=${limit}`),
     gallery: (id: number) => request<GalleryInfo>(`/api/listings/${id}/gallery`),
     hidden: () => request<Hidden[]>("/api/hidden"),
     hide: (kind: Hidden["kind"], value: string) =>

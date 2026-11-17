@@ -5,12 +5,14 @@ import { api } from "../api/client";
 import { CATEGORIES, type Category, type FeedPage, type FeedParams, type Sort, type Source } from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
+import { NewForYou, useNewForYou } from "../components/NewForYou";
 import { RefreshButton } from "../components/RefreshButton";
 import { VirtualGrid } from "../components/VirtualGrid";
 import { SourcesButton } from "../components/SourcesButton";
 import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton, Switch } from "../components/ui";
 import { SOURCE_LABEL } from "@rack/shared/format";
 import { SeenBatcher } from "@rack/shared/seen";
+import { hideSeenSince } from "@rack/shared/fresh";
 import { isDefaultFeed, loadSnapshot, saveSnapshot } from "../lib/snapshot";
 import { Icon } from "../components/icons/Icon";
 
@@ -41,10 +43,12 @@ export function Feed() {
 
   const visit = useQuery({ queryKey: ["visit"], queryFn: api.visit, staleTime: Infinity });
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
+  const refresh = useQuery({ queryKey: ["refresh"], queryFn: api.refreshStatus });
 
   const effective: FeedParams = {
     ...params,
-    hideSeenBefore: visit.data?.visit_start ?? null,
+    // from your latest Refresh on, what you've already seen stays hidden
+    hideSeenBefore: hideSeenSince(visit.data?.visit_start, refresh.data),
     newSince: newOnly ? (visit.data?.last_visit ?? null) : null,
   };
   const query = useInfiniteQuery({
@@ -83,7 +87,9 @@ export function Feed() {
     if (query.hasNextPage && !query.isFetchingNextPage && !query.isPlaceholderData) void query.fetchNextPage();
   }, [query]);
 
-  const items = (query.data?.pages.flatMap((p) => p.items) ?? []).filter((i) => !hiddenIds.has(i.id));
+  const fresh = useNewForYou(isDefaultFeed(params, newOnly));
+  // what the New for you strip shows isn't repeated in the grid below it
+  const items = (query.data?.pages.flatMap((p) => p.items) ?? []).filter((i) => !hiddenIds.has(i.id) && !fresh.ids.has(i.id));
   const needsSetup = profile.data && profile.data.designer_count === 0 && profile.data.taste_count === 0;
   const filterCount = params.sources.length + (params.brand?.trim() ? 1 : 0) + (params.maxPrice != null ? 1 : 0) + (newOnly ? 1 : 0);
   const sortLabel = SORTS.find(([s]) => s === params.sort)?.[1] ?? "For you";
@@ -179,8 +185,12 @@ export function Feed() {
 
       {query.isSuccess && items.length === 0 && (
         <EmptyState icon={<Icon name="sparkles" size={24} />} title="You're all caught up">
-          Sources are searched every 30 minutes, and things you've already seen stay hidden until your next visit. Pull in new listings with Refresh.
+          Sources are searched every 30 minutes, and things you've already seen stay hidden. Refresh to search your designers now.
         </EmptyState>
+      )}
+
+      {fresh.page?.since && (
+        <NewForYou page={{ ...fresh.page, since: fresh.page.since }} onDismiss={fresh.dismiss} onSeen={onSeen} onHidden={onHidden} />
       )}
 
       <VirtualGrid

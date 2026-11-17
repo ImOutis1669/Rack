@@ -224,6 +224,11 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
   its own cursor), counts their eBay searches, then embeds and scores them unthrottled. Cooldowns
   `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES` (owner) / `RACK_FRIEND_REFRESH_COOLDOWN_MINUTES`;
   `RACK_MANUAL_QUERIES` (4) searches per refresh. The 30-min background refresh stays shared.
+  "New for you": `GET /api/feed/fresh` = listings first seen after the asker's latest refresh
+  `started_at` that score at least their `FRESH_TOP` (300th) best, through the same
+  `visible_listings` query as the feed; both apps show it as a strip on the default feed, leave
+  its listings out of the grid, and hide seen items from `shared/src/fresh.ts` `hideSeenSince`
+  (later of visit start and refresh start). Closing it is per refresh (`rack.freshDismissed`).
 - Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
   ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all

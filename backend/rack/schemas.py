@@ -69,6 +69,14 @@ class FeedPage(BaseModel):
     next_cursor: str | None
 
 
+class FreshPage(BaseModel):
+    """ "New for you" after a Refresh (api/feed.py fresh)."""
+
+    since: datetime | None
+    total: int
+    items: list[ListingOut]
+
+
 class SourceHealthOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
