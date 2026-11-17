@@ -65,15 +65,17 @@ def _owner_id(conn: sa.Connection) -> int | None:
     name = s.rack_owner_username.strip().lower()
     if not re.fullmatch(r"[a-z0-9_.]{3,24}", name):
         name = "owner"
+    # shown as written ("Outis"); the username is its lowercase form
+    display = s.rack_owner_username.strip() if name != "owner" else name
     auth = conn.execute(sa.text("SELECT value FROM app_state WHERE key = 'auth'")).scalar()
     epoch = int((auth if isinstance(auth, dict) else json.loads(auth or "{}")).get("epoch", 0))
     return int(
         conn.execute(
             sa.text(
                 "INSERT INTO users (username, display_name, password_hash, role, session_epoch) "
-                "VALUES (:u, :u, :h, 'owner', :e) RETURNING id"
+                "VALUES (:u, :d, :h, 'owner', :e) RETURNING id"
             ),
-            {"u": name, "h": s.rack_password_hash, "e": epoch},
+            {"u": name, "d": display, "h": s.rack_password_hash, "e": epoch},
         ).scalar_one()
     )
 

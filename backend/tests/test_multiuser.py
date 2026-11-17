@@ -498,6 +498,7 @@ async def test_migration_0020_gives_single_user_data_to_the_owner(
         async with sessions() as s:
             owner = (await s.execute(select(UserRow))).scalar_one()
             assert (owner.username, owner.role, owner.session_epoch) == ("the.boss", "owner", 4)
+            assert owner.display_name == "The.Boss"  # shown as written
             for table in ("profile", "saved", "designers"):
                 users = (
                     (await s.execute(text(f"SELECT DISTINCT user_id FROM {table}"))).scalars().all()

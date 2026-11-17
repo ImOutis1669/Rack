@@ -139,11 +139,15 @@ async def ensure_owner(session: AsyncSession, settings: Settings) -> None:
         username = check_username(settings.rack_owner_username)
     except AccountError:
         username = "owner"
+    try:  # the name as written ("Outis"); the username is its lowercase form
+        display = check_display_name(settings.rack_owner_username, username)
+    except AccountError:
+        display = username
     epoch = int((await get_state(session, "auth")).get("epoch", 0))
     session.add(
         UserRow(
             username=username,
-            display_name=username,
+            display_name=display,
             password_hash=settings.rack_password_hash,
             role="owner",
             session_epoch=epoch,
