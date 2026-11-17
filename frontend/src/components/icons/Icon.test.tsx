@@ -41,5 +41,6 @@ describe("Icon", () => {
     const roles = Object.keys(map).filter((k) => !k.startsWith("_"));
     for (const role of roles) expect(ICON_NAMES).toContain(role);
     expect(roles).not.toContain("vote-up"); // Basil's arrows have no filled state
+    expect(roles).not.toContain("sort"); // the sort chip keeps v1's lucide icon (user's choice)
   });
 });

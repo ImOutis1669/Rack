@@ -174,7 +174,8 @@ From v1.2: **Basil Icons** (Craftwork, free pack), always through `components/ic
   `basil.generated.ts` from the user's own copy, and without it every icon falls back to lucide.
 - **lucide (stroke 1.5, matching Basil's line)** is kept where Basil has nothing close: Wardrobe
   (shirt), Sources (radio), sparkles, text, link, external link, "⋯", and the vote arrows (Basil's
-  arrows have no filled state).
+  arrows have no filled state). The feed's sort chip keeps v1's `ArrowDownWideNarrow` (user's
+  choice, v1.2).
 No emoji as icons.
 
 **Votes** (`components/VoteButtons.tsx`): Reddit-style `ArrowBigUp` / `ArrowBigDown` in one capsule

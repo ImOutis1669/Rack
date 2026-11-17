@@ -16,7 +16,6 @@
   "add-photo": "Files/Image",
   "hunts": "Navigation/Current-location",
   "chevron-down": "Interface/Caret down",
-  "sort": "Interface/Sort",
   "chevron-left": "Interface/Caret left",
   "chevron-right": "Interface/Caret right",
   "buy": "General/Shopping-bag",
@@ -26,5 +25,6 @@
   "pause": "Media/Pause",
   "play": "Media/Play",
   "delete": "Interface/Trash",
-  "_votes": "vote arrows stay lucide: Basil's arrows have no filled state for a cast vote"
+  "_votes": "vote arrows stay lucide: Basil's arrows have no filled state for a cast vote",
+  "_sort": "the sort chip keeps v1's lucide ArrowDownWideNarrow (user's choice)"
 }
