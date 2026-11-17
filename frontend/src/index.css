@@ -25,6 +25,9 @@
   --chrome-edge: rgb(0 0 0 / 0.07); /* faint outer edge, so the rim shows on white */
   --chrome-shadow: rgb(0 0 0 / 0.16);
   --chrome-fade: rgb(0 0 0 / 0.06); /* soft scroll edge under the top bar */
+  /* Top bar glass: more opaque than the dock, because the title and buttons sit on it. Keeps
+     text >= 7:1 over any photo (glassBar.test.ts); at 0.6 photos tinted it behind the title. */
+  --chrome-bar: rgb(255 255 255 / 0.84);
   --scrim: rgb(0 0 0 / 0.4);
   /* Magic Card orb: the accent hue (136) and a +30deg neighbour, tinted for multiply on light */
   --glow-from: hsl(136 59% 62%);
@@ -53,6 +56,7 @@
     --chrome-edge: rgb(0 0 0 / 0.6);
     --chrome-shadow: rgb(0 0 0 / 0.55);
     --chrome-fade: rgb(0 0 0 / 0.55);
+    --chrome-bar: rgb(22 22 24 / 0.82);
     --scrim: rgb(0 0 0 / 0.6);
     /* screen blend on dark: the dark accent (135) and its +30deg neighbour */
     --glow-from: hsl(135 63% 50%);
@@ -180,13 +184,15 @@ body {
   }
 }
 
-/* The same material for the full-width top bar: no rim or shadow, and a soft scroll edge
-   (instead of a hairline) once content is scrolled under it. */
+/* The full-width top bar: the same glass, but more opaque (--chrome-bar), blurred harder and
+   barely saturated, so photos scrolling under it never tint the title and buttons (v1.2 fix: at
+   0.6 opacity and saturate(180%) they showed as a coloured band behind "Rack"). No rim or shadow,
+   and a soft scroll edge (instead of a hairline) once content is scrolled under it. */
 @utility glass-bar {
   position: relative;
-  background: var(--chrome);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
+  background: var(--chrome-bar);
+  -webkit-backdrop-filter: blur(32px) saturate(120%);
+  backdrop-filter: blur(32px) saturate(120%);
   box-shadow: inset 0 1px 0 var(--chrome-sheen);
   &::after {
     content: "";

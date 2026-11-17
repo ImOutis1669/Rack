@@ -101,6 +101,10 @@ translucent `--chrome` fill so content tints it, plus a specular top line and sh
 a bright inner rim and a soft drop shadow (`box-shadow`). Light and dark have their own values.
 No SVG refraction filters (Safari ignores them in `backdrop-filter`). The top bar has no hairline:
 a soft scroll-edge fade appears under it once content scrolls beneath (`data-scrolled`).
+The top bar uses its own, more opaque fill `--chrome-bar` (0.84 light / 0.82 dark) with
+`blur(32px) saturate(120%)`, because the page title and buttons sit on it (v1.2 fix: at the
+dock's 0.6 and 180% saturation, photos scrolling under it showed as a coloured band behind
+"Rack"). `lib/glassBar.test.ts` keeps the title at >= 7:1 over a black or a white backdrop.
 `prefers-reduced-transparency` makes both solid (`surface`); `prefers-contrast: more` makes them
 solid with a 1px edge. Note: this PC's browser reports reduced transparency, so the desktop app
 shows the solid version here.
