@@ -36,6 +36,7 @@ from rack.thumbs import prune
 from rack.worker.adapters import shared_adapters
 from rack.worker.ebay_details import fetch_ebay_details
 from rack.worker.hunts import run_due_hunts
+from rack.worker.live_search import run_live_searches
 from rack.worker.llm_job import llm_rerank, make_client
 from rack.worker.price_drops import check_saved_prices
 from rack.worker.refresh import refresh_all
@@ -155,6 +156,16 @@ async def run_hunts() -> None:
         await run_due_hunts(sessionmaker(), shared_adapters(), get_settings())
     except Exception:
         log.exception("hunts run failed")
+
+
+async def run_live() -> None:
+    """Live searches people asked for in the app (search the marketplaces now)."""
+    try:
+        n = await run_live_searches(sessionmaker(), shared_adapters())
+        if n:
+            log.info("live searches: %d run", n)
+    except Exception:
+        log.exception("live searches failed")
 
 
 async def run_price_checks() -> None:
@@ -370,6 +381,7 @@ async def main() -> None:
         (ManualRefresh(embed).run, timedelta(seconds=10), "manual_refresh", now),
         (update_fx, timedelta(hours=24), "fx", await resume_at("fx", timedelta(hours=24))),
         (run_hunts, timedelta(minutes=1), "hunts", now),
+        (run_live, timedelta(seconds=5), "live_search", now),
         (run_price_checks, timedelta(minutes=30), "price_drops", now),
         (purge_ebay_listings, timedelta(hours=1), "ebay_retention", now),
         (run_ebay_details, timedelta(minutes=2), "ebay_details", now + timedelta(seconds=30)),

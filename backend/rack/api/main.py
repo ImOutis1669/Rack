@@ -23,6 +23,7 @@ from rack.api import (
     purchases,
     push,
     refresh,
+    search,
     taste,
     thumbs,
 )
@@ -86,6 +87,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(admin.router)
     app.include_router(me.router)
     app.include_router(feed.router)
+    app.include_router(search.router)
     app.include_router(profile.router)
     app.include_router(taste.router)
     app.include_router(actions.router)

@@ -312,6 +312,21 @@ Security notes:
   then the row cascades). Only your own photo is served; the owner sees friends' at
   `/api/admin/users/{id}/avatar`. Admin users list adds `avatar`, `hunts`,
   `ebay_searches_today`; admin delete removes files too. Tests: `tests/test_profile_me.py`.
+- Search (v2.1 step 4b, migration 0021): `GET /api/search?q=` (`api/search.py`, `rack/search.py`)
+  = full-text ('simple' config, brand + title + description) OR trigram `%>` on
+  lower(brand || ' ' || title) (`pg_trgm`, `word_similarity_threshold` 0.45 via SET LOCAL);
+  the SQL expressions are literal and must match the 0021 index expressions exactly. Ranked by
+  ts_rank*2 + word_similarity, then your score; filters source/category (your score row)/size/
+  condition/price, offset cursor. Applies your hidden sellers/brands/excluded designers and
+  bought items, not budget/size/banned words. Timed on a copy of the real data (15k listings):
+  9-49 ms, both indexes used. Live: `POST /api/search/live` queues a `search_requests` row (one
+  pending per user; cooldown `RACK_LIVE_SEARCH_OWNER_SECONDS` 30 / `_FRIEND_SECONDS` 120; at
+  most `RACK_LIVE_SEARCH_QUEUE` 5 queued); worker job `live_search` (every 5 s,
+  `worker/live_search.py`) runs each request once per source in parallel through
+  `shared_adapters()` (same rate limits as the crawler), appends ids/results per source
+  atomically, counts eBay searches per user, marks listings changed; rows older than a day
+  are deleted, `running` > 10 min becomes `error`. `GET /api/search/live/{id}` (owner of the
+  request only) returns status + hydrated items. Tests: `tests/test_search.py`.
 - iOS app auth (iOS step 1): `POST /api/auth/token` (same password check and rate limits as
   `/login`) returns a bearer token signed with salt `rack-app-token` (cookies use
   `rack-session`, so neither works as the other), same epoch + fingerprint claims, lifetime

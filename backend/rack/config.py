@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # When only listings changed, friends' feeds are rescored at most this often (the owner's
     # at once). Their own taste changes still rescore them at once.
     rack_friend_rescore_minutes: int = 10
+    # Live search (search the marketplaces now): seconds between one person's searches, and how
+    # many may wait in the queue at once
+    rack_live_search_owner_seconds: int = 30
+    rack_live_search_friend_seconds: int = 120
+    rack_live_search_queue: int = 5
     rack_session_secret: str = ""
     rack_cookie_secure: bool = True
     rack_session_days: int = 30

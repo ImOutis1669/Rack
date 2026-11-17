@@ -439,3 +439,22 @@ class UserStateRow(Base):
     )
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
+class SearchRequestRow(Base):
+    """A live "search the marketplaces now" (v2.1 step 4b). Run by the worker, then deleted a
+    day after it finishes."""
+
+    __tablename__ = "search_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    query: Mapped[str] = mapped_column(String(100))
+    category: Mapped[str] = mapped_column(String(16), default="any")
+    max_price_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    status: Mapped[str] = mapped_column(String(8), default="queued")
+    results: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    listing_ids: Mapped[list[int]] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

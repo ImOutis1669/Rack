@@ -61,6 +61,7 @@ OWNED = {
     "notifications": "recent alerts",
     "push_subscriptions": "push",
     "user_state": "visits",
+    "search_requests": "live search (tests/test_search.py)",
 }
 
 
