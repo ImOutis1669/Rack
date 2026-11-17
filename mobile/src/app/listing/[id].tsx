@@ -134,7 +134,7 @@ function ListingSheet({ item }: { item: Listing }) {
         </Stack.Toolbar.Menu>
       </Stack.Toolbar>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: footerHeight + 16 }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: footerHeight + 16 }}>
         <PhotoPager
           images={images}
           title={item.title}

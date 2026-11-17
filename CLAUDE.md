@@ -78,6 +78,11 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   helpers (`draftFrom`, `draftErrors`, `patchFrom`, `photoState`) moved to `shared/tasteItem`.
   `@react-native-segmented-control` was tried and dropped (its types don't fit React 19).
   Never put helpers or tests under `src/app/`: every file there is a route.
+  Settings (step 7): `app/settings/*` pages (style, designers, fit, sizes, budget, feed,
+  alerts, hidden, sources), pure form rules in `features/settings/profileForm.ts` (tested),
+  `useProfile.tsx` (`WithProfile`, `useSaveProfile`, header `SaveButton`). Headers are
+  transparent on iOS 26: every vertical ScrollView under one needs
+  `contentInsetAdjustmentBehavior="automatic"` (first rows were hidden, step 7).
   The browser pane's web
   build of the app errors (no Keychain/SQLite on web): ignore it, the app is iOS only. Expo Go on the user's iPhone: Metro with
   `REACT_NATIVE_PACKAGER_HOSTNAME` = this PC's Tailscale IP (launch.json "mobile"; 8081 is often

@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useToast } from '@/components/Toast';
 import { useSession } from '@/lib/auth';
@@ -49,7 +49,11 @@ export default function BoughtSheet() {
 
   if (!item) return null;
   return (
-    <View style={[styles.body, { backgroundColor: colors.background }]}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.body}>
       <Text style={[text('footnote'), { color: colors.muted }]}>
         {item.title}. Adds it to your wardrobe so it shapes your feed, and stops price alerts.
       </Text>
@@ -81,12 +85,12 @@ export default function BoughtSheet() {
         ]}>
         <Text style={[text('headline'), { fontSize: 17, color: colors.background }]}>Add to wardrobe</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, padding: 16, gap: 12 },
+  body: { padding: 16, gap: 12 },
   field: { flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: 12, paddingHorizontal: 14, gap: 6, borderCurve: 'continuous' },
   input: { flex: 1, fontSize: 17, height: 50 },
   button: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginTop: 4 },

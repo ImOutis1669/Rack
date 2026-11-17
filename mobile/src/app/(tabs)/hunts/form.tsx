@@ -55,7 +55,7 @@ function Form({ id, initial }: { id: number | null; initial: HuntInput }) {
   });
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: id == null ? 'New hunt' : 'Edit hunt' }} />
       <Field label="Search for" hint="Every word must appear in the listing.">
         <Input value={h.query} onChangeText={(v) => set('query', v)} placeholder="rick owens geobasket" autoCorrect={false} autoCapitalize="none" autoFocus={id == null && !initial.query} />

@@ -154,7 +154,7 @@ function ItemSheet({ item }: { item: TasteItem }) {
   if (editing) {
     const auto = item.effective_category && item.effective_category !== 'any' ? `Auto (${CATEGORY_LABEL[item.effective_category]})` : 'Not set';
     return (
-      <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         {toolbar}
         <Field label="Brand">
           <Input value={draft.brand} onChangeText={(v) => set('brand', v)} placeholder={item.estimate_brand ?? 'e.g. Rick Owens'} autoCorrect={false} />
@@ -221,7 +221,7 @@ function ItemSheet({ item }: { item: TasteItem }) {
   const state = photoState(item);
   const name = itemName(item);
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 40 }}>
       {toolbar}
       {item.image ? (
         <Image

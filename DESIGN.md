@@ -69,6 +69,19 @@ Feed (iOS step 4, checked on the user's iPhone):
 - **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
   messages show as a toast above the tab bar.
 
+Settings (iOS step 7, checked on the user's iPhone):
+- A modal with a native stack: the home list (Taste: style, designers, fit, sizes, budget,
+  feed; Rack: alerts, hidden, sources with an overall status dot; Account) as inset grouped
+  rows with chevrons and a short value; each section is its own page.
+- Editing pages save on their own (Save in the header, disabled until something changed),
+  instead of the web's one long form with a floating save bar.
+- Designer weights via an action sheet (Never in red, Love inverted); exploration as the
+  SwiftUI slider; cm / in as the segmented control; numbers right-aligned in their rows.
+- Alerts shows the server's channels; the app has no push of its own until the paid Apple
+  developer account (said in the footer).
+- Every scroll view under a (transparent, iOS 26) header uses
+  `contentInsetAdjustmentBehavior="automatic"`, or its first row hides behind the header.
+
 Saved, Hunts, Wardrobe (iOS step 6, checked on the user's iPhone):
 - **Saved:** the feed's grid; "I bought it" as a fill capsule under each tile.
 - **Hunts:** grouped cards (radius 16, `surface`): name, summary, status, match count (new in

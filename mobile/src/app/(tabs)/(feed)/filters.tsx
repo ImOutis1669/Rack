@@ -20,7 +20,7 @@ export default function FiltersSheet() {
   const label = [text('footnote'), font('medium', customFont), { color: colors.muted }];
   const input = [styles.input, text('body'), { fontSize: 17, color: colors.foreground, backgroundColor: colors.surface }];
   return (
-    <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" style={{ backgroundColor: colors.background }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" style={{ backgroundColor: colors.background }}>
       <View style={styles.group}>
         <Text style={label}>Sources</Text>
         <View style={styles.row}>
