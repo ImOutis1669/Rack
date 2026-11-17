@@ -8,6 +8,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   trousers: "Trousers",
   shoes: "Shoes",
   outerwear: "Outerwear",
+  accessories: "Accessories",
 };
 
 /** What the item is called: its name, else its description or label (null: unnamed). */

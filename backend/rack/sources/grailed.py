@@ -46,6 +46,9 @@ CATEGORY_FACETS: dict[Category, list[str]] = {
     Category.TROUSERS: ["category:bottoms"],
     Category.SHOES: ["category:footwear"],
     Category.OUTERWEAR: ["category:outerwear", "category:tailoring"],
+    # menswear facet (live 2026-11-17): hats, misc, bags_luggage, jewelry_watches, belts,
+    # gloves_scarves; womenswear has its own womens_accessories / womens_jewelry.
+    Category.ACCESSORIES: ["category:accessories"],
 }
 CONDITIONS = {
     "is_new": "New",
@@ -61,6 +64,7 @@ GRAILED_CATEGORIES: dict[str, Category] = {
     "footwear": Category.SHOES,
     "outerwear": Category.OUTERWEAR,
     "tailoring": Category.OUTERWEAR,
+    "accessories": Category.ACCESSORIES,
 }
 COUNTRIES = {"United States": "US", "United Kingdom": "GB", "Canada": "CA"}
 

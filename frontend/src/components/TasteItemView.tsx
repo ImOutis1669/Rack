@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { Category, TasteItem } from "../api/types";
+import { CATEGORIES, type Category, type TasteItem } from "../api/types";
 import { defaultPrice, parsePrice } from "../lib/bought";
 import { safeHref } from "../lib/safe";
 import { CATEGORY_LABEL, detailRows, displayName, itemName, sourceLink, tileValue } from "../lib/tasteItem";
@@ -74,7 +74,6 @@ export function TasteTile({ item, onOpen }: { item: TasteItem; onOpen: () => voi
   );
 }
 
-const CATEGORIES: Exclude<Category, "any">[] = ["tops", "trousers", "shoes", "outerwear"];
 
 interface Draft {
   name: string;

@@ -194,3 +194,24 @@ def test_search_summaries_store_full_size_photos_once() -> None:
     listing = parse_item(summary)
     assert listing is not None
     assert listing.images == [f"{G}/abc/s-l1600.jpg", f"{G}/def/s-l1600.jpg"]
+
+
+async def test_accessories_search_men_s_accessories_and_men_s_jewellery() -> None:
+    """eBay search takes one category id (two -> HTTP 400), and jewellery isn't under Men's
+    Accessories: so Accessories is two searches, merged without duplicates."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth2/token"):
+            return httpx.Response(200, json={"access_token": "tok", "expires_in": 7200})
+        seen.append(request.url.params["category_ids"])
+        return httpx.Response(200, json=load())  # same items both times
+
+    adapter = EbayAdapter("id", "secret", min_interval=0, transport=httpx.MockTransport(handler))
+    results = await adapter.search(SearchQuery(text="chrome hearts", category=Category.ACCESSORIES))
+    assert seen == ["4250", "10290"]
+    assert len(results) == len({r.source_id for r in results}) == 2
+    seen.clear()
+    await adapter.search(SearchQuery(text="margiela", category=Category.TOPS))
+    assert seen == ["1059"]  # other categories: still one search
+    await adapter.aclose()

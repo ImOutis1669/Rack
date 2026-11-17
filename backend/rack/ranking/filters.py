@@ -14,6 +14,7 @@ FIT_FIELDS: dict[Category, tuple[str, ...]] = {
     Category.TOPS: ("sleeve", "p2p", "length"),
     Category.OUTERWEAR: ("sleeve", "p2p", "length"),
     Category.SHOES: (),
+    Category.ACCESSORIES: (),  # no measurements
     Category.ANY: ("inseam", "sleeve", "p2p", "length"),
 }
 

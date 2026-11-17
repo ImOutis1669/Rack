@@ -4,7 +4,9 @@ import re
 
 from rack.sources.base import Category
 
-# Order matters: outerwear before tops ("shirt jacket"), shoes before trousers ("boot cut" is rare).
+# Order matters: outerwear before tops ("shirt jacket"), shoes before trousers ("boot cut" is
+# rare), accessories last, so a garment that mentions one ("belted coat", "cap sleeve tee") stays
+# a garment.
 KEYWORDS: list[tuple[Category, tuple[str, ...]]] = [
     (
         Category.OUTERWEAR,
@@ -18,6 +20,10 @@ KEYWORDS: list[tuple[Category, tuple[str, ...]]] = [
             "trench",
             "anorak",
             "overcoat",
+            "raincoat",
+            "topcoat",
+            "trenchcoat",
+            "car coat",
             "peacoat",
             "puffer",
             "windbreaker",
@@ -63,6 +69,7 @@ KEYWORDS: list[tuple[Category, tuple[str, ...]]] = [
             "jumper",
             "sweater",
             "hoodie",
+            "hoody",
             "sweatshirt",
             "polo",
             "cardigan",
@@ -71,6 +78,48 @@ KEYWORDS: list[tuple[Category, tuple[str, ...]]] = [
             "tank",
             "henley",
             "crewneck",
+        ),
+    ),
+    (
+        Category.ACCESSORIES,
+        (
+            "necklace",
+            "pendant",
+            "chain",
+            "ring",
+            "bracelet",
+            "bangle",
+            "earring",
+            "cufflink",
+            "jewellery",
+            "jewelry",
+            "watch",
+            "hat",
+            "cap",
+            "beanie",
+            "balaclava",
+            "bandana",
+            "scarf",
+            "scarves",
+            "glove",
+            "mitten",
+            "belt",
+            "bag",
+            "backpack",
+            "tote",
+            "holdall",
+            "wallet",
+            "cardholder",
+            "card holder",
+            "sunglasses",
+            "eyewear",
+            "tie",
+            "bow tie",
+            "keychain",
+            "keyring",
+            "key ring",
+            "lanyard",
+            "braces",
         ),
     ),
 ]

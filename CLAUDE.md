@@ -88,6 +88,12 @@ stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (
     `listings.excluded='womens'` so searches don't reactivate them. Daily call counts live in
     `app_state['ebay_usage']` and show in the Sources sheet. Fixtures are made-up values in the
     real shape: never commit real eBay responses.
+  - Categories (v1.2 adds Accessories, ids checked live 2026-11-17): eBay Men's Accessories 4250
+    plus Men's Jewellery 10290 (search takes one id, so Accessories is two searches, merged:
+    `EXTRA_CATEGORY_IDS`); Grailed menswear facet `category:accessories`; Vinted Men >
+    Accessories 82. Listing categories come from the title (`parsing/categories.py`, accessories
+    checked last so "belted coat" stays outerwear) at scoring time; migration 0017 bumped the
+    profile version so everything was rescored.
   - Vinted: `/api/v2/catalog/items` is gone (404); parse `productItem` objects from the Next.js
     flight data of `/catalog?search_text=…`, men's catalogue ids from the page's own tree.
     price_gbp includes the compulsory buyer-protection fee. DataDome is present.

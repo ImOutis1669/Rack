@@ -15,6 +15,7 @@ class Category(StrEnum):
     TROUSERS = "trousers"
     SHOES = "shoes"
     OUTERWEAR = "outerwear"
+    ACCESSORIES = "accessories"
 
 
 class SearchQuery(BaseModel):

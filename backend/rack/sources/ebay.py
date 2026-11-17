@@ -47,6 +47,12 @@ CATEGORY_IDS: dict[Category, str] = {
     Category.TROUSERS: "57989",  # Men's Trousers
     Category.SHOES: "93427",  # Men's Shoes
     Category.OUTERWEAR: "57988",  # Men's Coats, Jackets & Waistcoats
+    Category.ACCESSORIES: "4250",  # Men's Accessories: belts, hats, bags, wallets, scarves, ...
+}
+# Searched as well, one search each: search takes one category id (two -> HTTP 400, probed
+# 2026-11-17), and men's jewellery isn't under Men's Accessories but Jewellery & Watches.
+EXTRA_CATEGORY_IDS: dict[Category, tuple[str, ...]] = {
+    Category.ACCESSORIES: ("10290",),  # Men's Jewellery: necklaces, rings, bracelets, ...
 }
 
 # Item fields kept in `raw` (also all a recorded fixture contains). Nothing about the seller.
@@ -216,7 +222,7 @@ def parse_search(payload: dict[str, Any]) -> list[Listing]:
     return out
 
 
-def build_search_params(query: SearchQuery) -> dict[str, str]:
+def build_search_params(query: SearchQuery, category_id: str | None = None) -> dict[str, str]:
     filters = ["buyingOptions:{FIXED_PRICE|BEST_OFFER}", "deliveryCountry:GB"]
     if query.max_price_gbp is not None:
         filters.append(f"price:[..{query.max_price_gbp}]")
@@ -224,7 +230,7 @@ def build_search_params(query: SearchQuery) -> dict[str, str]:
     params = {
         "q": query.text,
         "limit": str(min(query.limit, 200)),
-        "category_ids": CATEGORY_IDS[query.category],
+        "category_ids": category_id or CATEGORY_IDS[query.category],
         "filter": ",".join(filters),
     }
     if query.newest_first:
@@ -293,12 +299,19 @@ class EbayAdapter:
         }
 
     async def search(self, query: SearchQuery) -> list[Listing]:
-        headers = await self._auth_headers()
-        self._count("search")
-        resp = await self._http.get(SEARCH_URL, params=build_search_params(query), headers=headers)
-        if resp.status_code != 200:
-            raise SourceError(f"eBay search failed: {resp.status_code} {resp.text[:200]}")
-        return parse_search(resp.json())
+        ids = (CATEGORY_IDS[query.category], *EXTRA_CATEGORY_IDS.get(query.category, ()))
+        found: dict[str, Listing] = {}
+        for category_id in ids:
+            headers = await self._auth_headers()
+            self._count("search")
+            resp = await self._http.get(
+                SEARCH_URL, params=build_search_params(query, category_id), headers=headers
+            )
+            if resp.status_code != 200:
+                raise SourceError(f"eBay search failed: {resp.status_code} {resp.text[:200]}")
+            for listing in parse_search(resp.json()):
+                found.setdefault(listing.source_id, listing)
+        return list(found.values())
 
     async def get_listing(self, url_or_id: str) -> Listing | None:
         item = await self.fetch_item(url_or_id)

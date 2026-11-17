@@ -32,7 +32,7 @@ const LENGTHS: [LenKey, string][] = [
   ["p2p_min_cm", "Minimum pit to pit"],
   ["p2p_max_cm", "Maximum pit to pit"],
 ];
-const CAT_LABEL: Record<Category, string> = { any: "All", tops: "Tops", trousers: "Trousers", shoes: "Shoes", outerwear: "Outerwear" };
+const CAT_LABEL: Record<Category, string> = { any: "All", tops: "Tops", trousers: "Trousers", shoes: "Shoes", outerwear: "Outerwear", accessories: "Accessories" };
 
 /** Right-aligned value input for grouped rows (iOS settings style). */
 function RowInput(props: React.InputHTMLAttributes<HTMLInputElement> & { suffix?: string; prefix?: string }) {

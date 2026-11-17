@@ -27,6 +27,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   trousers: "Trousers",
   shoes: "Shoes",
   outerwear: "Outerwear",
+  accessories: "Accessories",
 };
 
 /** The feed is the app's home: its title is the app name (the sort menu keeps "For you"). */

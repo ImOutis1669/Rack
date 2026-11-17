@@ -1,6 +1,6 @@
 export type Source = "ebay" | "vinted" | "grailed" | "vestiaire";
-export type Category = "any" | "tops" | "trousers" | "shoes" | "outerwear";
-export const CATEGORIES: Category[] = ["tops", "trousers", "shoes", "outerwear"];
+export type Category = "any" | "tops" | "trousers" | "shoes" | "outerwear" | "accessories";
+export const CATEGORIES: Exclude<Category, "any">[] = ["tops", "trousers", "shoes", "outerwear", "accessories"];
 
 export interface Seller {
   name: string | null;

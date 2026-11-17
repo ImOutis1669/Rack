@@ -76,7 +76,7 @@ class TextIn(BaseModel):
 
 
 Money = Annotated[Decimal, Field(ge=0, le=100_000, decimal_places=2)]
-ItemCategory = Literal["tops", "trousers", "shoes", "outerwear"]
+ItemCategory = Literal["tops", "trousers", "shoes", "outerwear", "accessories"]
 
 
 class PatchIn(BaseModel):

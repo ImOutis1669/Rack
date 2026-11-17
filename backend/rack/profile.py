@@ -55,5 +55,6 @@ class Profile(BaseModel):
             Category.TROUSERS,
             Category.SHOES,
             Category.OUTERWEAR,
+            Category.ACCESSORIES,
         ]
     )

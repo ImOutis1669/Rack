@@ -31,6 +31,10 @@ CATALOG_IDS: dict[Category, list[int]] = {
     Category.TROUSERS: [34, 257],  # Trousers, Jeans
     Category.SHOES: [1231],  # Shoes
     Category.OUTERWEAR: [1206, 32],  # Outerwear, Suits & blazers
+    # Men > Accessories (checked 2026-11-17: one of Men's four branches, beside Clothing 2050,
+    # Shoes 1231, Grooming 139): bags, belts, gloves, hats, jewellery, scarves, sunglasses,
+    # ties, wallets, watches.
+    Category.ACCESSORIES: [82],
 }
 
 FLIGHT_CHUNK = re.compile(r'self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)')
