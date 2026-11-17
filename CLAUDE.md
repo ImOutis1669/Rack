@@ -53,8 +53,9 @@ On this Windows dev box uv lives at
 project skill `.claude/skills/rack-apple-design` (combined from three MIT design skills). Shared pieces:
 `components/ui` (buttons, sheet, grouped rows, switch), `components/AppShell` (`PageShell` = per-page glass top bar;
 `AppTabs` = iPhone dock + desktop tabs, mounted once in `main.tsx` so the pill slides between pages), `components/magicui/*` (adapted Magic UI, MIT), icons only via `components/icons/Icon.tsx` (Basil from the user's own pack, git-ignored, else lucide; see DESIGN.md "Icons"). Use `cn()` from
-`lib/utils` (tailwind-merge knows the custom text sizes and radii). SF Pro comes from the system font
-stack; never bundle Apple font files.
+`lib/utils` (tailwind-merge knows the custom text sizes and radii). UI font: Neue Montreal from the
+user's own files in git-ignored `frontend/public/fonts/` (never commit or download them), system
+stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (see DESIGN.md "Type").
 
 ## Conventions
 - Small, typed, testable modules; parsers are pure and tested against `backend/tests/fixtures/<source>/`.

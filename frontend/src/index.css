@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+/* Neue Montreal (Pangram Pangram): free for personal use, never redistributed, so the files are
+   NOT in git. The user puts them in frontend/public/fonts/ (git-ignored); if they're missing the
+   requests fail quietly and the system stack takes over. swap: text shows at once. */
+@font-face {
+  font-family: "Neue Montreal";
+  src: url("/fonts/neuemontreal-regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Neue Montreal";
+  src: url("/fonts/neuemontreal-medium.otf") format("opentype");
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Neue Montreal";
+  src: url("/fonts/neuemontreal-bold.otf") format("opentype");
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+/* The same faces minus digits and the , . : separators, for .tabular: those characters fall
+   through to the system font, which has tabular figures (Neue Montreal v1 doesn't). */
+@font-face {
+  font-family: "Rack Tabular";
+  src: url("/fonts/neuemontreal-regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
+}
+@font-face {
+  font-family: "Rack Tabular";
+  src: url("/fonts/neuemontreal-medium.otf") format("opentype");
+  font-weight: 500 600;
+  font-display: swap;
+  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
+}
+@font-face {
+  font-family: "Rack Tabular";
+  src: url("/fonts/neuemontreal-bold.otf") format("opentype");
+  font-weight: 700 900;
+  font-display: swap;
+  unicode-range: U+0000-002B, U+002D, U+002F, U+003B-10FFFF;
+}
+
 /* Dark mode follows the system (iPhone / Windows setting). */
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
@@ -80,15 +128,25 @@
   --color-warning: var(--warning);
   --color-scrim: var(--scrim);
 
-  /* SF Pro on Apple devices via the system font; on Windows if installed locally. Never bundled. */
+  /* Neue Montreal (user-supplied, git-ignored, see @font-face below), then the system stack:
+     SF Pro on Apple devices, Segoe UI on Windows. Apple's fonts are never bundled. */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "SF Pro Display", system-ui,
-    "Segoe UI Variable Text",
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    "Neue Montreal", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui,
+    "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", system-ui,
+    "Neue Montreal", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", system-ui,
     "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Numbers: Neue Montreal v1 has no tabular figures, so "Rack Tabular" (Neue Montreal minus the
+     digits) lets digits fall through to the system font's tabular-nums. */
+  --font-tabular:
+    "Rack Tabular", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui,
+    "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
+  /* iPhone page titles in the top bar (v1.2, user's pick "C"): big and extra heavy, still in the
+     56px bar row. 1.15 leading so descenders ("Settings") aren't clipped by truncate. */
+  --text-pagetitle: 1.875rem;
+  --text-pagetitle--line-height: 1.15;
+  --text-pagetitle--letter-spacing: -0.03em;
   --text-largetitle: 2rem;
   --text-largetitle--line-height: 1.15;
   --text-largetitle--letter-spacing: -0.02em;
@@ -253,7 +311,21 @@ body {
   }
 }
 
+/* Heavier than the font's Bold (the heaviest weight in the Neue Montreal pack). Sub-pixel copies
+   of the filled glyph, not -webkit-text-stroke: the font's outlines overlap inside glyphs, so a
+   stroke draws those inner edges and the letters look smeared/doubled. Page titles only. */
+@utility heavy {
+  text-shadow:
+    0.6px 0 0 currentColor,
+    -0.6px 0 0 currentColor,
+    0 0.45px 0 currentColor,
+    0 -0.45px 0 currentColor,
+    0.4px 0.3px 0 currentColor,
+    -0.4px -0.3px 0 currentColor;
+}
+
 @utility tabular {
+  font-family: var(--font-tabular);
   font-variant-numeric: tabular-nums;
 }
 

@@ -109,7 +109,7 @@ export function EstimateSection({ item, open }: { item: TasteItem; open: boolean
           {item.trend[days] && (
             <p
               className={cn(
-                "tabular px-1 font-display text-title font-bold",
+                "tabular px-1 text-title font-bold",
                 item.trend[days]!.direction === "up" && "text-accent",
                 item.trend[days]!.direction === "down" && "text-danger",
               )}

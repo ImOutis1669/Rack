@@ -77,4 +77,11 @@ describe("page titles", () => {
   it("keeps it on other pages", () => {
     expect(shell().match(/<h1/g)).toHaveLength(2);
   });
+
+  it("draws the iPhone title big and extra heavy (v1.2 option C) in the 56px bar row", () => {
+    const html = shell(false);
+    const h1 = html.match(/<h1 class="([^"]*)">Rack<\/h1>/)?.[1] ?? "";
+    expect(h1.split(" ")).toEqual(expect.arrayContaining(["text-pagetitle", "font-bold", "heavy", "truncate"]));
+    expect(html).toMatch(/class="[^"]*\bh-14\b/);
+  });
 });

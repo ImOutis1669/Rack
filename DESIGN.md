@@ -67,19 +67,33 @@ Primary buttons are monochrome (foreground on background, inverted), like a fash
 There are no gradients, and no indigo.
 
 ## Type
-SF Pro everywhere it exists, through the system font stack (`--font-sans`):
-- **iPhone, Mac:** get SF through `-apple-system`, with automatic optical sizes.
-- **Windows:** gets SF Pro only if it's installed locally; otherwise Segoe UI. Font files are
-  never bundled or served (Apple's licence).
+**Neue Montreal** (Pangram Pangram) from v1.2, with the system stack (`--font-sans`) behind it:
+SF Pro on iPhone/Mac, Segoe UI on Windows.
+- **Licence:** free for personal use, never redistributed, and the repo is public, so the files
+  are **not in git**. The user puts `neuemontreal-{regular,medium,bold}.otf` in
+  `frontend/public/fonts/` (git-ignored); Docker builds them in. Missing files fail quietly and
+  the system font takes over (`font-display: swap`). Apple's fonts are never bundled either.
+- **Weights:** the pack has 400 / 500 / 700. `font-semibold` (600) uses Medium, so labels stay
+  lighter than titles; 700+ is Bold.
+- **Numbers:** Neue Montreal v1 has no tabular figures. `.tabular` uses `--font-tabular`:
+  "Rack Tabular" is Neue Montreal minus digits and `, . :` (`unicode-range`), so those fall
+  through to the system font's tabular figures while letters and £ stay Neue Montreal. Don't add
+  `font-display`/`font-sans` next to `tabular` (they'd fight over the family).
 
 | Role | Size | Weight | Use |
 |---|---|---|---|
-| Large title | 32 | bold | page titles |
-| Title | 20 | semibold | sheet titles |
+| Page title (iPhone) | 30, -0.03em, leading 1.15 | bold + `heavy` | top bar: Rack, Saved, Hunts, Wardrobe, Settings (`text-pagetitle`) |
+| Large title | 32 | bold + `heavy` | desktop page titles, login |
+| Title | 20 | bold / semibold | sheet titles |
 | Headline | 15 | semibold | prices |
 | Body | 15 | regular | text; 16 for inputs, so iOS doesn't zoom on focus |
 | Footnote | 13 | regular | |
 | Caption | 11 | regular | |
+
+Page titles (user's pick "C", v1.2): bigger and heavier than the font's Bold while staying in
+the 56px bar row. `heavy` thickens with sub-pixel `text-shadow` copies in the text colour, not
+`-webkit-text-stroke`: Neue Montreal's outlines overlap inside glyphs, and a stroke draws those
+edges so the letters look doubled.
 
 Use tabular figures for prices and numbers.
 

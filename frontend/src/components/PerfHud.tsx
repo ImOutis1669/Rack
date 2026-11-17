@@ -61,7 +61,7 @@ export function PerfHud() {
   return (
     <div
       aria-hidden
-      className="tabular pointer-events-none fixed top-[calc(env(safe-area-inset-top)+60px)] right-2 z-[70] rounded-photo bg-black/75 px-2.5 py-1.5 font-mono text-[10px] leading-tight text-white"
+      className="pointer-events-none fixed top-[calc(env(safe-area-inset-top)+60px)] right-2 z-[70] rounded-photo bg-black/75 px-2.5 py-1.5 font-mono text-[10px] leading-tight text-white"
     >
       <div>first tile {firstTile ?? "–"} ms</div>
       <div>first photo {firstPhoto ?? "–"} ms</div>

@@ -222,7 +222,7 @@ export function TasteItemSheet({ item, open, onClose }: { item: TasteItem; open:
               <h2 className="font-display text-title font-semibold">
                 {itemName(item) ?? <span className="text-muted">No name yet</span>}
               </h2>
-              {value && <p className="tabular font-display text-[26px] font-bold">{value}</p>}
+              {value && <p className="tabular text-[26px] font-bold">{value}</p>}
               {photoState(item) && <p className="text-footnote text-muted">{photoState(item)}</p>}
             </div>
             {rows.length > 0 && (

@@ -174,7 +174,7 @@ export function ListingSheet({
             </div>
             <h2 className="font-display text-title font-semibold">{item.title}</h2>
             <p className="flex items-baseline gap-2">
-              <span className="tabular font-display text-[26px] font-bold">{formatGBP(item.price_gbp)}</span>
+              <span className="tabular text-[26px] font-bold">{formatGBP(item.price_gbp)}</span>
               {was != null && <span className="tabular text-body text-muted line-through">{formatGBP(was)}</span>}
             </p>
             {item.landed && (item.landed.imported || item.landed.notes.length > 0) && (
