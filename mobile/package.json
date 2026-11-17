@@ -52,7 +52,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "private-assets": "node scripts/private-assets.mjs",
-    "app-icon": "node scripts/app-icon.mjs"
+    "app-icon": "node scripts/app-icon.mjs",
+    "pack-secrets": "node scripts/pack-secrets.mjs"
   },
   "private": true
 }

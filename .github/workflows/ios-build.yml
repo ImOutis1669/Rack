@@ -1,0 +1,127 @@
+# Builds Rack's iOS app as an unsigned .ipa for sideloading (docs/ios-sideload.md).
+# Manual trigger only. The repo is public, so:
+#  - the owner's licensed fonts/icons come from encrypted secrets (RACK_ASSETS_1..8, made by
+#    `npm run pack-secrets` in mobile/) and are never printed;
+#  - the .ipa (which contains them) is uploaded only inside a password-protected 7z (AES-256,
+#    names hidden; password = secret RACK_IPA_PASSWORD), kept for 1 day;
+#  - the server address comes from the secret RACK_URL (it's only reachable inside the tailnet).
+name: iOS build (unsigned .ipa)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # forks have no secrets: don't let them burn a macOS runner
+    if: ${{ !github.event.repository.fork }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Use Xcode 26.4 or newer (Expo SDK 58)
+        run: |
+          set -euo pipefail
+          newest=$(ls -d /Applications/Xcode_*.app | sed -E 's#.*/Xcode_([0-9.]+)\.app#\1#' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -V | tail -1)
+          need=26.4
+          if [ "$(printf '%s\n' "$need" "$newest" | sort -V | head -1)" != "$need" ]; then
+            echo "::error::Expo SDK 58 needs Xcode $need or newer; the newest on this runner is $newest"
+            exit 1
+          fi
+          sudo xcode-select -s "/Applications/Xcode_$newest.app"
+          xcodebuild -version
+
+      - name: Check the secrets are set (without printing them)
+        env:
+          IPA_PASSWORD: ${{ secrets.RACK_IPA_PASSWORD }}
+          RACK_URL: ${{ secrets.RACK_URL }}
+        run: |
+          set -euo pipefail
+          [ -n "$IPA_PASSWORD" ] || { echo "::error::Set the RACK_IPA_PASSWORD secret: the .ipa is only ever uploaded encrypted"; exit 1; }
+          [ ${#IPA_PASSWORD} -ge 12 ] || { echo "::error::RACK_IPA_PASSWORD must be at least 12 characters"; exit 1; }
+          [ -n "$RACK_URL" ] || echo "::warning::No RACK_URL secret: enter the server on the app's login screen"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install
+        working-directory: mobile
+        run: npm ci --no-fund --no-audit
+
+      - name: Unpack the private fonts and icons
+        env:
+          A1: ${{ secrets.RACK_ASSETS_1 }}
+          A2: ${{ secrets.RACK_ASSETS_2 }}
+          A3: ${{ secrets.RACK_ASSETS_3 }}
+          A4: ${{ secrets.RACK_ASSETS_4 }}
+          A5: ${{ secrets.RACK_ASSETS_5 }}
+          A6: ${{ secrets.RACK_ASSETS_6 }}
+          A7: ${{ secrets.RACK_ASSETS_7 }}
+          A8: ${{ secrets.RACK_ASSETS_8 }}
+        run: |
+          set -euo pipefail
+          joined="${A1}${A2}${A3}${A4}${A5}${A6}${A7}${A8}"
+          if [ -z "$joined" ]; then
+            echo "No RACK_ASSETS_* secrets: building with SF Pro and SF Symbols"
+            exit 0
+          fi
+          printf '%s' "$joined" | base64 -d | tar -xzf - -C mobile/assets/private
+          echo "Unpacked $(ls mobile/assets/private/fonts 2>/dev/null | wc -l | tr -d ' ') font files and the icon data"
+
+      - name: Server address
+        env:
+          RACK_URL: ${{ secrets.RACK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -n "$RACK_URL" ]; then printf 'EXPO_PUBLIC_RACK_URL=%s\n' "$RACK_URL" > mobile/.env.local; fi
+
+      - name: Generate the iOS project
+        working-directory: mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build (Release, no code signing)
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          ws=$(ls -d ios/*.xcworkspace | head -1)
+          scheme=$(basename "$ws" .xcworkspace)
+          xcodebuild -workspace "$ws" -scheme "$scheme" -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build -quiet \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          app=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)
+          mkdir -p Payload && cp -R "$app" Payload/
+          zip -qry Rack.ipa Payload
+          ls -lh Rack.ipa
+
+      - name: Encrypt the .ipa
+        working-directory: mobile
+        env:
+          IPA_PASSWORD: ${{ secrets.RACK_IPA_PASSWORD }}
+        run: |
+          set -euo pipefail
+          brew install --quiet sevenzip
+          7zz a -t7z -mhe=on -p"$IPA_PASSWORD" Rack-ios.7z Rack.ipa > /dev/null
+          rm -rf Rack.ipa Payload
+          ls -lh Rack-ios.7z
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rack-ios
+          path: mobile/Rack-ios.7z
+          retention-days: 1
+          if-no-files-found: error

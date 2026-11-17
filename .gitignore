@@ -25,3 +25,5 @@ frontend/src/components/icons/basil.generated.ts
 # CI gets them from an encrypted GitHub secret. Only the README in this folder is tracked.
 mobile/assets/private/*
 !mobile/assets/private/README.md
+# iOS CI: the private assets packed into secret-sized chunks (npm run pack-secrets). Never commit.
+mobile/.ci-secrets/

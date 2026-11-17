@@ -40,5 +40,12 @@ npx expo install <pkg>  # add packages: picks the SDK 58 version
 3. Scan the QR code with the iPhone camera, or in Expo Go tap "Enter URL manually" and type
    `exp://<PC Tailscale IP>:<port>` (8081, or the next free port Metro reports).
 
-There is no iOS simulator on Windows. `npx expo start --web` in a browser is for rough layout
-checks only. Installable builds come from GitHub Actions (iOS step 9).
+There is no iOS simulator on Windows. Installable builds come from GitHub Actions
+(`.github/workflows/ios-build.yml`, manual run): see `docs/ios-sideload.md` for the secrets
+(`npm run pack-secrets` packs your fonts/icons), the encrypted download and Sideloadly.
+
+## Other scripts
+```bash
+npm run app-icon      # assets/icon.svg -> 1024 px app icon + splash image
+npm run pack-secrets  # assets/private -> .ci-secrets/RACK_ASSETS_N.txt for the CI secrets
+```

@@ -90,6 +90,13 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   `lib/perfStore.ts` + `components/PerfOverlay.tsx` (frame maths in `shared/perf`, moved from
   the web), app icon from `assets/icon.svg` via `npm run app-icon`. jest.mock factories may
   only use variables named `mock*`.
+  Build (step 9): `.github/workflows/ios-build.yml`, workflow_dispatch only, `macos-26`, newest
+  Xcode >= 26.4 (SDK 58 minimum), `expo prebuild` + `xcodebuild ... CODE_SIGNING_ALLOWED=NO`,
+  Payload zip -> `.ipa`, then 7z AES-256 with `-mhe` (secret `RACK_IPA_PASSWORD`, required)
+  and a 1-day artifact. Private assets: secrets `RACK_ASSETS_1..8` (48 KB secret limit;
+  `npm run pack-secrets` tar.gz + base64 + split into git-ignored `mobile/.ci-secrets/`);
+  server: secret `RACK_URL`. Actions pinned to commit SHAs. Never put the tailnet hostname in
+  the repo (public): docs use placeholders. User guide: `docs/ios-sideload.md`.
   The browser pane's web
   build of the app errors (no Keychain/SQLite on web): ignore it, the app is iOS only. Expo Go on the user's iPhone: Metro with
   `REACT_NATIVE_PACKAGER_HOSTNAME` = this PC's Tailscale IP (launch.json "mobile"; 8081 is often
