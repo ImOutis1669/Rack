@@ -5,7 +5,6 @@ shared login rate limits, "log out everywhere", password-change invalidation, ex
 way to swap a cookie for a token or back. CSRF doesn't apply: browsers never send the header.
 """
 
-import os
 import time
 
 import httpx
@@ -13,14 +12,14 @@ import pytest
 from itsdangerous import TimestampSigner, URLSafeTimedSerializer
 
 from rack.api import auth
-from tests.conftest import PASSWORD, login
+from tests.conftest import creds, login
 
 H = {"X-Requested-With": "rack"}
 SECRET = "test-secret-that-is-long-enough-1234567890"  # conftest's RACK_SESSION_SECRET
 
 
 async def get_token(client: httpx.AsyncClient) -> str:
-    r = await client.post("/api/auth/token", json={"password": PASSWORD})
+    r = await client.post("/api/auth/token", json=creds())
     assert r.status_code == 200, r.text
     return str(r.json()["token"])
 
@@ -31,7 +30,7 @@ def bearer(token: str) -> dict[str, str]:
 
 @pytest.mark.db
 async def test_token_login_works_without_cookie_or_csrf(client: httpx.AsyncClient) -> None:
-    r = await client.post("/api/auth/token", json={"password": PASSWORD})
+    r = await client.post("/api/auth/token", json=creds())
     assert r.status_code == 200
     assert r.headers["Cache-Control"] == "no-store"
     assert r.json()["expires_in"] == 30 * 86400
@@ -50,12 +49,12 @@ async def test_token_login_works_without_cookie_or_csrf(client: httpx.AsyncClien
 @pytest.mark.db
 async def test_token_login_shares_the_rate_limits(client: httpx.AsyncClient) -> None:
     for _ in range(auth.MAX_ATTEMPTS):
-        r = await client.post("/api/auth/token", json={"password": "wrong"})
+        r = await client.post("/api/auth/token", json=creds("wrong"))
         assert r.status_code == 401
         assert "token" not in r.text
     # the same counter guards both doors, so switching endpoint doesn't buy more tries
-    assert (await client.post("/api/auth/login", json={"password": PASSWORD})).status_code == 429
-    assert (await client.post("/api/auth/token", json={"password": PASSWORD})).status_code == 429
+    assert (await client.post("/api/auth/login", json=creds())).status_code == 429
+    assert (await client.post("/api/auth/token", json=creds())).status_code == 429
 
 
 @pytest.mark.db
@@ -85,7 +84,6 @@ async def test_logout_all_revokes_tokens(client: httpx.AsyncClient) -> None:
     token = await get_token(client)
     other = await get_token(client)  # e.g. a copy, or a second phone
     assert (await client.post("/api/auth/logout-all", headers=bearer(token))).status_code == 204
-    auth._epoch_cache = (0.0, -1)
     assert (await client.get("/api/auth/me", headers=bearer(token))).status_code == 401
     assert (await client.get("/api/auth/me", headers=bearer(other))).status_code == 401
     fresh = await get_token(client)  # logging in again works
@@ -97,25 +95,25 @@ async def test_logout_all_from_the_web_revokes_tokens(client: httpx.AsyncClient)
     token = await get_token(client)
     await login(client)
     assert (await client.post("/api/auth/logout-all", headers=H)).status_code == 204
-    auth._epoch_cache = (0.0, -1)
     client.cookies.clear()
     assert (await client.get("/api/auth/me", headers=bearer(token))).status_code == 401
 
 
 @pytest.mark.db
 async def test_password_change_revokes_tokens(client: httpx.AsyncClient) -> None:
-    from rack.config import get_settings
-
     token = await get_token(client)
-    app = client._transport.app  # type: ignore[attr-defined]
-    new_hash = auth.hash_password("a-new-long-password!")
-    changed = app.dependency_overrides[get_settings]().model_copy(
-        update={"rack_password_hash": new_hash}
+    phone = await get_token(client)
+    r = await client.post(
+        "/api/auth/password",
+        json={"current_password": "a-very-long-test-password", "new_password": "a-new-long-pw!!"},
+        headers=bearer(phone),
     )
-    app.dependency_overrides[get_settings] = lambda: changed
-    os.environ["RACK_PASSWORD_HASH"] = new_hash  # the fixture's monkeypatch restores it
-    get_settings.cache_clear()
-    assert (await client.get("/api/auth/me", headers=bearer(token))).status_code == 401
+    assert r.status_code == 200, r.text
+    fresh = r.json()["token"]  # the phone that changed it gets a new token...
+    assert "set-cookie" not in r.headers
+    assert (await client.get("/api/auth/me", headers=bearer(fresh))).status_code == 200
+    for old in (token, phone):  # ...and every older one stops working
+        assert (await client.get("/api/auth/me", headers=bearer(old))).status_code == 401
 
 
 @pytest.mark.db
@@ -123,7 +121,8 @@ async def test_expired_token_is_refused(client: httpx.AsyncClient) -> None:
     from rack.config import get_settings
 
     settings = client._transport.app.dependency_overrides[get_settings]()  # type: ignore[attr-defined]
-    claims = {"e": 0, "p": auth.password_fingerprint(settings.rack_password_hash)}
+    me = (await client.get("/api/auth/me", headers=bearer(await get_token(client)))).json()
+    claims = {"u": me["id"], "e": 0, "p": auth.password_fingerprint(settings.rack_password_hash)}
 
     class Old(TimestampSigner):
         def get_timestamp(self) -> int:

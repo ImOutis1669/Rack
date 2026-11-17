@@ -21,6 +21,46 @@ def _hash_password() -> None:
     print("Put this in .env as RACK_PASSWORD_HASH (wrap in single quotes).", file=sys.stderr)
 
 
+async def _reset_password(username: str) -> None:
+    """Recovery: set a user's password and end all their sessions (the env hash only creates
+    the owner once, so it can't be used to reset it later)."""
+    from sqlalchemy import select
+
+    from rack.accounts import AccountError, check_password, normalize_username
+    from rack.db import sessionmaker
+    from rack.models import UserRow
+
+    async with sessionmaker()() as session:
+        row = await session.scalar(
+            select(UserRow).where(UserRow.username == normalize_username(username))
+        )
+        if row is None:
+            sys.exit("No such user.")
+        pw = getpass.getpass("New password: ")
+        try:
+            check_password(pw, row.username)
+        except AccountError as exc:
+            sys.exit(str(exc))
+        if getpass.getpass("Repeat: ") != pw:
+            sys.exit("Passwords differ.")
+        row.password_hash = hash_password(pw)
+        row.session_epoch += 1
+        await session.commit()
+    print(f"Password changed for {row.username}; their sessions have ended.")
+
+
+async def _users() -> None:
+    from sqlalchemy import select
+
+    from rack.db import sessionmaker
+    from rack.models import UserRow
+
+    async with sessionmaker()() as session:
+        for r in (await session.execute(select(UserRow).order_by(UserRow.id))).scalars():
+            state = "disabled" if r.disabled_at else "active"
+            print(f"{r.id:>4}  {r.username:<24} {r.role:<7} {state}")
+
+
 async def _load_fixture(source: str, path: Path) -> None:
     from rack.db import sessionmaker
     from rack.ingest import upsert_listings
@@ -94,6 +134,9 @@ def main() -> None:
     p = argparse.ArgumentParser(prog="rack")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("hash-password", help="Generate RACK_PASSWORD_HASH")
+    rp = sub.add_parser("reset-password", help="Set a user's password (ends their sessions)")
+    rp.add_argument("username")
+    sub.add_parser("users", help="List accounts")
     sub.add_parser("vapid-keys", help="Generate VAPID keys for Web Push")
     lf = sub.add_parser("load-fixture", help="Ingest a recorded source response (demo/dev)")
     lf.add_argument("source", choices=["ebay", "vinted", "grailed"])
@@ -107,6 +150,10 @@ def main() -> None:
 
     if args.cmd == "hash-password":
         _hash_password()
+    elif args.cmd == "reset-password":
+        asyncio.run(_reset_password(args.username))
+    elif args.cmd == "users":
+        asyncio.run(_users())
     elif args.cmd == "vapid-keys":
         from rack.notify.webpush import generate_vapid_keys
 

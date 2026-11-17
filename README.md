@@ -118,9 +118,14 @@ ports:
    allows only your email (one-time code). The app then sits behind two logins.
 
 Before going public: use a long, unique password (`rack hash-password`), keep the `.env*` files
-private, and keep `RACK_COOKIE_SECURE=true`. Login is rate-limited (5 attempts per IP and 30 in
-total per 15 minutes). **Settings → Security → Log out all devices** ends every session (do it if a
-device is lost); changing your password does the same automatically. A security review lives in
+private, and keep `RACK_COOKIE_SECURE=true`.
+
+**Accounts (v2.1).** You log in with a username (`RACK_OWNER_USERNAME`, default `owner`) and
+password; the owner account is created from `RACK_PASSWORD_HASH` on the first login. Friends join
+only through single-use invite links you create (they expire after `RACK_INVITE_DAYS`, 7). Login is
+rate-limited (5 attempts per IP, 5 per username, 60 in total per 15 minutes). **Log out all
+devices** ends every session of yours; changing your password does the same. Forgot it?
+`docker compose exec api rack reset-password <username>`; `rack users` lists accounts. A security review lives in
 `docs/security-audit-2026-11-16.md`; `scripts/audit.sh` checks dependencies for known issues.
 
 **LAN only instead?** Set `RACK_BIND=0.0.0.0` and open `http://<pc-ip>:8000`. Push notifications and

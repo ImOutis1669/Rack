@@ -368,3 +368,40 @@ class EstimateSnapshotRow(Base):
     estimate_gbp: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     count: Mapped[int] = mapped_column(Integer)
     kind: Mapped[str] = mapped_column(String(8))
+
+
+# --- v2.1: accounts (docs/v2.1-plan.md) ---
+
+
+class UserRow(Base):
+    """One account. The owner is created from RACK_PASSWORD_HASH on first use; friends sign up
+    with an invite. Sessions carry the user id, epoch and a fingerprint of the password hash."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True)  # stored lowercase
+    display_name: Mapped[str] = mapped_column(String(60))
+    password_hash: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(String(8))  # owner | friend
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    session_epoch: Mapped[int] = mapped_column(Integer, default=0)
+    avatar_version: Mapped[int | None] = mapped_column(Integer)  # None = no photo
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class InviteRow(Base):
+    """Single-use sign-up code. Only its SHA-256 is stored; the code is shown once."""
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    note: Mapped[str | None] = mapped_column(String(100))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -13,22 +13,23 @@ import { useSession } from '@/lib/auth';
 import { loginErrorMessage } from '@/lib/session';
 import { useTheme } from '@/theme/ThemeProvider';
 
-// Just the name, a password and the button: no slogan (DESIGN.md "Copy").
+// Just the name, username, password and the button: no slogan (DESIGN.md "Copy").
 export default function LoginScreen() {
   const session = useSession();
   const { colors, text } = useTheme();
   const [server, setServer] = useState(session.server ?? '');
   const [editServer, setEditServer] = useState(!session.server);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
-    if (!password || busy) return;
+    if (!username.trim() || !password || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await session.signIn(server, password);
+      await session.signIn(server, username, password);
     } catch (e) {
       setError(loginErrorMessage(e));
       setBusy(false);
@@ -58,6 +59,20 @@ export default function LoginScreen() {
         ) : null}
         <TextInput
           style={field}
+          value={username}
+          onChangeText={setUsername}
+          placeholder="Username"
+          placeholderTextColor={colors.subtle}
+          accessibilityLabel="Username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="username"
+          autoComplete="username"
+          returnKeyType="next"
+          autoFocus={!editServer}
+        />
+        <TextInput
+          style={field}
           value={password}
           onChangeText={setPassword}
           placeholder="Password"
@@ -68,16 +83,15 @@ export default function LoginScreen() {
           autoComplete="current-password"
           returnKeyType="go"
           onSubmitEditing={submit}
-          autoFocus={!editServer}
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ disabled: !password || busy }}
-          disabled={!password || busy}
+          accessibilityState={{ disabled: !username.trim() || !password || busy }}
+          disabled={!username.trim() || !password || busy}
           onPress={submit}
           style={({ pressed }) => [
             styles.button,
-            { backgroundColor: colors.foreground, opacity: !password ? 0.4 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
+            { backgroundColor: colors.foreground, opacity: !username.trim() || !password ? 0.4 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
           ]}>
           {busy ? (
             <ActivityIndicator color={colors.background} />

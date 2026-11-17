@@ -30,7 +30,7 @@ describe('normalizeServer', () => {
 
 describe('loginErrorMessage', () => {
   it('maps errors to plain copy', () => {
-    expect(loginErrorMessage(new UnauthorizedError('x'))).toBe('Wrong password');
+    expect(loginErrorMessage(new UnauthorizedError('x'))).toBe('Wrong username or password');
     expect(loginErrorMessage(new TypeError('Network request failed'))).toMatch(/Tailscale/);
     expect(loginErrorMessage(new Error('Too many attempts, try later'))).toBe('Too many attempts, try later');
   });
@@ -56,7 +56,7 @@ describe('Session', () => {
     );
     const s = new Session(store, { fetch: fetch as unknown as typeof globalThis.fetch });
     await s.load();
-    await s.signIn('rack.tail.ts.net', 'pw');
+    await s.signIn('rack.tail.ts.net', 'sam', 'pw');
     expect(s.status).toBe('signedIn');
     expect(store.m.get(TOKEN_KEY)).toBe('tok');
     expect(store.m.get(SERVER_KEY)).toBe('https://rack.tail.ts.net');
@@ -64,6 +64,7 @@ describe('Session', () => {
     const login = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(login[0]).toBe('https://rack.tail.ts.net/api/auth/token');
     expect(login[1].headers).not.toHaveProperty('Authorization');
+    expect(JSON.parse(String(login[1].body))).toEqual({ username: 'sam', password: 'pw' });
 
     await s.api().saved();
     const call = fetch.mock.calls[1] as unknown as [string, RequestInit];
@@ -74,7 +75,7 @@ describe('Session', () => {
   it('refuses a non-https server before sending the password', async () => {
     const fetch = jest.fn();
     const s = new Session(memoryStore(), { fetch });
-    await expect(s.signIn('http://rack.local', 'pw')).rejects.toThrow(/https/);
+    await expect(s.signIn('http://rack.local', 'sam', 'pw')).rejects.toThrow(/https/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -82,7 +83,7 @@ describe('Session', () => {
     const store = memoryStore();
     const s = new Session(store, { fetch: jest.fn(async () => json(401, { detail: 'Wrong password' })) });
     await s.load();
-    await expect(s.signIn('rack.tail.ts.net', 'nope')).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(s.signIn('rack.tail.ts.net', 'sam', 'nope')).rejects.toBeInstanceOf(UnauthorizedError);
     expect(s.status).toBe('signedOut');
     expect(store.m.has(TOKEN_KEY)).toBe(false);
   });

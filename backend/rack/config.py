@@ -23,7 +23,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://rack:rack@localhost:5432/rack"
 
     # Auth
+    # Creates the owner account the first time anyone logs in (v2.1); after that the password
+    # lives in the users table (change it in the app, or `rack reset-password <username>`).
     rack_password_hash: str = ""
+    rack_owner_username: str = "owner"
+    rack_invite_days: int = 7
     rack_session_secret: str = ""
     rack_cookie_secure: bool = True
     rack_session_days: int = 30

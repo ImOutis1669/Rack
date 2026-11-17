@@ -266,3 +266,12 @@ export interface Visit {
   visit_start: string;
   last_visit: string | null;
 }
+
+/** The logged-in account (`GET /api/auth/me`, v2.1). */
+export interface Me {
+  authenticated: boolean;
+  id: number;
+  username: string;
+  display_name: string;
+  role: "owner" | "friend";
+}

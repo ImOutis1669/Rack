@@ -38,7 +38,7 @@ async def sessions(pg_url: str) -> AsyncIterator[async_sessionmaker[AsyncSession
             text(
                 "TRUNCATE listings, listing_images, source_health, profile, designers, "
                 "adjacent_designers, taste_items, hidden, app_state, hunts, notifications, "
-                "push_subscriptions, sold_listings CASCADE"
+                "push_subscriptions, sold_listings, users, invites CASCADE"
             )
         )
     yield async_sessionmaker(engine, expire_on_commit=False)
@@ -46,6 +46,7 @@ async def sessions(pg_url: str) -> AsyncIterator[async_sessionmaker[AsyncSession
 
 
 PASSWORD = "a-very-long-test-password"
+OWNER = "owner"
 _HASH: str | None = None
 
 
@@ -65,13 +66,20 @@ async def client(
     pg_url: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> AsyncIterator[httpx.AsyncClient]:
-    from rack.api.auth import attempts, require_session, reset_caches
+    from rack.api.auth import (
+        attempts,
+        require_session,
+        reset_caches,
+        signup_attempts,
+        user_attempts,
+    )
     from rack.api.main import create_app
     from rack.config import get_settings
     from rack.db import get_session, init_engine
 
     test_env = {
         "RACK_PASSWORD_HASH": password_hash(),
+        "RACK_OWNER_USERNAME": OWNER,
         "RACK_SESSION_SECRET": "test-secret-that-is-long-enough-1234567890",
         "RACK_TRUSTED_PROXIES": "",
         "RACK_COOKIE_SECURE": "false",
@@ -102,6 +110,8 @@ async def client(
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_session] = _session
     attempts.clear()
+    user_attempts.clear()
+    signup_attempts.clear()
     reset_caches()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
@@ -109,6 +119,10 @@ async def client(
     get_settings.cache_clear()  # env is restored by monkeypatch; don't keep test settings cached
 
 
-async def login(client: httpx.AsyncClient) -> None:
-    r = await client.post("/api/auth/login", json={"password": PASSWORD})
+def creds(password: str = PASSWORD, username: str = OWNER) -> dict[str, str]:
+    return {"username": username, "password": password}
+
+
+async def login(client: httpx.AsyncClient, username: str = OWNER, password: str = PASSWORD) -> None:
+    r = await client.post("/api/auth/login", json=creds(password, username))
     assert r.status_code == 204, r.text

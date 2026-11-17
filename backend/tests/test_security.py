@@ -1,6 +1,5 @@
 """Regression tests for docs/security-audit-2026-11-16.md (RACK-01 .. RACK-10)."""
 
-import os
 import time
 from decimal import Decimal
 
@@ -14,7 +13,7 @@ from rack.embeddings import images
 from rack.embeddings.images import ImageError, is_listing_image_host, pinned_request
 from rack.sources.base import build_listing
 from rack.sources.ebay import parse_item
-from tests.conftest import PASSWORD, login, password_hash
+from tests.conftest import PASSWORD, creds, login, password_hash
 
 H = {"X-Requested-With": "rack"}
 
@@ -28,7 +27,7 @@ async def test_spoofed_cf_header_from_untrusted_peer_is_ignored(client: httpx.As
         (
             await client.post(
                 "/api/auth/login",
-                json={"password": "x"},
+                json=creds("x"),
                 headers={"CF-Connecting-IP": f"10.0.0.{i}"},
             )
         ).status_code
@@ -45,14 +44,14 @@ async def test_trusted_tunnel_header_is_used_and_global_cap_holds(
     for i in range(auth.GLOBAL_MAX_ATTEMPTS):
         r = await client.post(
             "/api/auth/login",
-            json={"password": "x"},
+            json=creds("x", f"nobody{i}"),  # spread over usernames, so only IP + global count
             headers={"CF-Connecting-IP": f"203.0.113.{i}"},
         )
         assert r.status_code == 401  # each real client IP gets its own 5 tries...
     r = await client.post(
-        "/api/auth/login", json={"password": PASSWORD}, headers={"CF-Connecting-IP": "198.51.100.7"}
+        "/api/auth/login", json=creds(), headers={"CF-Connecting-IP": "198.51.100.7"}
     )
-    assert r.status_code == 429  # ...but 30 failures in total closes login for everyone
+    assert r.status_code == 429  # ...but 60 failures in total closes login for everyone
 
 
 def test_attempt_store_is_bounded() -> None:
@@ -70,7 +69,6 @@ async def test_logout_all_kills_copied_cookies(client: httpx.AsyncClient) -> Non
     await login(client)
     copied = client.cookies.get(auth.COOKIE)
     assert (await client.post("/api/auth/logout-all", headers=H)).status_code == 204
-    auth._epoch_cache = (0.0, -1)
     client.cookies.set(auth.COOKIE, copied)
     assert (await client.get("/api/auth/me")).status_code == 401
     client.cookies.clear()
@@ -79,19 +77,22 @@ async def test_logout_all_kills_copied_cookies(client: httpx.AsyncClient) -> Non
 
 
 @pytest.mark.db
-async def test_password_change_ends_sessions(client: httpx.AsyncClient) -> None:
-    from rack.config import get_settings
-
+async def test_password_change_ends_other_sessions(client: httpx.AsyncClient) -> None:
     await login(client)
-    app = client._transport.app  # type: ignore[attr-defined]
-    new_hash = auth.hash_password("a-new-long-password!")
-    changed = app.dependency_overrides[get_settings]().model_copy(
-        update={"rack_password_hash": new_hash}
+    copied = client.cookies.get(auth.COOKIE)
+    r = await client.post(
+        "/api/auth/password",
+        json={"current_password": PASSWORD, "new_password": "a-new-long-password!"},
+        headers=H,
     )
-    app.dependency_overrides[get_settings] = lambda: changed
-    os.environ["RACK_PASSWORD_HASH"] = new_hash  # the fixture's monkeypatch restores it
-    get_settings.cache_clear()
-    assert (await client.get("/api/auth/me")).status_code == 401
+    assert r.status_code == 200, r.text
+    assert (await client.get("/api/auth/me")).status_code == 200  # this browser got a new cookie
+    client.cookies.clear()
+    client.cookies.set(auth.COOKIE, copied)
+    assert (await client.get("/api/auth/me")).status_code == 401  # every other one is out
+    client.cookies.clear()
+    assert (await client.post("/api/auth/login", json=creds())).status_code == 401
+    await login(client, password="a-new-long-password!")
 
 
 # --- RACK-03 / RACK-09: image fetches ---

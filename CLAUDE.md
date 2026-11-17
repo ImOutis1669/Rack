@@ -264,9 +264,22 @@ and the tunnel + Cloudflare Access.
 Security notes:
 - Secrets are split: `.env` (shared), `.env.api`, `.env.worker`, `.env.tunnel` (see compose).
 - Auth: CF-Connecting-IP is trusted only from `RACK_TRUSTED_PROXIES` (cloudflared; lookup capped
-  at 1 s, failures cached 10 min); global login cap; sessions carry an epoch
-  (`app_state['auth']`) + password fingerprint (logout-all, password change). Session secret
-  must be >= 32 chars. uvicorn runs with `--no-proxy-headers`.
+  at 1 s, failures cached 10 min); global login cap; session secret must be >= 32 chars. uvicorn
+  runs with `--no-proxy-headers`.
+- Accounts (v2.1 step 1, docs/v2.1-plan.md): `users` + `invites` (migration 0019),
+  `rack/accounts.py` (username/password/display-name rules, invite codes, `ensure_owner` creates
+  the owner from `RACK_PASSWORD_HASH` + `RACK_OWNER_USERNAME` on the first login while the table
+  is empty, keeping the old epoch). Cookie/token claims `{u, e, p}` = user id, that user's
+  `session_epoch`, password fingerprint; checked per request against a 5 s per-user cache
+  (`forget_user(id)` after changing epoch/password/disabled). `require_user` returns
+  `CurrentUser` (`require_session` is the old alias; `User` annotated type), `require_owner`
+  for `/api/admin/*` (users list/disable/enable/delete, invites create/list/revoke; the owner
+  can't be changed there). Login: unknown users verify against a dummy hash, one generic error;
+  limits per IP + global 60 (`attempts`) and per username (`user_attempts`). Sign-up
+  `POST /api/auth/signup` needs the CSRF header, invite looked up by SHA-256 `FOR UPDATE`; bad /
+  used / revoked / expired codes give one answer and count in `signup_attempts`. Invite links
+  are `/join#<code>` (fragment). `POST /api/auth/password` re-issues this device's cookie or
+  token. CLI: `rack reset-password <user>`, `rack users`. Tests: `tests/test_accounts.py`.
 - iOS app auth (iOS step 1): `POST /api/auth/token` (same password check and rate limits as
   `/login`) returns a bearer token signed with salt `rack-app-token` (cookies use
   `rack-session`, so neither works as the other), same epoch + fingerprint claims, lifetime

@@ -4,6 +4,7 @@ import { MagicCard } from "../components/magicui/magic-card";
 import { Button, Input } from "../components/ui";
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -13,7 +14,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await api.login(password);
+      await api.login(username, password);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't log in");
@@ -31,6 +32,17 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
               <h1 className="font-display text-largetitle font-bold">Rack</h1>
             </div>
             <Input
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="Username"
+              aria-label="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="bg-background dark:bg-elevated"
+            />
+            <Input
               type="password"
               autoComplete="current-password"
               placeholder="Password"
@@ -39,7 +51,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
               onChange={(e) => setPassword(e.target.value)}
               className="bg-background dark:bg-elevated"
             />
-            <Button type="submit" variant="primary" size="lg" disabled={busy || !password}>
+            <Button type="submit" variant="primary" size="lg" disabled={busy || !username.trim() || !password}>
               {busy ? "Logging in" : "Log in"}
             </Button>
             {error && <p className="text-center text-footnote text-danger">{error}</p>}

@@ -1,4 +1,5 @@
 import type {
+  Me,
   Category,
   Comparable,
   Designer,
@@ -90,10 +91,17 @@ export function createApi(cfg: ApiConfig) {
   }
 
   return {
-    login: (password: string) => request<void>("/api/auth/login", json("POST", { password })),
+    login: (username: string, password: string) =>
+      request<void>("/api/auth/login", json("POST", { username, password })),
     /** iOS app login: a bearer token for the Keychain instead of a cookie. */
-    appToken: (password: string) =>
-      request<{ token: string; expires_in: number }>("/api/auth/token", json("POST", { password })),
+    appToken: (username: string, password: string) =>
+      request<{ token: string; expires_in: number }>("/api/auth/token", json("POST", { username, password })),
+    /** Friend sign-up with a single-use invite code (web: logs in with a cookie). */
+    signup: (body: { invite: string; username: string; password: string; display_name?: string }) =>
+      request<void>("/api/auth/signup", json("POST", body)),
+    /** Ends your other sessions; the web gets a new cookie, the app a new token (`token`). */
+    changePassword: (current_password: string, new_password: string) =>
+      request<{ token: string | null }>("/api/auth/password", json("POST", { current_password, new_password })),
     logout: async () => {
       await cfg.onSignedOut?.();
       return request<void>("/api/auth/logout", json("POST"));
@@ -102,7 +110,7 @@ export function createApi(cfg: ApiConfig) {
       await cfg.onSignedOut?.();
       return request<void>("/api/auth/logout-all", json("POST"));
     },
-    me: () => request<{ authenticated: boolean }>("/api/auth/me"),
+    me: () => request<Me>("/api/auth/me"),
     feed: (params: FeedParams, cursor?: string | null) =>
       request<FeedPage>(`/api/feed?${feedQueryString(params, cursor)}`),
     health: () => request<SourceHealth[]>("/api/sources/health"),

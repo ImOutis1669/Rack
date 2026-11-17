@@ -44,13 +44,13 @@ describe("createApi", () => {
     expect(onSignedOut).toHaveBeenCalledTimes(3);
   });
 
-  it("asks for an app token with the password", async () => {
+  it("asks for an app token with the username and password", async () => {
     const fetch = ok(200, { token: "t", expires_in: 60 });
     const api = createApi({ baseUrl: "https://rack.example", fetch, authHeaders: () => ({}) });
-    expect(await api.appToken("pw")).toEqual({ token: "t", expires_in: 60 });
+    expect(await api.appToken("sam", "pw")).toEqual({ token: "t", expires_in: 60 });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://rack.example/api/auth/token");
-    expect(JSON.parse(String(init.body))).toEqual({ password: "pw" });
+    expect(JSON.parse(String(init.body))).toEqual({ username: "sam", password: "pw" });
   });
 
   it("surfaces the API's error detail", async () => {

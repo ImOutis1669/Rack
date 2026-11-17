@@ -9,7 +9,7 @@ from rack.ingest import upsert_listings
 from rack.sources.base import Listing, SearchQuery, SourceError
 from rack.sources.ebay import parse_search
 from rack.worker.refresh import refresh_all
-from tests.conftest import PASSWORD, login
+from tests.conftest import creds, login
 
 pytestmark = pytest.mark.db
 
@@ -23,9 +23,9 @@ async def test_feed_requires_login(client: httpx.AsyncClient) -> None:
 
 async def test_wrong_password_then_rate_limited(client: httpx.AsyncClient) -> None:
     for _ in range(5):
-        r = await client.post("/api/auth/login", json={"password": "nope"})
+        r = await client.post("/api/auth/login", json=creds("nope"))
         assert r.status_code == 401
-    r = await client.post("/api/auth/login", json={"password": PASSWORD})
+    r = await client.post("/api/auth/login", json=creds())
     assert r.status_code == 429
 
 

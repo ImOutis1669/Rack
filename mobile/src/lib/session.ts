@@ -35,7 +35,7 @@ export function normalizeServer(input: string): string | null {
 
 /** What to show under the password field. */
 export function loginErrorMessage(err: unknown): string {
-  if (err instanceof UnauthorizedError) return 'Wrong password';
+  if (err instanceof UnauthorizedError) return 'Wrong username or password';
   if (err instanceof TypeError) return "Can't reach Rack. Check that Tailscale is on.";
   const msg = err instanceof Error ? err.message : '';
   return msg || 'Something went wrong';
@@ -114,11 +114,11 @@ export class Session {
     return api;
   }
 
-  async signIn(serverInput: string, password: string): Promise<void> {
+  async signIn(serverInput: string, username: string, password: string): Promise<void> {
     const server = normalizeServer(serverInput);
     if (!server) throw new Error('Enter the https address of your Rack server');
     this.token = null; // log in without an old token
-    const { token } = await this.api(server).appToken(password);
+    const { token } = await this.api(server).appToken(username, password);
     await this.store.setItemAsync(TOKEN_KEY, token);
     await this.store.setItemAsync(SERVER_KEY, server);
     this.token = token;

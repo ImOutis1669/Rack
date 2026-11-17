@@ -12,6 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from rack.api import (
     actions,
+    admin,
     auth,
     feed,
     gallery,
@@ -61,7 +62,10 @@ def config_problems(s: Settings) -> list[str]:
             "logins are refused until it is fixed"
         )
     if not s.rack_password_hash.startswith("$argon2"):
-        problems.append("RACK_PASSWORD_HASH is not an argon2 hash: run `rack hash-password`")
+        problems.append(
+            "RACK_PASSWORD_HASH is not an argon2 hash: run `rack hash-password` "
+            "(it creates the owner account on first login)"
+        )
     if s.rack_public_url.startswith("https://") and not s.rack_cookie_secure:
         problems.append("RACK_PUBLIC_URL is https but RACK_COOKIE_SECURE=false")
     return problems
@@ -77,6 +81,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 def create_app(static_dir: Path | None = None) -> FastAPI:
     app = FastAPI(title="Rack", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.include_router(auth.router)
+    app.include_router(admin.router)
     app.include_router(feed.router)
     app.include_router(profile.router)
     app.include_router(taste.router)
