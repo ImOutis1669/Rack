@@ -149,7 +149,11 @@ stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (
 0. Setup  1. Skeleton (eBay, basic feed, auth)  2. Taste + ranking  3. More sources + health + dedupe
 4. Hunts + notifications  5. Polish (PWA, deal score, landed cost, Web Push, README)
 
-Status: v1.1 done (2026-11-16), tagged `v1.1`: docs/v1.1-brief.md features 1-6 plus the
+Status: v1.2 done (2026-11-17), tagged `v1.2`: docs/v1.2-brief.md features 1-7 (top-bar glass,
+app-level dock, Neue Montreal + 35px titles, swipe-down sheets, full-size eBay photos + AVIF
+thumbnails, Accessories, Vestiaire removed) plus Basil icons, the Magic Card orb login and five
+craftwork design skills. Release notes: docs/release-notes-v1.2.md; photo numbers:
+docs/perf-v1.2.md. Earlier: v1.1 done (2026-11-16), tagged `v1.1`: docs/v1.1-brief.md features 1-6 plus the
 docs/v1.1-part2-brief.md features the user folded into v1.1 (design skill, Liquid Glass, feed title,
 minimal Wardrobe, performance). OLED mode was dropped by the user. Release notes:
 docs/release-notes-v1.1.md; performance numbers: docs/perf-v1.1.md.

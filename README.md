@@ -36,7 +36,8 @@ It's for a single user, and it runs in Docker on your own PC.
 - **eBay without storing eBay users' data**: listings come from eBay's official API; seller names
   and locations are never stored, and eBay listings are deleted a week after they go.
 
-What's new in v1.1: [docs/release-notes-v1.1.md](docs/release-notes-v1.1.md).
+What's new in v1.2: [docs/release-notes-v1.2.md](docs/release-notes-v1.2.md)
+(v1.1: [docs/release-notes-v1.1.md](docs/release-notes-v1.1.md)).
 
 ## Requirements
 Windows 10/11 with **Docker Desktop** (WSL 2 backend) and a few GB of disk for the images, the model
