@@ -10,6 +10,7 @@ from rack.sources.base import Category, SearchQuery, SourceError, SourceNotConfi
 from rack.sources.ebay import (
     EbayAdapter,
     build_search_params,
+    full_size_image,
     is_womens,
     parse_item,
     parse_search,
@@ -165,3 +166,31 @@ async def test_counts_calls_per_ebay_day() -> None:
 def test_quota_day_resets_at_midnight_pacific() -> None:
     assert quota_day(datetime(2026, 11, 17, 7, 59, tzinfo=UTC)) == "2026-11-16"
     assert quota_day(datetime(2026, 11, 17, 8, 0, tzinfo=UTC)) == "2026-11-17"
+
+
+G = "https://i.ebayimg.com/images/g"
+
+
+def test_full_size_image_uses_the_getitem_variant() -> None:
+    assert full_size_image(f"{G}/abc/s-l225.jpg") == f"{G}/abc/s-l1600.jpg"
+    assert full_size_image(f"{G}/abc/s-l500.PNG") == f"{G}/abc/s-l1600.PNG"
+    assert full_size_image(f"{G}/abc/s-l1600.jpg") == f"{G}/abc/s-l1600.jpg"
+    other = "https://i.vendoo.co/i/x/y.jpeg?vs=8160,8160"
+    assert full_size_image(other) == other
+
+
+def test_search_summaries_store_full_size_photos_once() -> None:
+    summary = {
+        "itemId": "v1|1|0",
+        "title": "Leather jacket",
+        "itemWebUrl": "https://www.ebay.co.uk/itm/1",
+        "price": {"value": "10.00", "currency": "GBP"},
+        "image": {"imageUrl": f"{G}/abc/s-l225.jpg"},
+        "additionalImages": [
+            {"imageUrl": f"{G}/def/s-l225.jpg"},
+            {"imageUrl": f"{G}/abc/s-l1600.jpg"},  # the same photo again, at another size
+        ],
+    }
+    listing = parse_item(summary)
+    assert listing is not None
+    assert listing.images == [f"{G}/abc/s-l1600.jpg", f"{G}/def/s-l1600.jpg"]

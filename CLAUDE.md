@@ -78,7 +78,9 @@ stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (
     the hourly `ebay_retention` worker job deletes eBay listings that are inactive or unseen for
     `RACK_EBAY_RETENTION_DAYS` (7; votes/saves on them go too). "Hide seller" is disabled for eBay.
     Live behaviour (probed 2026-11-16): quota 5,000 searches + 5,000 item lookups per eBay day
-    (resets 08:00 UTC). Search summaries have no size/brand/department, so the worker's
+    (resets 08:00 UTC). Search returns photos as 225 px `s-l225`; getItem returns the same photo
+    id as `s-l1600`, so `ebay.full_size_image` stores every eBay photo as `s-l1600` (v1.2,
+    migration 0016; docs/perf-v1.2.md). Search summaries have no size/brand/department, so the worker's
     `ebay_details` job looks each new listing up once with getItem (`RACK_EBAY_DETAILS_DAILY_CAP`
     1000, 20 per 2-min run); until then size comes from the title (`parsing.size_from_title`).
     Searches add `deliveryCountry:GB` (imports allowed; most archive stock is JP/US). Women's items
@@ -151,9 +153,13 @@ docs/v1.1-part2-brief.md features the user folded into v1.1 (design skill, Liqui
 minimal Wardrobe, performance). OLED mode was dropped by the user. Release notes:
 docs/release-notes-v1.1.md; performance numbers: docs/perf-v1.1.md.
 Performance notes (v1.1):
-- Tiles use `/api/img/{image_id}?w=480|640|960` (api/thumbs.py, rack/thumbs.py): WebP, fetched with
+- Tiles use `/api/img/{image_id}?w=480|640|960` (api/thumbs.py, rack/thumbs.py): AVIF 70 when the
+  request's Accept allows it, else WebP 85 (v1.2, `Vary: Accept`), fetched with
   `embeddings.images.fetch_listing_image` (allowlist, pinned IP, no redirects, 10 MB), cached in
-  RACK_DATA_DIR/thumbs, pruned hourly by age (7 d) and size (1 GB). Wardrobe: /api/taste/{id}/thumb.
+  RACK_DATA_DIR/thumbs as `<sha256(url)>_<w>_v<SETTINGS_VERSION>.<fmt>`, pruned hourly by age (7 d)
+  and size (1 GB). Wardrobe: /api/taste/{id}/thumb. Tile URLs carry `v=` (lib/thumbs.ts:
+  THUMB_VERSION + hash of the photo URL) because the browser caches them as immutable for a
+  week: bump THUMB_VERSION together with SETTINGS_VERSION.
 - Instant start: `lib/snapshot.ts` keeps the default feed's first page and Saved in localStorage
   (24 h) as placeholder data; cleared on logout / logout-all / any 401. Not TanStack persistence:
   the feed key includes the visit start, which changes every open.

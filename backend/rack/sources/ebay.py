@@ -143,6 +143,21 @@ def safe_raw(item: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+# Search summaries return each photo as a 225 px `s-l225` variant; getItem returns the very same
+# photo id as `s-l1600` (live probe 2026-11-17: same ids, CDN serves s-l225/500/960/1600 at
+# 6.7/20/54/131 KB). Store the getItem form for both, so tiles and sheets are sharp and a search
+# refresh never swaps a getItem gallery back to the small version (which also dropped embeddings).
+_EBAY_SIZE = re.compile(
+    r"^(https://i\.ebayimg\.com/images/g/[^/]+/)s-l\d+(\.(?:jpe?g|png|webp))$", re.I
+)
+FULL_SIZE = "s-l1600"
+
+
+def full_size_image(url: str) -> str:
+    """eBay CDN photo URL at the size getItem returns; any other URL unchanged."""
+    return _EBAY_SIZE.sub(rf"\g<1>{FULL_SIZE}\g<2>", url)
+
+
 def parse_item(item: dict[str, Any]) -> Listing | None:
     """Parse an itemSummary (search) or item (getItem) object into a Listing (None: skip it)."""
     if is_womens(item):
@@ -154,11 +169,10 @@ def parse_item(item: dict[str, Any]) -> Listing | None:
         return None
 
     images: list[str] = []
-    if (img := item.get("image")) and img.get("imageUrl"):
-        images.append(img["imageUrl"])
-    for extra in item.get("additionalImages") or []:
-        if extra.get("imageUrl") and extra["imageUrl"] not in images:
-            images.append(extra["imageUrl"])
+    candidates = [item.get("image") or {}, *(item.get("additionalImages") or [])]
+    for img in candidates:
+        if (url := img.get("imageUrl")) and (url := full_size_image(url)) not in images:
+            images.append(url)
 
     shipping: Decimal | None = None
     for opt in item.get("shippingOptions") or []:

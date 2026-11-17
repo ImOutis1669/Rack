@@ -18,7 +18,7 @@ from rack.embeddings.images import ImageError, fetch_listing_image
 from rack.ingest import upsert_listings
 from rack.models import ListingImageRow
 from rack.sources.base import Listing
-from rack.thumbs import cache_path, make_thumb, prune
+from rack.thumbs import SETTINGS_VERSION, cache_path, make_thumb, pick_format, prune
 from tests.conftest import login
 from tests.fakes import png
 
@@ -53,6 +53,25 @@ def test_cache_path_is_per_source_and_width(tmp_path: Path) -> None:
     assert a == cache_path(tmp_path, "https://i.ebayimg.com/a.jpg", 480)
     assert a != cache_path(tmp_path, "https://i.ebayimg.com/a.jpg", 960)
     assert a.suffix == ".webp" and a.parent.parent == tmp_path
+    avif = cache_path(tmp_path, "https://i.ebayimg.com/a.jpg", 480, "avif")
+    assert avif.suffix == ".avif" and avif != a
+    assert f"_v{SETTINGS_VERSION}." in a.name  # a settings change never serves an old file
+
+
+def test_avif_thumbs_and_format_choice() -> None:
+    avif = make_thumb(jpeg((1600, 2000)), 640, "avif")
+    img = Image.open(io.BytesIO(avif))
+    assert img.format == "AVIF" and img.size == (640, 800)
+    assert pick_format("image/avif,image/webp,image/apng,*/*") == "avif"
+    assert pick_format("image/webp,*/*") == "webp"
+    assert pick_format(None) == "webp"
+
+
+def test_prune_also_removes_avif(tmp_path: Path) -> None:
+    p = tmp_path / "ab" / "x.avif"
+    p.parent.mkdir()
+    p.write_bytes(b"x")
+    assert prune(tmp_path, max_bytes=10**9, max_age_s=-1) == 1
 
 
 def test_prune_by_age_then_size(tmp_path: Path) -> None:
@@ -133,6 +152,15 @@ async def test_thumbnail_route(
     assert (await client.get(f"/api/img/{image_id}?w=960")).status_code == 200
     assert len(calls) == 2
     assert (tmp_path / "data" / "thumbs").is_dir()
+    assert r.headers["vary"] == "Accept"
+
+    # Safari / Chrome send image/avif in Accept: they get AVIF, cached separately from WebP
+    avif = await client.get(f"/api/img/{image_id}?w=480", headers={"Accept": "image/avif,image/webp,*/*"})
+    assert avif.status_code == 200 and avif.headers["content-type"] == "image/avif"
+    assert Image.open(io.BytesIO(avif.content)).format == "AVIF"
+    assert len(calls) == 3
+    await client.get(f"/api/img/{image_id}?w=480", headers={"Accept": "image/avif"})
+    assert len(calls) == 3  # from the AVIF cache
 
     assert (await client.get(f"/api/img/{image_id}?w=123")).status_code == 422  # sizes fixed
     assert (await client.get("/api/img/999999")).status_code == 404  # only known photos
