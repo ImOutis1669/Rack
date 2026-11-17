@@ -69,6 +69,19 @@ Feed (iOS step 4, checked on the user's iPhone):
 - **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
   messages show as a toast above the tab bar.
 
+Saved, Hunts, Wardrobe (iOS step 6, checked on the user's iPhone):
+- **Saved:** the feed's grid; "I bought it" as a fill capsule under each tile.
+- **Hunts:** grouped cards (radius 16, `surface`): name, summary, status, match count (new in
+  accent); paused cards dimmed. Tap opens the matches in the listing grid (Run now + ⋯ in the
+  header); long-press is a native menu (Run now, Pause/Resume, Mute/Alerts on, Edit, Delete).
+  The form is a full-height form sheet; choices (category, interval, sources) are chips.
+- **Wardrobe:** iOS's segmented control (SwiftUI) for Wardrobe / Wishlist; "Worth now" header;
+  tiles like the web. Add sheet: two dashed tiles (Choose photos, Take photo), thumbnails of the
+  picks (tap to remove), then link or description. Item sheet: photo, only filled-in fields as
+  an inset grouped list, estimate with 3-up comparables, trend with segmented 30/90 and a
+  tappable sparkline. Edit mode: Cancel / Save in the header, chips for category, iOS compact
+  date picker, Delete via an action sheet (Move back to Saved for bought items).
+
 Listing sheet (iOS step 5, checked on the user's iPhone):
 - **Presentation:** a native modal sheet (swipe down or ✕), brand as the title, ⋯ in the header
   as a native menu (I bought it while saved, Hide seller (disabled for eBay), Hide brand).

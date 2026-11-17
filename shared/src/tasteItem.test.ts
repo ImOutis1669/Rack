@@ -70,3 +70,21 @@ describe("sheet", () => {
     expect(formatDate("2025-01-01")).toBe("1 Jan 2025");
   });
 });
+
+describe("edit draft (shared by web and iOS)", () => {
+  it("builds the PATCH body: blanks clear, money only for wardrobe items", async () => {
+    const { patchFrom } = await import("./tasteItem");
+    const d = { name: " Belt ", brand: "", size: "", category: "" as const, paid: "270", worth: "", date: "", note: "" };
+    expect(patchFrom(d, "wardrobe")).toEqual({
+      name: "Belt",
+      brand: null,
+      size: null,
+      category: null,
+      note: null,
+      purchase_price_gbp: "270.00",
+      custom_value_gbp: null,
+      purchase_date: null,
+    });
+    expect(patchFrom(d, "wishlist")).not.toHaveProperty("purchase_price_gbp");
+  });
+});

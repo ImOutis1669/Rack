@@ -68,7 +68,16 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   per update (reading a module Map directly got memoized by the React Compiler: stale UI);
   `lib/share.ts` = RN Share. "Hunt for this" stores `['huntPrefill']` in the query cache and
   `router.dismissTo('/hunts')` (step 6 reads it). `Icon` wraps everything in a
-  `pointerEvents="none"` View (SF SymbolView swallowed taps); `system` forces the SF Symbol.
+  `pointerEvents="none"` View (SF SymbolView swallowed taps); `system` forces the SF Symbol;
+  `SF_ONLY` (bookmark) always uses SF Symbols. Step 6: `components/ListingGrid` (feed, Saved,
+  hunt matches), Saved tab (refetch on focus, drops unsaved/bought at once), Hunts stack
+  (`index`, `[id]` matches, `form` sheet; `['huntPrefill']` opens the form once),
+  Wardrobe stack (`index` with the SwiftUI segmented `Picker` from `@expo/ui` as
+  `components/Segmented`, `add` sheet with expo-image-picker (compatible mode = JPEG, up to 20),
+  `[id]` item sheet with edit mode, native date picker, ActionSheetIOS delete). The edit-draft
+  helpers (`draftFrom`, `draftErrors`, `patchFrom`, `photoState`) moved to `shared/tasteItem`.
+  `@react-native-segmented-control` was tried and dropped (its types don't fit React 19).
+  Never put helpers or tests under `src/app/`: every file there is a route.
   The browser pane's web
   build of the app errors (no Keychain/SQLite on web): ignore it, the app is iOS only. Expo Go on the user's iPhone: Metro with
   `REACT_NATIVE_PACKAGER_HOSTNAME` = this PC's Tailscale IP (launch.json "mobile"; 8081 is often
@@ -281,6 +290,10 @@ Phase 4 notes:
   EU within half a size, same system exact; bare 3-15 = UK, 35-50 = EU). First run (and after editing the search)
   is a silent baseline. Global hard filters (hidden, banned words, fit, excluded designers) apply.
   All sources. Min interval 5 min; worker checks due hunts every minute.
+  Stored matches follow the hunt's current settings (`worker/hunts.prune_matches`, iOS step 6
+  fix): re-checked with the listing's current data on every run and on every edit
+  (`PUT /api/hunts/{id}`), so turning on "Size must match", a lower max price etc. drop earlier
+  matches at once. Before this, matches were add-only and old wrong-size ones stayed listed.
 - All worker jobs share one adapter per source (`worker/adapters.py`) so rate limits hold across jobs.
 - Alerts (`notify/`): `notify_once` claims a unique key in `notifications` before sending (no
   duplicates); if every channel fails the claim is released for retry. Keys: `hunt:<id>:<source>:

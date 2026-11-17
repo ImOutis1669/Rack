@@ -1,10 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { CATEGORIES, type Category, type TasteItem } from "@rack/shared/types";
-import { defaultPrice, parsePrice } from "@rack/shared/bought";
+import { CATEGORIES, type TasteItem } from "@rack/shared/types";
 import { safeHref } from "@rack/shared/safe";
-import { CATEGORY_LABEL, detailRows, displayName, itemName, sourceLink, tileValue } from "@rack/shared/tasteItem";
+import {
+  CATEGORY_LABEL,
+  detailRows,
+  displayName,
+  draftErrors,
+  draftFrom,
+  itemName,
+  patchFrom,
+  photoState,
+  sourceLink,
+  tileValue,
+  type Draft,
+} from "@rack/shared/tasteItem";
+
+export { draftErrors, draftFrom } from "@rack/shared/tasteItem";
 import { thumbSet } from "@rack/shared/thumbs";
 import { tileBadge } from "@rack/shared/trend";
 import { cn } from "../lib/utils";
@@ -13,13 +26,6 @@ import { toast } from "./Toast";
 import { Button, Field, Group, IconButton, Input, Row, Select, Sheet, Textarea } from "./ui";
 import { EstimateSection, MoneyField } from "./WardrobeValue";
 import { Icon } from "./icons/Icon";
-
-/** Status shown on the photo while the item is still being read, or if its photo is missing. */
-function photoState(it: TasteItem): string | null {
-  if (it.photo_missing) return "Photo couldn't be copied";
-  if (it.embed_error) return "Couldn't read";
-  return it.embedded ? null : "Learning";
-}
 
 /** Grid tile, like a feed tile: photo, brand, name, value. Tap to open the sheet. */
 export function TasteTile({ item, onOpen }: { item: TasteItem; onOpen: () => void }) {
@@ -74,57 +80,6 @@ export function TasteTile({ item, onOpen }: { item: TasteItem; onOpen: () => voi
   );
 }
 
-
-interface Draft {
-  name: string;
-  brand: string;
-  size: string;
-  category: "" | Exclude<Category, "any">;
-  paid: string;
-  worth: string;
-  date: string;
-  note: string;
-}
-
-export function draftFrom(it: TasteItem): Draft {
-  return {
-    name: it.name ?? itemName(it) ?? "",
-    brand: it.brand ?? "",
-    size: it.size ?? "",
-    category: it.category ?? "",
-    paid: defaultPrice(it.purchase_price_gbp),
-    worth: defaultPrice(it.custom_value_gbp),
-    date: it.purchase_date ?? "",
-    note: it.note ?? "",
-  };
-}
-
-/** The edit form's problems, by field ("" = fine). */
-export function draftErrors(d: Draft, today = new Date().toISOString().slice(0, 10)): Partial<Record<keyof Draft, string>> {
-  const out: Partial<Record<keyof Draft, string>> = {};
-  if (d.paid && parsePrice(d.paid) == null) out.paid = "Enter pounds, like 180 or 180.50";
-  if (d.worth && parsePrice(d.worth) == null) out.worth = "Enter pounds, like 180 or 180.50";
-  if (d.date && (d.date < "1950-01-01" || d.date > today)) out.date = "Pick a date up to today";
-  return out;
-}
-
-function patchFrom(d: Draft, kind: TasteItem["kind"]) {
-  const blank = (s: string) => s.trim() || null;
-  return {
-    name: blank(d.name),
-    brand: blank(d.brand),
-    size: blank(d.size),
-    category: d.category || null,
-    note: blank(d.note),
-    ...(kind === "wardrobe"
-      ? {
-          purchase_price_gbp: d.paid ? parsePrice(d.paid) : null,
-          custom_value_gbp: d.worth ? parsePrice(d.worth) : null,
-          purchase_date: d.date || null,
-        }
-      : {}),
-  };
-}
 
 /** Item detail, in the listing sheet's style. The pencil switches to an edit form. */
 export function TasteItemSheet({ item, open, onClose }: { item: TasteItem; open: boolean; onClose: () => void }) {

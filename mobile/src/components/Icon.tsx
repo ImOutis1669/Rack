@@ -25,6 +25,8 @@ export const SF: Record<string, [SFSymbol, SFSymbol]> = {
   buy: ['bag', 'bag.fill'],
   logout: ['rectangle.portrait.and.arrow.right', 'rectangle.portrait.and.arrow.right'],
   'add-photo': ['photo.badge.plus', 'photo.badge.plus.fill'],
+  camera: ['camera', 'camera.fill'],
+  external: ['arrow.up.right.square', 'arrow.up.right.square.fill'],
   'chevron-down': ['chevron.down', 'chevron.down'],
   'chevron-left': ['chevron.left', 'chevron.left'],
   'chevron-right': ['chevron.right', 'chevron.right'],

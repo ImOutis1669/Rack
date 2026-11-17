@@ -1,4 +1,5 @@
 import type { Category, TasteItem } from "./types";
+import { defaultPrice, parsePrice } from "./bought";
 import { formatGBP, SOURCE_LABEL } from "./format";
 import { worth } from "./wardrobeValue";
 
@@ -64,4 +65,64 @@ export function sourceLink(it: Pick<TasteItem, "listing_url" | "image_url">): { 
   if (it.listing_url) return { href: it.listing_url, label: "View original listing" };
   if (it.image_url) return { href: it.image_url, label: "View source" };
   return null;
+}
+
+/** Status shown on the photo while the item is still being read, or if its photo is missing. */
+export function photoState(it: TasteItem): string | null {
+  if (it.photo_missing) return "Photo couldn't be copied";
+  if (it.embed_error) return "Couldn't read";
+  return it.embedded ? null : "Learning";
+}
+
+/** The item sheet's edit form (web and iOS). */
+export interface Draft {
+  name: string;
+  brand: string;
+  size: string;
+  category: "" | Exclude<Category, "any">;
+  paid: string;
+  worth: string;
+  date: string;
+  note: string;
+}
+
+export function draftFrom(it: TasteItem): Draft {
+  return {
+    name: it.name ?? itemName(it) ?? "",
+    brand: it.brand ?? "",
+    size: it.size ?? "",
+    category: it.category ?? "",
+    paid: defaultPrice(it.purchase_price_gbp),
+    worth: defaultPrice(it.custom_value_gbp),
+    date: it.purchase_date ?? "",
+    note: it.note ?? "",
+  };
+}
+
+/** The edit form's problems, by field ("" = fine). */
+export function draftErrors(d: Draft, today = new Date().toISOString().slice(0, 10)): Partial<Record<keyof Draft, string>> {
+  const out: Partial<Record<keyof Draft, string>> = {};
+  if (d.paid && parsePrice(d.paid) == null) out.paid = "Enter pounds, like 180 or 180.50";
+  if (d.worth && parsePrice(d.worth) == null) out.worth = "Enter pounds, like 180 or 180.50";
+  if (d.date && (d.date < "1950-01-01" || d.date > today)) out.date = "Pick a date up to today";
+  return out;
+}
+
+/** The PATCH body for a draft (empty fields clear; money only for wardrobe items). */
+export function patchFrom(d: Draft, kind: TasteItem["kind"]) {
+  const blank = (s: string) => s.trim() || null;
+  return {
+    name: blank(d.name),
+    brand: blank(d.brand),
+    size: blank(d.size),
+    category: d.category || null,
+    note: blank(d.note),
+    ...(kind === "wardrobe"
+      ? {
+          purchase_price_gbp: d.paid ? parsePrice(d.paid) : null,
+          custom_value_gbp: d.worth ? parsePrice(d.worth) : null,
+          purchase_date: d.date || null,
+        }
+      : {}),
+  };
 }

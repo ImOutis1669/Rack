@@ -7,7 +7,7 @@ import type { Listing } from '@rack/shared/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { memo, type ReactNode } from 'react';
 import { PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -32,9 +32,11 @@ function Overlay({ style, children }: { style?: object; children: ReactNode }) {
 interface Props {
   item: Listing;
   width: number;
+  /** Saved: an "I bought it" capsule under the price. */
+  showBought?: boolean;
 }
 
-export const ListingTile = memo(function ListingTile({ item, width }: Props) {
+export const ListingTile = memo(function ListingTile({ item, width, showBought }: Props) {
   const session = useSession();
   const qc = useQueryClient();
   const { colors, scheme, text, customFont } = useTheme();
@@ -127,6 +129,19 @@ export const ListingTile = memo(function ListingTile({ item, width }: Props) {
           </Link.MenuAction>
         </Link.Menu>
       </Link>
+      {showBought && actions.saved ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Moves it from Saved into your wardrobe"
+          onPress={() => {
+            qc.setQueryData(['listing', item.id], item);
+            router.push({ pathname: '/bought/[id]', params: { id: String(item.id) } });
+          }}
+          style={({ pressed }) => [styles.bought, { backgroundColor: colors.fill, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+          <Icon name="bought" size={15} color={colors.foreground} />
+          <Text style={[text('footnote'), medium, { color: colors.foreground }]}>I bought it</Text>
+        </Pressable>
+      ) : null}
       {/* save stays one tap away, like the web's bookmark on the photo */}
       <Pressable
         accessibilityRole="button"
@@ -155,4 +170,5 @@ const styles = StyleSheet.create({
   brand: { letterSpacing: 0.4 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
   was: { textDecorationLine: 'line-through' },
+  bought: { marginTop: 6, height: 44, alignSelf: 'flex-start', paddingHorizontal: 14, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
