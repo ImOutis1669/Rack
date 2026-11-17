@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     rack_friend_rescore_minutes: int = 10
     # Live search (search the marketplaces now): seconds between one person's searches, and how
     # many may wait in the queue at once
-    rack_live_search_owner_seconds: int = 30
+    rack_live_search_owner_seconds: int = 10
     rack_live_search_friend_seconds: int = 120
     rack_live_search_queue: int = 5
     rack_session_secret: str = ""
@@ -109,10 +109,13 @@ class Settings(BaseSettings):
     # The Refresh button searches only the asking person's own taste (loved designers first, then
     # wishlist, then the rest), a short batch so results land in under a minute. Cooldowns are
     # per person; one refresh runs at a time.
-    rack_manual_queries: int = 4
+    rack_manual_queries: int = 8  # the owner's refresh (~80 s)
+    rack_friend_manual_queries: int = 4
     rack_score_seconds: int = 60
-    rack_manual_refresh_cooldown_minutes: int = 5
+    rack_manual_refresh_cooldown_minutes: int = 2
     rack_friend_refresh_cooldown_minutes: int = 15
+    # The shared background rotation: the owner's searches per round for each one of a friend's.
+    rack_owner_rotation_share: int = 3
     # Used only until you've added designers / wishlist text.
     rack_seed_queries: str = "maison margiela,rick owens,our legacy"
 

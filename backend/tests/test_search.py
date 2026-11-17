@@ -213,9 +213,9 @@ async def test_live_search_limits_and_privacy(
     await run_live_searches(sessions, {"vinted": off})
     gone = (await client.get(f"/api/search/live/{mine['id']}")).json()
     assert gone["status"] == "error" and gone["results"] == {"vinted": "not set up"}
-    # the owner waits 30 s between live searches
+    # the owner waits 10 s between live searches
     r = await client.post("/api/search/live", json={"q": "lemaire"}, headers=H)
-    assert r.status_code == 429 and int(r.headers["Retry-After"]) <= 30
+    assert r.status_code == 429 and int(r.headers["Retry-After"]) <= 10
 
     async with browser(client) as sam:
         await login(sam, "sam", SAM_PW)

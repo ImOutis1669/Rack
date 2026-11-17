@@ -222,8 +222,11 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
   lock with the 30-min refresh) with only that person's searches (`planner.tailored_streams` /
   `tailored_batch`: 2 loved-designer slots, 1 wishlist, 1 liked/curious/adjacent, each stream with
   its own cursor), counts their eBay searches, then embeds and scores them unthrottled. Cooldowns
-  `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES` (owner) / `RACK_FRIEND_REFRESH_COOLDOWN_MINUTES`;
-  `RACK_MANUAL_QUERIES` (4) searches per refresh. The 30-min background refresh stays shared.
+  `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES` (owner, 2) / `RACK_FRIEND_REFRESH_COOLDOWN_MINUTES` (15);
+  `RACK_MANUAL_QUERIES` (owner, 8) / `RACK_FRIEND_MANUAL_QUERIES` (4) searches per refresh. The
+  30-min background refresh stays shared, but `merge_plans` gives the owner
+  `RACK_OWNER_ROTATION_SHARE` (3) searches per round for each active friend's one (user's choice
+  2026-11-17: friends barely use Rack). Owner live search cooldown 10 s.
   "New for you": `GET /api/feed/fresh` = listings first seen after the asker's latest refresh
   `started_at` that score at least their `FRESH_TOP` (300th) best, through the same
   `visible_listings` query as the feed; both apps show it as a strip on the default feed, leave

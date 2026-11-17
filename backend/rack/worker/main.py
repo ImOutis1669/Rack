@@ -40,7 +40,7 @@ from rack.sources.ebay import EbayAdapter
 from rack.sources.grailed import GrailedAdapter
 from rack.sources.http import RateLimitedClient
 from rack.store import (
-    active_user_ids,
+    active_users,
     get_state,
     get_user_state,
     load_designers,
@@ -105,8 +105,10 @@ async def plan_queries(state_key: str = "planner", size: int | None = None) -> l
     settings = get_settings()
     size = size or settings.rack_queries_per_refresh
     async with sessionmaker()() as s:
-        plans = [await user_queries(s, uid) for uid in await active_user_ids(s)]
-        queries = merge_plans(plans)
+        users = await active_users(s)
+        plans = [await user_queries(s, uid) for uid, _ in users]
+        share = settings.rack_owner_rotation_share
+        queries = merge_plans(plans, [share if role == "owner" else 1 for _, role in users])
         if not queries:
             return fallback(settings.seed_queries)[:size]
         state = await get_state(s, state_key)
@@ -404,23 +406,26 @@ async def run_user_refresh(uid: int, size: int) -> dict[str, int]:
         return results
 
 
-async def next_refresh_request() -> int | None:
-    """The user whose Refresh request has waited longest (enabled accounts only)."""
+async def next_refresh_request() -> tuple[int, str] | None:
+    """(user id, role) whose Refresh request has waited longest (enabled accounts only)."""
     async with sessionmaker()() as s:
         rows = (
             await s.execute(
-                select(UserStateRow.user_id, UserStateRow.value)
+                select(UserStateRow.user_id, UserStateRow.value, UserRow.role)
                 .join(UserRow, UserRow.id == UserStateRow.user_id)
                 .where(UserStateRow.key == "refresh", UserRow.disabled_at.is_(None))
             )
         ).all()
     waiting = [
-        (str(v["requested_at"]), int(uid))
-        for uid, v in rows
+        (str(v["requested_at"]), int(uid), str(role))
+        for uid, v, role in rows
         if v.get("requested_at")
         and (not v.get("started_at") or str(v["requested_at"]) > str(v["started_at"]))
     ]
-    return min(waiting)[1] if waiting else None
+    if not waiting:
+        return None
+    _, uid, role = min(waiting)
+    return uid, role
 
 
 class ManualRefresh:
@@ -432,11 +437,16 @@ class ManualRefresh:
     async def run(self) -> None:
         if _refresh_lock.locked():
             return
-        uid = await next_refresh_request()
-        if uid is None:
+        asker = await next_refresh_request()
+        if asker is None:
             return
+        uid, role = asker
+        settings = get_settings()
+        size = (
+            settings.rack_manual_queries if role == "owner" else settings.rack_friend_manual_queries
+        )
         log.info("manual refresh requested by user %d", uid)
-        await run_user_refresh(uid, get_settings().rack_manual_queries)
+        await run_user_refresh(uid, size)
         self.embed.prioritise.add(uid)  # score their new results now, whatever their role
         # A run embeds up to 200 photos; go straight on to the next batch rather than waiting
         # for the scheduled pass, so new results show up as soon as possible.

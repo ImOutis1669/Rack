@@ -133,7 +133,7 @@ async def test_worker_runs_the_oldest_request_with_the_askers_own_searches(
         assert kim is not None
         kim.disabled_at = now  # disabled: their request never runs
         await s.commit()
-    assert await next_refresh_request() == sam_id
+    assert await next_refresh_request() == (sam_id, "friend")
 
     assert {q.text for q in await tailored_queries(sam_id, 4)} == {"Kapital"}
     assert {q.text for q in await tailored_queries(owner_id, 4)} == {"Lemaire"}
@@ -144,7 +144,7 @@ async def test_worker_runs_the_oldest_request_with_the_askers_own_searches(
     async with sessions() as s:  # once started, the request is done
         await set_user_state(s, sam_id, "refresh", {**st, "started_at": now.isoformat()})
         await s.commit()
-    assert await next_refresh_request() == owner_id
+    assert await next_refresh_request() == (owner_id, "owner")
 
 
 @pytest.mark.db
@@ -200,3 +200,14 @@ async def test_new_for_you_shows_strong_new_finds_since_your_refresh(
     assert r["total"] == 2 and r["since"] is not None
     one = (await client.get("/api/feed/fresh", params={"limit": 1})).json()
     assert one["total"] == 2 and len(one["items"]) == 1
+
+
+def test_the_owner_gets_a_bigger_share_of_the_shared_rotation() -> None:
+    from rack.ranking.planner import merge_plans
+    from rack.sources.base import SearchQuery
+
+    owner = [SearchQuery(text=f"o{i}") for i in range(6)]
+    friend = [SearchQuery(text=f"f{i}") for i in range(3)]
+    out = [q.text for q in merge_plans([owner, friend], [3, 1])]
+    assert out == ["o0", "o1", "o2", "f0", "o3", "o4", "o5", "f1", "f2"]
+    assert [q.text for q in merge_plans([owner[:2], friend[:2]])] == ["o0", "f0", "o1", "f1"]

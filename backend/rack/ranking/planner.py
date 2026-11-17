@@ -76,28 +76,40 @@ def fallback(seed: list[str]) -> list[SearchQuery]:
     return [SearchQuery(text=q, category=Category.ANY) for q in seed]
 
 
-def merge_plans(plans: list[list[SearchQuery]]) -> list[SearchQuery]:
+def merge_plans(
+    plans: list[list[SearchQuery]], shares: list[int] | None = None
+) -> list[SearchQuery]:
     """All users' queries as one rotation (v2.1): round-robin across users so everyone's taste
-    gets searched, the same search only once (by text and category, keeping the higher price
-    cap; no cap wins). More users means each search comes round less often, never more
-    requests per refresh."""
+    gets searched, `shares[k]` of plan k's queries per round (the owner gets more), the same
+    search only once (by text and category, keeping the higher price cap; no cap wins). More
+    users means each search comes round less often, never more requests per refresh."""
+    shares = [max(1, s) for s in (shares or [1] * len(plans))]
     merged: dict[tuple[str, Category], SearchQuery] = {}
     order: list[tuple[str, Category]] = []
-    for i in range(max((len(p) for p in plans), default=0)):
-        for plan in plans:
-            if i >= len(plan):
-                continue
-            q = plan[i]
-            key = (" ".join(q.text.lower().split()), q.category)
-            have = merged.get(key)
-            if have is None:
-                merged[key] = q
-                order.append(key)
-            elif have.max_price_gbp is not None and (
-                q.max_price_gbp is None or q.max_price_gbp > have.max_price_gbp
-            ):
-                merged[key] = have.model_copy(update={"max_price_gbp": q.max_price_gbp})
+    taken = [0] * len(plans)
+    while any(taken[k] < len(p) for k, p in enumerate(plans)):
+        for k, plan in enumerate(plans):
+            batch = plan[taken[k] : taken[k] + shares[k]]
+            taken[k] += shares[k]
+            for q in batch:
+                _merge(merged, order, q)
     return [merged[k] for k in order]
+
+
+def _merge(
+    merged: dict[tuple[str, Category], SearchQuery],
+    order: list[tuple[str, Category]],
+    q: SearchQuery,
+) -> None:
+    key = (" ".join(q.text.lower().split()), q.category)
+    have = merged.get(key)
+    if have is None:
+        merged[key] = q
+        order.append(key)
+    elif have.max_price_gbp is not None and (
+        q.max_price_gbp is None or q.max_price_gbp > have.max_price_gbp
+    ):
+        merged[key] = have.model_copy(update={"max_price_gbp": q.max_price_gbp})
 
 
 # The Refresh button (v2.1): only the asking user's own searches, most-wanted first. Each batch

@@ -98,11 +98,12 @@ and rebuild. Without it Rack uses lucide icons.
 
 Tap the coloured dots under the header for each source's status, last run and last error.
 **Refresh** searches every source for *you*: two of your loved designers (in your categories), a
-wishlist item and one liked or related designer, moving on to the next ones each time (about 40
-seconds; once every 5 minutes for you, 15 for friends). With "Size must match" on, Grailed is
+wishlist item and one liked or related designer, moving on to the next ones each time. You get 8
+searches (about 80 seconds, every 2 minutes at most); friends get 4, every 15 minutes. With "Size must match" on, Grailed is
 asked for your sizes only. The best of what it finds, those scoring as well as your top few
 hundred, appear in a **New for you** strip at the top of the feed, and from then on things you've
-already seen stay hidden. The 30-minute background search stays shared by everyone.
+already seen stay hidden. The 30-minute background search is shared, with 3 of your searches for
+every one of an active friend's.
 
 ## Teaching it your taste
 1. **Settings**: designers (love / like / curious / exclude), a few words about your style, minimum

@@ -39,7 +39,7 @@ app gets inline titles. Plan: `docs/v2.1-plan.md` (from `docs/v2.1-brief.md`).
   filters for source, category, size and price, and sorting. 9-49 ms on 15,000 listings.
 - **"Search eBay, Vinted and Grailed now"** asks each site directly, once, at the crawler's
   polite pace; new results join as each site answers. One at a time per person, with a short
-  wait between searches (30 s for you, 2 minutes for friends).
+  wait between searches (10 s for you, 2 minutes for friends).
 - **"Save as hunt"** turns a search into a hunt. Recent searches stay on the device and are
   cleared when you log out.
 
@@ -98,8 +98,11 @@ add a Cloudflare rate limit on `/api/auth/*` (audit RACK-25).
   "US 14" (migration 0022 fixes what's stored), and a shoe size that names its system is compared
   by size, never by its number. With "Size must match", your refreshes ask Grailed for your sizes
   only; Vinted and eBay can't be asked, so they're still filtered after fetching.
+- **More of Rack for you.** Your refresh runs 8 searches (friends 4) and you can refresh every 2
+  minutes (friends 15); the background rotation gives you 3 searches for every one of an active
+  friend's; your live searches are 10 s apart (were 30). Same request rate to every site.
 - Rebuilding the server runs migration 0022 and re-scores everyone's feed.
 
 ## Numbers
-Backend 304 tests, web 63, shared 115, iOS 47 at release; 317, 63, 118 and 47 after the additions.
+Backend 304 tests, web 63, shared 115, iOS 47 at release; 318, 63, 118 and 47 after the additions.
 Main web script 137 kB gzipped (v1.2: 148 kB).
