@@ -4,15 +4,19 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from rack.account_files import remove_user_files
 from rack.accounts import invite_expiry, invite_hash, invite_status, new_invite_code
 from rack.api.auth import CurrentUser, forget_user, require_owner
+from rack.avatars import avatar_path
 from rack.config import Settings, get_settings
 from rack.db import get_session
-from rack.models import InviteRow, UserRow
+from rack.models import HuntRow, InviteRow, UserRow, UserStateRow
+from rack.sources.ebay import quota_day
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_owner)])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -27,9 +31,12 @@ class UserOut(BaseModel):
     created_at: datetime
     disabled: bool
     last_active_at: datetime | None
+    avatar: str | None = None  # /api/admin/users/{id}/avatar?v=N
+    hunts: int = 0
+    ebay_searches_today: int = 0  # hunt searches on eBay's shared daily quota
 
 
-def _user_out(r: UserRow) -> UserOut:
+def _user_out(r: UserRow, hunts: int = 0, ebay: int = 0) -> UserOut:
     return UserOut(
         id=r.id,
         username=r.username,
@@ -38,13 +45,49 @@ def _user_out(r: UserRow) -> UserOut:
         created_at=r.created_at,
         disabled=r.disabled_at is not None,
         last_active_at=r.last_active_at,
+        avatar=f"/api/admin/users/{r.id}/avatar?v={r.avatar_version}" if r.avatar_version else None,
+        hunts=hunts,
+        ebay_searches_today=ebay,
     )
 
 
 @router.get("/users")
 async def list_users(session: Session) -> list[UserOut]:
-    rows = (await session.execute(select(UserRow).order_by(UserRow.id))).scalars()
-    return [_user_out(r) for r in rows]
+    rows = (await session.execute(select(UserRow).order_by(UserRow.id))).scalars().all()
+    hunts = dict(
+        (
+            await session.execute(
+                select(HuntRow.user_id, func.count(HuntRow.id)).group_by(HuntRow.user_id)
+            )
+        ).all()
+    )
+    today = quota_day()
+    ebay = {
+        uid: int(v.get("search", 0))
+        for uid, v in (
+            await session.execute(
+                select(UserStateRow.user_id, UserStateRow.value).where(
+                    UserStateRow.key == "ebay_usage"
+                )
+            )
+        ).all()
+        if v.get("day") == today
+    }
+    return [_user_out(r, hunts.get(r.id, 0), ebay.get(r.id, 0)) for r in rows]
+
+
+@router.get("/users/{user_id}/avatar")
+async def user_avatar(
+    user_id: int, settings: Annotated[Settings, Depends(get_settings)]
+) -> FileResponse:
+    path = avatar_path(settings.rack_data_dir, user_id)
+    if not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
+    )
 
 
 async def _friend(session: AsyncSession, user_id: int) -> UserRow:
@@ -77,9 +120,12 @@ async def enable_user(user_id: int, session: Session) -> UserOut:
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: int, session: Session) -> None:
-    """Deletes the account (from step 2 on, everything theirs goes with it: ON DELETE CASCADE)."""
+async def delete_user(
+    user_id: int, session: Session, settings: Annotated[Settings, Depends(get_settings)]
+) -> None:
+    """Deletes the account and everything theirs: rows by ON DELETE CASCADE, files here."""
     row = await _friend(session, user_id)
+    await remove_user_files(session, settings, user_id)
     await session.delete(row)
     await session.commit()
     forget_user(user_id)

@@ -304,6 +304,14 @@ Security notes:
   (route-auth sweep, owned-table list, IDOR matrix, cascade delete, per-user scoring, planner,
   caps, migration 0020 on single-user data). Dry run on a copy of the real DB (2026-11-17):
   identical row counts after upgrade and after downgrade; everything owned by the owner.
+- Profile (v2.1 step 4, step 3 folded in): `api/me.py` = `GET/PATCH /api/me` (display name),
+  `PUT/DELETE/GET /api/me/avatar` (`rack/avatars.py`: EXIF rotation applied, centre-cropped
+  512 px JPEG, no metadata, `RACK_DATA_DIR/avatars/<id>.jpg`; URL `?v=avatar_version`, cached
+  private + immutable; body limit 10 MB in `main.py`), `DELETE /api/me` (password, friends
+  only; `rack/account_files.py` removes their uploads dir, cached upload thumbnails and photo,
+  then the row cascades). Only your own photo is served; the owner sees friends' at
+  `/api/admin/users/{id}/avatar`. Admin users list adds `avatar`, `hunts`,
+  `ebay_searches_today`; admin delete removes files too. Tests: `tests/test_profile_me.py`.
 - iOS app auth (iOS step 1): `POST /api/auth/token` (same password check and rate limits as
   `/login`) returns a bearer token signed with salt `rack-app-token` (cookies use
   `rack-session`, so neither works as the other), same epoch + fingerprint claims, lifetime

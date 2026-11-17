@@ -17,6 +17,7 @@ from rack.api import (
     feed,
     gallery,
     hunts,
+    me,
     notify,
     profile,
     purchases,
@@ -34,6 +35,7 @@ CallNext = Callable[[Request], Awaitable[Response]]
 API_MAX_BODY = 1024 * 1024  # 1 MB for JSON requests
 IMMUTABLE = "public, max-age=31536000, immutable"
 UPLOAD_MAX_BODY = 20 * 10 * 1024 * 1024 + 1024 * 1024  # 20 photos x 10 MB + form overhead
+AVATAR_MAX_BODY = 10 * 1024 * 1024 + 256 * 1024  # one 10 MB photo + form overhead
 
 # Marketplace photos are hotlinked, so images may come from any https host; everything else is ours.
 CSP = (
@@ -82,6 +84,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app = FastAPI(title="Rack", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(me.router)
     app.include_router(feed.router)
     app.include_router(profile.router)
     app.include_router(taste.router)
@@ -112,7 +115,10 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     @app.middleware("http")
     async def limits_and_headers(request: Request, call_next: CallNext) -> Response:
         if request.method in ("POST", "PUT", "PATCH"):
-            limit = UPLOAD_MAX_BODY if request.url.path == "/api/taste/upload" else API_MAX_BODY
+            limit = {
+                "/api/taste/upload": UPLOAD_MAX_BODY,
+                "/api/me/avatar": AVATAR_MAX_BODY,
+            }.get(request.url.path, API_MAX_BODY)
             length = request.headers.get("content-length")
             if length is None and request.headers.get("transfer-encoding"):
                 return JSONResponse({"detail": "Content-Length required"}, status_code=411)
