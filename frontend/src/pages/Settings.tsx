@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, LogOut, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { api } from "../api/client";
 import {
@@ -17,6 +16,7 @@ import { toast } from "../components/Toast";
 import { Button, Group, IconButton, Row, Segmented, Skeleton, Switch, Textarea } from "../components/ui";
 import { formatLength, parseLengthCm, splitList } from "../lib/units";
 import { cn } from "../lib/utils";
+import { Icon } from "../components/icons/Icon";
 
 const WEIGHTS: [DesignerWeight, string][] = [
   ["love", "Love"],
@@ -196,7 +196,7 @@ function SettingsForm(props: { profile: Profile; designers: Designer[]; adjacent
                   touch();
                 }}
               >
-                <X size={16} />
+                <Icon name="close" size={16} />
               </IconButton>
             </div>
             {(d.weight === "love" || d.weight === "like") && adj[d.name] !== undefined && (
@@ -220,7 +220,7 @@ function SettingsForm(props: { profile: Profile; designers: Designer[]; adjacent
             touch();
           }}
         >
-          <Plus size={18} /> Add designer
+          <Icon name="plus" size={18} /> Add designer
         </button>
       </Group>
 
@@ -379,7 +379,7 @@ function SettingsForm(props: { profile: Profile; designers: Designer[]; adjacent
             {save.error ? <span className="text-danger">{String((save.error as Error).message)}</span> : dirty ? "Unsaved changes" : "All changes saved"}
           </span>
           <Button variant="primary" size="sm" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? "Saving" : dirty ? "Save" : <Check size={16} />}
+            {save.isPending ? "Saving" : dirty ? "Save" : <Icon name="check" size={16} />}
           </Button>
         </div>
       </div>
@@ -424,14 +424,14 @@ function Account({ onLogout }: { onLogout: () => void }) {
       footer="Log out all devices ends every session, including this one. Use it if a phone or computer you were logged in on is lost. Changing your password does the same."
     >
       <button className="press flex min-h-11 w-full items-center gap-2 px-4 text-body" onClick={onLogout}>
-        <LogOut size={18} className="text-muted" /> Log out
+        <Icon name="logout" size={18} className="text-muted" /> Log out
       </button>
       <button
         className="press flex min-h-11 w-full items-center gap-2 px-4 text-body text-danger disabled:opacity-40"
         disabled={logoutAll.isPending}
         onClick={() => window.confirm("Log out on every device?") && logoutAll.mutate()}
       >
-        <LogOut size={18} /> Log out all devices
+        <Icon name="logout" size={18} /> Log out all devices
       </button>
     </Group>
   );

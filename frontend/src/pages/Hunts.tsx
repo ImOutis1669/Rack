@@ -1,17 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  BellOff,
-  BellRing,
-  ChevronDown,
-  Crosshair,
-  MoreHorizontal,
-  Pause,
-  Pencil,
-  Play,
-  Plus,
-  RotateCw,
-  Trash2,
-} from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
@@ -24,6 +11,7 @@ import { SOURCE_LABEL, timeAgo } from "../lib/format";
 import { emptyHunt, huntSummary, INTERVALS, sizesHint } from "../lib/hunts";
 import { splitList } from "../lib/units";
 import { cn } from "../lib/utils";
+import { Icon } from "../components/icons/Icon";
 
 const FREE: FreeSource[] = ["ebay", "vinted", "grailed"];
 
@@ -52,7 +40,7 @@ export function Hunts() {
       wide={false}
       actions={
         <IconButton label="New hunt" onClick={() => setEditing({ id: null, value: emptyHunt() })}>
-          <Plus size={21} strokeWidth={1.9} />
+          <Icon name="plus" size={21} />
         </IconButton>
       }
     >
@@ -62,11 +50,11 @@ export function Hunts() {
 
       {hunts.isSuccess && hunts.data.length === 0 && (
         <EmptyState
-          icon={<Crosshair size={24} />}
+          icon={<Icon name="hunts" size={24} />}
           title="No hunts yet"
           action={
             <Button variant="primary" onClick={() => setEditing({ id: null, value: emptyHunt() })}>
-              <Plus size={17} /> New hunt
+              <Icon name="plus" size={17} /> New hunt
             </Button>
           }
         >
@@ -122,12 +110,12 @@ function HuntCard({ hunt, onEdit, onChange }: { hunt: Hunt; onEdit: () => void; 
           <p className="flex items-center gap-2 text-headline font-semibold">
             <span className="truncate">{hunt.name}</span>
             {!hunt.enabled && <span className="rounded-full bg-fill px-2 py-0.5 text-caption font-medium text-muted">Paused</span>}
-            {!hunt.notify && <BellOff size={14} className="shrink-0 text-muted" aria-label="Alerts off" />}
+            {!hunt.notify && <Icon name="mute" size={14} className="text-muted" label="Alerts off" />}
           </p>
           <p className="mt-0.5 text-footnote text-muted">{huntSummary(hunt)}</p>
           <p className="mt-1.5 flex items-center gap-1 text-caption text-muted">
             {status}
-            <ChevronDown size={14} className={cn("transition-transform", open && "rotate-180")} />
+            <Icon name="chevron-down" size={14} className={cn("transition-transform", open && "rotate-180")} />
           </p>
           {hunt.last_error && <p className="mt-1 text-caption text-warning">{hunt.last_error}</p>}
         </button>
@@ -139,21 +127,21 @@ function HuntCard({ hunt, onEdit, onChange }: { hunt: Hunt; onEdit: () => void; 
           <Menu
             trigger={(p) => (
               <IconButton label="Hunt actions" {...p}>
-                <MoreHorizontal size={19} />
+                <Icon name="more" size={22} />
               </IconButton>
             )}
             items={[
-              { label: "Run now", icon: <RotateCw size={16} />, onSelect: () => run.mutate(), disabled: run.isPending },
+              { label: "Run now", icon: <Icon name="refresh" size={16} />, onSelect: () => run.mutate(), disabled: run.isPending },
               hunt.enabled
-                ? { label: "Pause", icon: <Pause size={16} />, onSelect: () => update.mutate({ enabled: false }) }
-                : { label: "Resume", icon: <Play size={16} />, onSelect: () => update.mutate({ enabled: true }) },
+                ? { label: "Pause", icon: <Icon name="pause" size={16} />, onSelect: () => update.mutate({ enabled: false }) }
+                : { label: "Resume", icon: <Icon name="play" size={16} />, onSelect: () => update.mutate({ enabled: true }) },
               hunt.notify
-                ? { label: "Mute alerts", icon: <BellOff size={16} />, onSelect: () => update.mutate({ notify: false }) }
-                : { label: "Turn alerts on", icon: <BellRing size={16} />, onSelect: () => update.mutate({ notify: true }) },
-              { label: "Edit", icon: <Pencil size={16} />, onSelect: onEdit },
+                ? { label: "Mute alerts", icon: <Icon name="mute" size={16} />, onSelect: () => update.mutate({ notify: false }) }
+                : { label: "Turn alerts on", icon: <Icon name="alerts-on" size={16} />, onSelect: () => update.mutate({ notify: true }) },
+              { label: "Edit", icon: <Icon name="edit" size={16} />, onSelect: onEdit },
               {
                 label: "Delete",
-                icon: <Trash2 size={16} />,
+                icon: <Icon name="delete" size={16} />,
                 danger: true,
                 onSelect: () => window.confirm(`Delete “${hunt.name}” and its matches?`) && del.mutate(),
               },

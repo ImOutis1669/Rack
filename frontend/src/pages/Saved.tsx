@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Bookmark } from "lucide-react";
 import { useEffect } from "react";
 import { api } from "../api/client";
 import type { Listing } from "../api/types";
@@ -8,6 +7,7 @@ import { PageShell } from "../components/AppShell";
 import { VirtualGrid } from "../components/VirtualGrid";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { EmptyState, Skeleton } from "../components/ui";
+import { Icon } from "../components/icons/Icon";
 
 export function Saved() {
   const q = useQuery({
@@ -29,7 +29,7 @@ export function Saved() {
         </ListingGrid>
       )}
       {q.isSuccess && q.data.length === 0 && (
-        <EmptyState icon={<Bookmark size={24} />} title="Nothing saved yet">
+        <EmptyState icon={<Icon name="bookmark" size={24} />} title="Nothing saved yet">
           Tap the bookmark on a listing to keep it here. You'll get an alert if its price drops.
         </EmptyState>
       )}

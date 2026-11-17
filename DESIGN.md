@@ -135,7 +135,20 @@ blur strip with sharp content below it looked messy on iPhone.
 - **Reduced motion:** everything respects `prefers-reduced-motion`.
 
 ## Icons
-One family: `lucide-react`, stroke 1.75, 20px in bars and 18px inline. No emoji as icons.
+From v1.2: **Basil Icons** (Craftwork, free pack), always through `components/icons/Icon.tsx`
+(`<Icon name="bookmark" filled={saved} />`), never by importing an icon library in a page.
+- **Outline at rest, solid when active** (the iOS convention): the selected dock tab, a saved
+  bookmark, a cast vote. No more thicker-stroke tricks.
+- **Sizes:** 22px in bars, the dock and the sheet's action row; 16px in menus; 14-18px inline
+  next to text; 24px in empty states. Colour is always `currentColor`.
+- **Licence:** Craftwork allows copying icons into an app's code but not sharing the files, and
+  the repo is public. So the artwork is never committed: `basil-map.json` names the file per role,
+  `npm run icons -- "<pack>/svg"` (`scripts/basil-icons.mjs`) writes the git-ignored
+  `basil.generated.ts` from the user's own copy, and without it every icon falls back to lucide.
+- **lucide (stroke 1.5, matching Basil's line)** is kept where Basil has nothing close: Wardrobe
+  (shirt), Sources (radio), sparkles, text, link, external link, "⋯", and the vote arrows (Basil's
+  arrows have no filled state).
+No emoji as icons.
 
 **Votes** (`components/VoteButtons.tsx`): Reddit-style `ArrowBigUp` / `ArrowBigDown` in one capsule
 (`bg-fill` in the sheet, glass on desktop tile hover). Outlined when off; the active arrow fills,

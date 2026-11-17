@@ -1,14 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Crosshair,
-  EyeOff,
-  MoreHorizontal,
-  PackageCheck,
-  ShoppingBag,
-} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
@@ -26,6 +16,7 @@ import { SourceBadge } from "./SourceBadge";
 import { Button, IconButton, Menu, Sheet } from "./ui";
 import type { ListingActions } from "./useListingActions";
 import { VoteButtons } from "./VoteButtons";
+import { Icon } from "./icons/Icon";
 
 const MEAS: [keyof Listing["measurements"], string][] = [
   ["inseam_cm", "Inseam"],
@@ -105,10 +96,10 @@ function Photos({ images, title, loading }: { images: string[]; title: string; l
             ))}
           </div>
           <IconButton label="Previous photo" glass onClick={() => goTo(index - 1)} disabled={index === 0} className="absolute top-1/2 left-3 hidden -translate-y-1/2 md:inline-flex">
-            <ChevronLeft size={20} />
+            <Icon name="chevron-left" size={20} />
           </IconButton>
           <IconButton label="Next photo" glass onClick={() => goTo(index + 1)} disabled={index === images.length - 1} className="absolute top-1/2 right-3 hidden -translate-y-1/2 md:inline-flex">
-            <ChevronRight size={20} />
+            <Icon name="chevron-right" size={20} />
           </IconButton>
         </>
       )}
@@ -161,7 +152,7 @@ export function ListingSheet({
           }}
         >
           <span className="inline-flex items-center gap-2">
-            <ShoppingBag size={18} strokeWidth={2} />
+            <Icon name="buy" size={18} />
             Buy on {SOURCE_LABEL[link.source]}
             {link.size && <span className="font-normal opacity-60">· {link.size}</span>}
           </span>
@@ -199,7 +190,7 @@ export function ListingSheet({
           <div className="flex items-center gap-1">
             <VoteButtons vote={actions.vote} onVote={actions.castVote} />
             <IconButton label={actions.saved ? "Remove from saved" : "Save"} active={actions.saved} onClick={actions.toggleSave} className="bg-fill">
-              <Bookmark size={19} strokeWidth={1.9} fill={actions.saved ? "currentColor" : "none"} />
+              <Icon name="bookmark" size={22} filled={actions.saved} />
             </IconButton>
             <ShareButton links={item.buy_links} title={item.title} className="bg-fill" />
             <IconButton
@@ -210,23 +201,23 @@ export function ListingSheet({
               }}
               className="bg-fill"
             >
-              <Crosshair size={19} strokeWidth={1.9} />
+              <Icon name="hunts" size={22} />
             </IconButton>
             <Menu
               trigger={(p) => (
                 <IconButton label="More" className="bg-fill" {...p}>
-                  <MoreHorizontal size={19} />
+                  <Icon name="more" size={22} />
                 </IconButton>
               )}
               items={[
-                ...(actions.saved && onBought ? [{ label: "I bought it", icon: <PackageCheck size={16} />, onSelect: onBought }] : []),
+                ...(actions.saved && onBought ? [{ label: "I bought it", icon: <Icon name="bought" size={16} />, onSelect: onBought }] : []),
                 ...(hideSeller?.available
-                  ? [{ label: `Hide seller ${hideSeller.name}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("seller", hideSeller.name); onClose(); } }]
+                  ? [{ label: `Hide seller ${hideSeller.name}`, icon: <Icon name="hide" size={16} />, onSelect: () => { actions.hide("seller", hideSeller.name); onClose(); } }]
                   : hideSeller
-                    ? [{ label: `Hide seller: ${hideSeller.reason}`, icon: <EyeOff size={16} />, onSelect: () => {}, disabled: true }]
+                    ? [{ label: `Hide seller: ${hideSeller.reason}`, icon: <Icon name="hide" size={16} />, onSelect: () => {}, disabled: true }]
                     : []),
                 ...(item.brand
-                  ? [{ label: `Hide ${item.brand}`, icon: <EyeOff size={16} />, onSelect: () => { actions.hide("brand", item.brand!); onClose(); } }]
+                  ? [{ label: `Hide ${item.brand}`, icon: <Icon name="hide" size={16} />, onSelect: () => { actions.hide("brand", item.brand!); onClose(); } }]
                   : []),
               ]}
             />

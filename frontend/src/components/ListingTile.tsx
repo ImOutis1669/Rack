@@ -1,4 +1,3 @@
-import { Bookmark, PackageCheck } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Listing } from "../api/types";
 import { formatGBP } from "../lib/format";
@@ -9,6 +8,7 @@ import { SourceBadge } from "./SourceBadge";
 import { IconButton } from "./ui";
 import type { ListingActions } from "./useListingActions";
 import { VoteButtons } from "./VoteButtons";
+import { Icon } from "./icons/Icon";
 
 /** Photo-first tile: the clothes are the interface. Everything else lives in the detail sheet. */
 export function ListingTile({
@@ -104,7 +104,7 @@ export function ListingTile({
           onClick={actions.toggleSave}
           className="absolute top-1 right-1 size-9"
         >
-          <Bookmark size={17} strokeWidth={2} fill={actions.saved ? "currentColor" : "none"} />
+          <Icon name="bookmark" size={17} filled={actions.saved} />
         </IconButton>
         {was != null && (
           <span className="glass pointer-events-none absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-caption font-semibold text-accent">
@@ -131,7 +131,7 @@ export function ListingTile({
           onClick={onBought}
           className="press mt-1.5 inline-flex h-11 items-center gap-1.5 rounded-full bg-fill px-3.5 text-footnote font-semibold"
         >
-          <PackageCheck size={15} strokeWidth={2} />
+          <Icon name="bought" size={15} />
           I bought it
         </button>
       )}

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b --noEmit",
+    "icons": "node scripts/basil-icons.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",

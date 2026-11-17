@@ -68,6 +68,11 @@ On first start the worker downloads the image model (about 600 MB, roughly 2 min
 `rack_data` volume. Docker Desktop's *Start when you sign in* plus `restart: unless-stopped` keeps Rack
 running across reboots. For alerts to arrive, the PC must not sleep (Windows Settings → Power).
 
+**Optional: Basil icons.** Rack can use the free [Basil Icons](https://craftwork.design) pack from
+Craftwork. Its licence doesn't allow sharing the files, so they're not in this repo: download the
+pack yourself, unzip it, then run `cd frontend && npm run icons -- "<unzipped>/Basil Icons/svg"`
+and rebuild. Without it Rack uses lucide icons.
+
 ## Sources
 | Source | How | Notes |
 |---|---|---|

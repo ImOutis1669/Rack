@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Link2, Plus, Shirt, Type } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../api/client";
 import type { TasteKind } from "../api/types";
@@ -7,6 +6,7 @@ import { PageShell } from "../components/AppShell";
 import { TasteItemSheet, TasteTile } from "../components/TasteItemView";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
 import { WardrobeSummary } from "../components/WardrobeValue";
+import { Icon } from "../components/icons/Icon";
 
 const COPY: Record<TasteKind, string> = {
   wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
@@ -34,7 +34,7 @@ export function Taste() {
       title="Wardrobe"
       actions={
         <IconButton label={`Add to ${kind}`} onClick={() => setAdding(true)}>
-          <Plus size={21} strokeWidth={1.9} />
+          <Icon name="plus" size={21} />
         </IconButton>
       }
       below={
@@ -61,11 +61,11 @@ export function Taste() {
       {items.isError && <p className="text-footnote text-danger">{String((items.error as Error).message)}</p>}
       {items.isSuccess && items.data.length === 0 && (
         <EmptyState
-          icon={<Shirt size={24} />}
+          icon={<Icon name="wardrobe" size={24} />}
           title={kind === "wardrobe" ? "Your wardrobe is empty" : "Your wishlist is empty"}
           action={
             <Button variant="primary" onClick={() => setAdding(true)}>
-              <Plus size={17} /> Add {kind === "wardrobe" ? "photos" : "something"}
+              <Icon name="plus" size={17} /> Add {kind === "wardrobe" ? "photos" : "something"}
             </Button>
           }
         >
@@ -127,7 +127,7 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
             onClick={() => picker.current?.click()}
             className="press flex w-full flex-col items-center gap-2 rounded-group border border-dashed border-border bg-surface px-4 py-7 text-center dark:bg-elevated"
           >
-            <ImagePlus size={26} strokeWidth={1.6} className="text-muted" />
+            <Icon name="add-photo" size={26} className="text-muted" />
             <span className="text-body font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} chosen` : "Choose photos"}</span>
             <span className="text-caption text-muted">From your camera roll or files. Up to 20 at once.</span>
           </button>
@@ -143,7 +143,7 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
           <span className="h-px flex-1 bg-border" />
         </div>
 
-        <Field label={<span className="inline-flex items-center gap-1.5"><Link2 size={14} /> Image or listing link</span>}>
+        <Field label={<span className="inline-flex items-center gap-1.5"><Icon name="link" size={14} /> Image or listing link</span>}>
           {(id) => (
             <div className="flex gap-2">
               <Input id={id} type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -154,7 +154,7 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
           )}
         </Field>
 
-        <Field label={<span className="inline-flex items-center gap-1.5"><Type size={14} /> Describe it</span>}>
+        <Field label={<span className="inline-flex items-center gap-1.5"><Icon name="text" size={14} /> Describe it</span>}>
           {(id) => (
             <div className="flex gap-2">
               <Input id={id} placeholder="Long black wool overcoat" value={text} onChange={(e) => setText(e.target.value)} />

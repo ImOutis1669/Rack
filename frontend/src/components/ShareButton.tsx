@@ -1,9 +1,9 @@
-import { Share } from "lucide-react";
 import type { BuyLink } from "../api/types";
 import { SOURCE_LABEL } from "../lib/format";
 import { shareLink, shareMessage } from "../lib/share";
 import { toast } from "./Toast";
 import { IconButton, Menu } from "./ui";
+import { Icon } from "./icons/Icon";
 
 /** One share action per marketplace link (a grouped listing has several). */
 export function shareTargets(links: BuyLink[]): { label: string; url: string }[] {
@@ -18,7 +18,7 @@ async function run(url: string, title: string): Promise<void> {
 /** Shares the marketplace URL (iOS share sheet, else copy). Grouped listings get a menu. */
 export function ShareButton({ links, title, className }: { links: BuyLink[]; title: string; className?: string }) {
   const targets = shareTargets(links);
-  const icon = <Share size={19} strokeWidth={1.9} />;
+  const icon = <Icon name="share" size={22} />;
   if (targets.length === 0) return null;
   if (targets.length === 1) {
     const [only] = targets;
@@ -37,7 +37,7 @@ export function ShareButton({ links, title, className }: { links: BuyLink[]; tit
       )}
       items={targets.map((t) => ({
         label: t.label,
-        icon: <Share size={16} />,
+        icon: <Icon name="share" size={16} />,
         onSelect: () => void run(t.url, title),
       }))}
     />

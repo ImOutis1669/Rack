@@ -1,17 +1,17 @@
-import { Bookmark, Crosshair, LayoutGrid, Settings as SettingsIcon, Shirt } from "lucide-react";
 import { LayoutGroup, m, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { pillTransition } from "../lib/motion";
 import { useScrolled } from "../lib/useScrolled";
 import { cn } from "../lib/utils";
+import { Icon, type IconName } from "./icons/Icon";
 
-export const TABS = [
-  { to: "/", label: "Feed", icon: LayoutGrid },
-  { to: "/hunts", label: "Hunts", icon: Crosshair },
-  { to: "/saved", label: "Saved", icon: Bookmark },
-  { to: "/taste", label: "Wardrobe", icon: Shirt },
-] as const;
+export const TABS: readonly { to: string; label: string; icon: IconName }[] = [
+  { to: "/", label: "Feed", icon: "feed" },
+  { to: "/hunts", label: "Hunts", icon: "hunts" },
+  { to: "/saved", label: "Saved", icon: "bookmark" },
+  { to: "/taste", label: "Wardrobe", icon: "wardrobe" },
+];
 
 /**
  * The tab chrome, rendered once at app level (main.tsx), outside the routes and their Suspense
@@ -91,7 +91,7 @@ function TabBar() {
       />
       <LayoutGroup id="dock">
         <div data-testid="dock" className="glass-chrome mx-auto flex max-w-md items-stretch justify-around rounded-full p-1">
-          {TABS.map(({ to, label, icon: Icon }) => (
+          {TABS.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -113,7 +113,8 @@ function TabBar() {
                       className="absolute inset-0 -z-10 rounded-full bg-fill-strong"
                     />
                   )}
-                  <Icon size={20} strokeWidth={isActive ? 2.1 : 1.75} />
+                  {/* outline at rest, solid when selected (iOS tab bar convention) */}
+                  <Icon name={icon} size={22} filled={isActive} />
                   {label}
                 </>
               )}
@@ -160,7 +161,7 @@ export function PageShell({
             {actions}
             {pathname !== "/settings" && (
               <Link to="/settings" aria-label="Settings" title="Settings" className="press inline-flex size-11 items-center justify-center rounded-full hover:bg-fill">
-                <SettingsIcon size={20} strokeWidth={1.75} />
+                <Icon name="settings" size={22} />
               </Link>
             )}
           </div>

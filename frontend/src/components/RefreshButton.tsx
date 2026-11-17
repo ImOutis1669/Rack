@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCw } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { api } from "../api/client";
 import { cn } from "../lib/utils";
 import { toast } from "./Toast";
 import { IconButton } from "./ui";
+import { Icon } from "./icons/Icon";
 
 /** Re-ranks the feed now and asks the worker to search the sources (with a cooldown). */
 export function RefreshButton() {
@@ -52,7 +52,7 @@ export function RefreshButton() {
       onClick={() => request.mutate()}
       disabled={request.isPending}
     >
-      <RotateCw size={19} strokeWidth={1.9} className={cn(busy && "animate-spin")} />
+      <Icon name="refresh" size={22} className={cn(busy && "animate-spin")} />
     </IconButton>
   );
 }

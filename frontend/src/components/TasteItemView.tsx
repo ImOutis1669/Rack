@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Category, TasteItem } from "../api/types";
@@ -13,6 +12,7 @@ import { confidence } from "../lib/wardrobeValue";
 import { toast } from "./Toast";
 import { Button, Field, Group, IconButton, Input, Row, Select, Sheet, Textarea } from "./ui";
 import { EstimateSection, MoneyField } from "./WardrobeValue";
+import { Icon } from "./icons/Icon";
 
 /** Status shown on the photo while the item is still being read, or if its photo is missing. */
 function photoState(it: TasteItem): string | null {
@@ -186,7 +186,7 @@ export function TasteItemSheet({ item, open, onClose }: { item: TasteItem; open:
       actions={
         !editing && (
           <IconButton label="Edit" onClick={startEdit} className="size-9 bg-fill">
-            <Pencil size={16} strokeWidth={2} />
+            <Icon name="edit" size={16} />
           </IconButton>
         )
       }
@@ -236,7 +236,7 @@ export function TasteItemSheet({ item, open, onClose }: { item: TasteItem; open:
             )}
             {link && safeHref(link.href) && (
               <Button size="lg" className="w-full" onClick={() => window.open(safeHref(link.href), "_blank", "noopener,noreferrer")}>
-                <ExternalLink size={17} /> {link.label}
+                <Icon name="external" size={17} /> {link.label}
               </Button>
             )}
             {item.note && (

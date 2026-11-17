@@ -1,5 +1,4 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ArrowDownWideNarrow, Check, ChevronDown, SearchX, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
@@ -13,6 +12,7 @@ import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton, Switch }
 import { SOURCE_LABEL } from "../lib/format";
 import { SeenBatcher } from "../lib/seen";
 import { isDefaultFeed, loadSnapshot, saveSnapshot } from "../lib/snapshot";
+import { Icon } from "../components/icons/Icon";
 
 const SOURCES: Source[] = ["ebay", "vinted", "grailed", "vestiaire"];
 const SORTS: [Sort, string][] = [
@@ -93,19 +93,19 @@ export function Feed() {
         align="left"
         trigger={(p) => (
           <Chip selected={params.sort !== "best"} {...p}>
-            <ArrowDownWideNarrow size={15} />
+            <Icon name="sort" size={15} />
             {sortLabel}
-            <ChevronDown size={14} className="opacity-60" />
+            <Icon name="chevron-down" size={14} className="opacity-60" />
           </Chip>
         )}
         items={SORTS.map(([s, label]) => ({
           label,
-          icon: s === params.sort ? <Check size={16} /> : <span className="w-4" />,
+          icon: s === params.sort ? <Icon name="check" size={16} /> : <span className="w-4" />,
           onSelect: () => setParams((p) => ({ ...p, sort: s })),
         }))}
       />
       <Chip selected={filterCount > 0} onClick={() => setFiltersOpen(true)}>
-        <SlidersHorizontal size={15} />
+        <Icon name="filters" size={15} />
         Filters{filterCount > 0 && ` · ${filterCount}`}
       </Chip>
       <span aria-hidden className="mx-0.5 my-2 w-px shrink-0 bg-border" />
@@ -136,7 +136,7 @@ export function Feed() {
       {needsSetup && (
         <div className="mb-6 flex flex-col gap-4 rounded-group bg-surface p-5 md:flex-row md:items-center">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fill">
-            <Sparkles size={20} />
+            <Icon name="sparkles" size={20} />
           </div>
           <div className="flex-1">
             <p className="text-headline font-semibold">Teach Rack your taste</p>
@@ -156,7 +156,7 @@ export function Feed() {
       )}
 
       {query.isError && (
-        <EmptyState icon={<SearchX size={24} />} title="Couldn't load the feed" action={<Button onClick={() => void query.refetch()}>Try again</Button>}>
+        <EmptyState icon={<Icon name="search" size={24} />} title="Couldn't load the feed" action={<Button onClick={() => void query.refetch()}>Try again</Button>}>
           {String((query.error as Error).message)}
         </EmptyState>
       )}
@@ -174,7 +174,7 @@ export function Feed() {
       )}
 
       {query.isSuccess && items.length === 0 && (
-        <EmptyState icon={<Sparkles size={24} />} title="You're all caught up">
+        <EmptyState icon={<Icon name="sparkles" size={24} />} title="You're all caught up">
           Sources are searched every 30 minutes, and things you've already seen stay hidden until your next visit. Pull in new listings with Refresh.
         </EmptyState>
       )}

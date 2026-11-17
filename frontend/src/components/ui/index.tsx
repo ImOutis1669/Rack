@@ -1,5 +1,4 @@
 /** Rack's UI primitives. Tokens and rules: DESIGN.md. */
-import { X } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import {
   forwardRef,
@@ -16,6 +15,7 @@ import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 import { INSTANT, SHEET_SPRING } from "../../lib/motion";
 import { settleViewport } from "../../lib/viewport";
+import { Icon } from "../icons/Icon";
 
 /* ---------- buttons ---------- */
 
@@ -325,7 +325,7 @@ export function Sheet({
               <div className="min-w-0 flex-1 truncate text-headline font-semibold">{title}</div>
               {actions}
               <IconButton label="Close" onClick={onClose} className="-mr-2 bg-fill size-9">
-                <X size={18} strokeWidth={2} />
+                <Icon name="close" size={18} />
               </IconButton>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>

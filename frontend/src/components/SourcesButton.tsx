@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Radio } from "lucide-react";
 import { useState } from "react";
 import { api } from "../api/client";
 import type { SourceHealth } from "../api/types";
 import { SOURCE_LABEL, timeAgo } from "../lib/format";
 import { cn } from "../lib/utils";
 import { Group, IconButton, Row, Sheet } from "./ui";
+import { Icon } from "./icons/Icon";
 
 const DOT: Record<SourceHealth["status"], string> = {
   ok: "bg-accent",
@@ -34,7 +34,7 @@ export function SourcesButton() {
   return (
     <>
       <IconButton label="Sources" onClick={() => setOpen(true)} className="relative">
-        <Radio size={19} strokeWidth={1.9} />
+        <Icon name="sources" size={22} />
         {data && (
           <span className={cn("absolute top-2.5 right-2.5 size-2 rounded-full ring-2 ring-background", problem ? "bg-warning" : live ? "bg-accent" : "bg-subtle")} />
         )}
