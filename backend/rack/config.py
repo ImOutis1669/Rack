@@ -49,15 +49,6 @@ class Settings(BaseSettings):
     grailed_algolia_app_id: str = ""
     grailed_algolia_api_key: str = ""
 
-    # Vestiaire via a paid Apify actor (residential proxies). Billed per result, so it runs on its
-    # own slow schedule with hard caps. ~$25 per 1,000 results at time of writing.
-    apify_token: str = ""
-    vestiaire_refresh_hours: float = 24
-    vestiaire_queries_per_run: int = 3
-    vestiaire_max_results: int = 10  # per query
-    vestiaire_monthly_result_cap: int = 300
-    vestiaire_enrich: bool = False  # full descriptions + galleries; slower
-
     # Optional LLM re-rank (Claude). Off by default; the app is complete without it.
     llm_enabled: bool = False
     anthropic_api_key: str = ""
@@ -87,7 +78,6 @@ class Settings(BaseSettings):
     rate_ebay: float = 2.0
     rate_vinted: float = 10.0
     rate_grailed: float = 10.0
-    rate_vestiaire: float = 15.0
     rate_images: float = 0.25  # listing thumbnails from marketplace image CDNs (embedding only)
 
     # Embeddings (worker only)

@@ -27,10 +27,10 @@ from rack.ranking.brands import normalize as normalize_name
 from rack.ranking.filters import Hidden, hard_filter
 from rack.ranking.hunt_match import HuntSpec, hunt_matches
 from rack.sources.base import Category, SearchQuery, SourceAdapter, SourceError, SourceNotConfigured
+from rack.sources.registry import SOURCE_NAMES
 from rack.store import load_designers, load_profile
 
 log = logging.getLogger(__name__)
-FREE_SOURCES = ("ebay", "vinted", "grailed")
 MIN_INTERVAL_MINUTES = 5
 
 
@@ -82,7 +82,7 @@ async def run_hunt(
     first_run = hunt.last_run_at is None
     errors: list[str] = []
     ids: list[int] = []
-    for name in hunt.sources or FREE_SOURCES:
+    for name in hunt.sources or SOURCE_NAMES:
         adapter = adapters.get(name)
         if adapter is None:
             continue

@@ -15,7 +15,8 @@ from rack.db import get_session
 from rack.models import HuntMatchRow, HuntRow, ListingRow
 from rack.schemas import ListingOut
 from rack.sources.base import Category
-from rack.worker.hunts import FREE_SOURCES, MIN_INTERVAL_MINUTES
+from rack.sources.registry import SOURCE_NAMES
+from rack.worker.hunts import MIN_INTERVAL_MINUTES
 
 router = APIRouter(prefix="/api/hunts", tags=["hunts"], dependencies=[Depends(require_session)])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -55,7 +56,7 @@ def _out(h: HuntRow, counts: dict[int, tuple[int, int]]) -> HuntOut:
         max_price_gbp=h.max_price_gbp,
         sizes=list(h.sizes or []),
         strict_size=h.strict_size,
-        sources=[s for s in (h.sources or []) if s in FREE_SOURCES],
+        sources=[s for s in (h.sources or []) if s in SOURCE_NAMES],
         min_score=h.min_score,
         interval_minutes=h.interval_minutes,
         enabled=h.enabled,

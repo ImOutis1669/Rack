@@ -6,7 +6,7 @@ from rack.sources.ebay import EbayAdapter
 from rack.sources.grailed import GrailedAdapter
 from rack.sources.vinted import VintedAdapter
 
-SOURCE_NAMES = ("ebay", "vinted", "grailed", "vestiaire")
+SOURCE_NAMES = ("ebay", "vinted", "grailed")
 
 
 def build_adapters(settings: Settings) -> list[SourceAdapter]:

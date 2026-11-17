@@ -8,7 +8,6 @@ import pytest
 from rack.sources import grailed, vinted
 from rack.sources.base import Category, SearchQuery, SourceError, SourceNotConfigured
 from rack.sources.http import USER_AGENT
-from rack.sources.recheck import classify
 
 FIX = Path(__file__).parent / "fixtures"
 VINTED_HTML = (FIX / "vinted" / "search_rick_owens.html").read_text(encoding="utf-8")
@@ -110,16 +109,3 @@ async def test_grailed_honest_headers_and_key_errors() -> None:
 
     with pytest.raises(SourceNotConfigured):
         await grailed.GrailedAdapter("", "").search(SearchQuery(text="x"))
-
-
-# --- daily recheck ---
-
-
-def test_recheck_classifies_cloudflare_pages() -> None:
-    blocked, detail = classify(403, "<title>Attention Required! | Cloudflare</title>")
-    assert blocked and "403" in detail
-    assert classify(200, "<title>Just a moment...</title> turnstile")[0] is True
-    assert classify(200, "<html>search results</html>") == (
-        False,
-        "Site answered normally on the last check; no adapter yet (ask Claude to add one).",
-    )

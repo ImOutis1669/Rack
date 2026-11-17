@@ -6,7 +6,7 @@ import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from rack.ingest import record_check, upsert_listings
+from rack.ingest import upsert_listings
 from rack.sources.base import Listing
 from rack.worker.taste import assign_clusters, embed_listings, rescore
 from tests.conftest import login
@@ -59,15 +59,3 @@ async def test_cross_listed_item_shows_once_with_all_buy_links(
     assert [b["source"] for b in merged["buy_links"]] == ["vinted", "ebay"]
 
 
-async def test_blocked_source_health(
-    client: httpx.AsyncClient, sessions: async_sessionmaker[AsyncSession]
-) -> None:
-    await login(client)
-    async with sessions() as s:
-        await record_check(
-            s, "vestiaire", blocked=True, detail="Blocked by the site's bot protection"
-        )
-        await s.commit()
-    health = {h["source"]: h for h in (await client.get("/api/sources/health")).json()}
-    assert health["vestiaire"]["status"] == "blocked"
-    assert health["vestiaire"]["last_check_at"]

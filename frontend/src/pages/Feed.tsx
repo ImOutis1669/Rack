@@ -14,7 +14,7 @@ import { SeenBatcher } from "../lib/seen";
 import { isDefaultFeed, loadSnapshot, saveSnapshot } from "../lib/snapshot";
 import { Icon } from "../components/icons/Icon";
 
-const SOURCES: Source[] = ["ebay", "vinted", "grailed", "vestiaire"];
+const SOURCES: Source[] = ["ebay", "vinted", "grailed"];
 const SORTS: [Sort, string][] = [
   ["best", "For you"],
   ["newest", "Newest"],

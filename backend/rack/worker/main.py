@@ -1,4 +1,4 @@
-"""Worker process: APScheduler running source refreshes, embeddings, rescoring and paid sources."""
+"""Worker process: APScheduler running source refreshes, embeddings, rescoring, hunts and prices."""
 
 import asyncio
 import contextlib
@@ -22,18 +22,15 @@ from rack.embeddings.images import (
     pinned_request,
     resolve_public,
 )
-from rack.ingest import record_check, record_error, record_success, upsert_listings
 from rack.models import AdjacentDesignerRow, TasteItemRow
 from rack.notify.dispatch import build_channels
 from rack.pricing.fx import fetch_rates, set_live_rates
 from rack.privacy import purge_ebay
 from rack.ranking.planner import PlannerInput, all_queries, fallback, next_batch
-from rack.sources.base import SearchQuery, SourceError
+from rack.sources.base import SearchQuery
 from rack.sources.ebay import EbayAdapter
 from rack.sources.grailed import GrailedAdapter
 from rack.sources.http import RateLimitedClient
-from rack.sources.recheck import BLOCKED_SOURCES, check
-from rack.sources.vestiaire import VestiaireApifyAdapter, parse_items
 from rack.store import get_state, load_designers, load_profile, set_state
 from rack.thumbs import prune
 from rack.worker.adapters import shared_adapters
@@ -112,62 +109,6 @@ async def run_refresh(size: int | None = None) -> None:
             await _update_state("refresh", running=False, at=_now().isoformat(), results=results)
 
 
-async def run_vestiaire() -> None:
-    """Paid Apify actor: a few queries on a slow schedule, under a monthly result cap."""
-    settings = get_settings()
-    if not settings.apify_token:
-        return
-    month = _now().strftime("%Y-%m")
-    async with sessionmaker()() as s:
-        usage = await get_state(s, "vestiaire_usage")
-    used = int(usage.get("results", 0)) if usage.get("month") == month else 0
-    cap = settings.vestiaire_monthly_result_cap
-    if used >= cap:
-        async with sessionmaker()() as s:
-            await record_error(
-                s,
-                "vestiaire",
-                f"Monthly Apify result cap reached ({used}/{cap}); "
-                "raise VESTIAIRE_MONTHLY_RESULT_CAP to continue",
-            )
-            await s.commit()
-        return
-
-    queries = await plan_queries("vestiaire_planner", settings.vestiaire_queries_per_run)
-    adapter = VestiaireApifyAdapter(settings.apify_token, enrich=settings.vestiaire_enrich)
-    try:
-        for q in queries:
-            remaining = cap - used
-            if remaining <= 0:
-                break
-            adapter.max_results = min(settings.vestiaire_max_results, remaining)
-            try:
-                rows = await adapter.run_actor(q)
-            except SourceError as exc:
-                async with sessionmaker()() as s:
-                    await record_error(s, "vestiaire", str(exc))
-                    await s.commit()
-                break  # don't keep paying for failing runs
-            used += len(rows)  # Apify bills every returned row, even ones Rack filters out
-            listings = parse_items(rows)
-            async with sessionmaker()() as s:
-                await upsert_listings(s, listings)
-                await record_success(s, "vestiaire", len(listings))
-                await set_state(s, "vestiaire_usage", {"month": month, "results": used})
-                await s.commit()
-            log.info(
-                "vestiaire %r: %d rows, %d kept (%d/%d this month)",
-                q.text,
-                len(rows),
-                len(listings),
-                used,
-                cap,
-            )
-    finally:
-        await adapter.aclose()
-        await _update_state("vestiaire_run", at=_now().isoformat())
-
-
 async def update_fx() -> None:
     """Daily ECB rates; conversions fall back to static rates if this fails."""
     try:
@@ -197,19 +138,6 @@ async def load_fx() -> None:
         fx = await get_state(s, "fx")
     if fx.get("rates"):
         set_live_rates({k: Decimal(v) for k, v in fx["rates"].items()})
-
-
-async def recheck_blocked() -> None:
-    settings = get_settings()
-    for name, url in BLOCKED_SOURCES.items():
-        if name == "vestiaire" and settings.apify_token:
-            continue  # served by the Apify actor instead
-        blocked, detail = await check(url)
-        log.info("recheck %s: %s", name, detail)
-        async with sessionmaker()() as s:
-            await record_check(s, name, blocked=blocked, detail=detail)
-            await s.commit()
-    await _update_state("recheck", at=_now().isoformat())
 
 
 async def run_hunts() -> None:
@@ -428,7 +356,6 @@ async def main() -> None:
     await load_fx()
     await load_ebay_usage()
     refresh_every = timedelta(minutes=settings.rack_refresh_minutes)
-    vestiaire_every = timedelta(hours=settings.vestiaire_refresh_hours)
     jobs: list[tuple[Any, timedelta, str, datetime]] = [
         (run_refresh, refresh_every, "refresh", await resume_at("refresh", refresh_every)),
         (embed.run, timedelta(seconds=settings.rack_score_seconds), "embed_score", now),
@@ -442,18 +369,6 @@ async def main() -> None:
         (run_resale_estimates, timedelta(minutes=2), "resale", now + timedelta(seconds=60)),
         (run_sold_prices, timedelta(minutes=10), "sold_prices", now + timedelta(seconds=90)),
         (prune_thumbnails, timedelta(hours=1), "thumbs_prune", now + timedelta(minutes=5)),
-        (
-            recheck_blocked,
-            timedelta(days=1),
-            "recheck_blocked",
-            await resume_at("recheck", timedelta(days=1)),
-        ),
-        (
-            run_vestiaire,
-            vestiaire_every,
-            "vestiaire",
-            await resume_at("vestiaire_run", vestiaire_every),
-        ),
     ]
     for func, every, job_id, first in jobs:
         scheduler.add_job(

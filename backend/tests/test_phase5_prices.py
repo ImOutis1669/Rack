@@ -65,7 +65,7 @@ def test_landed_cost_rules() -> None:
         estimate(source="ebay", price_gbp=D(10), shipping_gbp=None, country=None, location=None)
         is None
     )
-    assert ships_from_uk("vestiaire", None, "United Kingdom") is True
+    assert ships_from_uk("grailed", None, "United Kingdom") is True
 
 
 def test_price_cut_threshold() -> None:

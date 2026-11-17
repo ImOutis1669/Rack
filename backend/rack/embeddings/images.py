@@ -56,7 +56,7 @@ def for_embedding(data: bytes) -> Image.Image:
 
 # Marketplace image CDNs. Listing photo URLs come from third-party data, so the worker only
 # fetches from these (https, public addresses, no redirects).
-IMAGE_HOST_SUFFIXES = ("ebayimg.com", "vinted.net", "grailed.com", "vestiairecollective.com")
+IMAGE_HOST_SUFFIXES = ("ebayimg.com", "vinted.net", "grailed.com")
 
 
 def _is_public_ip(addr: str) -> bool:

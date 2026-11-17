@@ -153,14 +153,3 @@ async def record_not_configured(session: AsyncSession, source: str, reason: str)
     row = await _health(session, source)
     row.configured = False
     row.last_error = reason
-
-
-async def record_check(session: AsyncSession, source: str, *, blocked: bool, detail: str) -> None:
-    """Result of the daily reachability check for a source without a working adapter."""
-    row = await _health(session, source)
-    row.configured = True
-    row.blocked = blocked
-    row.last_check_at = utcnow()
-    row.last_error = detail[:1000]
-    if blocked:
-        row.last_error_at = utcnow()

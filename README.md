@@ -1,7 +1,6 @@
 # Rack
 
-A personal, self-hosted feed of second-hand menswear from eBay UK, Vinted UK, Grailed and (optionally)
-Vestiaire Collective. It ranks listings by **your** taste profile, not your click history: your
+A personal, self-hosted feed of second-hand menswear from eBay UK, Vinted UK and Grailed. It ranks listings by **your** taste profile, not your click history: your
 wardrobe photos, designers, style notes and fit. Saved hunts and price drops alert your phone.
 It's for a single user, and it runs in Docker on your own PC.
 
@@ -45,7 +44,7 @@ and data. The image model runs on the CPU, so no GPU is needed.
 
 ## Setup
 Settings live in `.env`. Secrets are split so each container only gets what it needs:
-`.env.api` (password hash, session secret), `.env.worker` (marketplace, Apify and Anthropic keys)
+`.env.api` (password hash, session secret), `.env.worker` (marketplace and Anthropic keys)
 and `.env.tunnel` (Cloudflare token).
 ```powershell
 cd C:\dev\rack
@@ -84,10 +83,9 @@ and rebuild. Without it Rack uses lucide icons.
 | eBay UK | Official Browse API | Create a production keyset at developer.ebay.com → *Application Keys*; set `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET`. |
 | Vinted UK | Its public search page | Price includes Vinted's compulsory buyer-protection fee (postage extra). Opening a listing fetches all its photos and the description. |
 | Grailed | The Algolia search index Grailed's own site uses | grailed.com blocks Rack, so this uses the public search key their site gives every browser (`GRAILED_ALGOLIA_*` in `.env.worker`). If Grailed rotates it, source health shows the error; update the key. Cover photo only, no descriptions. |
-| Vestiaire | Optional, paid: Apify actor on residential proxies | vestiairecollective.com blocks Rack with a Cloudflare human check, even from a home connection. Add `APIFY_TOKEN` (in `.env.worker`) to run `b2b_leads/vestiaire-collective-real-time-data-scraper`: billed per result (~$25 / 1,000; free Apify plans return 2 per run). Defaults: 3 searches × 10 results a day, hard stop at 300 results a month (~$7.50). Without a token Rack checks daily and shows "Blocked". |
 
 Tap the coloured dots under the header for each source's status, last run and last error.
-**Refresh** re-ranks now and searches the free sources (at most every 5 minutes).
+**Refresh** re-ranks now and searches the sources (at most every 5 minutes).
 
 ## Teaching it your taste
 1. **Settings**: designers (love / like / curious / exclude), a few words about your style, minimum
@@ -144,17 +142,13 @@ complete without it.
 
 ## Costs
 eBay, Vinted and Grailed access is free. Exchange rates come from the ECB via frankfurter.dev (free).
-Optional paid extras: Vestiaire through Apify (capped, ~$7.50 a month by default), and the Claude
-second opinion (capped per day).
+Optional paid extra: the Claude second opinion (capped per day).
 
 ## Honest caveats
 - Only eBay uses an official API. Vinted and Grailed are read through the same public endpoints
   their websites use. That may breach their terms of service and can stop working at any time.
   Rack keeps volume low: at least 10 s between requests per source, one request at a time, an honest
   User-Agent, no logins and no CAPTCHA solving. Each source fails on its own without breaking the feed.
-- Vestiaire, if you enable it, goes through a third-party scraping service that uses residential
-  proxies to get past the site's bot protection. That is your choice, made with eyes open; the same
-  terms-of-service caveat applies, more strongly.
 - To compare photos, Rack downloads one thumbnail per listing from the marketplace's image CDN (about
   one per second per host) and keeps only the embedding. Photos you see are loaded from the
   marketplaces directly.

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { CATEGORIES, type Category, type FreeSource, type Hunt, type HuntInput } from "../api/types";
+import { CATEGORIES, type Category, type Hunt, type Source, type HuntInput } from "../api/types";
 import { PageShell } from "../components/AppShell";
 import { ListingGrid, ListingItem } from "../components/ListingItem";
 import { NumberTicker } from "../components/magicui/number-ticker";
@@ -13,7 +13,7 @@ import { splitList } from "../lib/units";
 import { cn } from "../lib/utils";
 import { Icon } from "../components/icons/Icon";
 
-const FREE: FreeSource[] = ["ebay", "vinted", "grailed"];
+const SOURCES: Source[] = ["ebay", "vinted", "grailed"];
 
 export function Hunts() {
   const location = useLocation();
@@ -249,7 +249,7 @@ function HuntForm(props: { open: boolean; id: number | null; initial: HuntInput;
         <div className="space-y-2">
           <p className="text-footnote font-medium text-muted">Sources</p>
           <div className="flex flex-wrap gap-2">
-            {FREE.map((s) => (
+            {SOURCES.map((s) => (
               <Chip
                 key={s}
                 selected={h.sources.includes(s)}

@@ -48,7 +48,7 @@ services:
 
   worker:
     <<: *app
-    env_file:  # shared settings + worker-only secrets (marketplace, Apify, Anthropic keys)
+    env_file:  # shared settings + worker-only secrets (marketplace and Anthropic keys)
       - path: .env
       - path: .env.worker
         required: false

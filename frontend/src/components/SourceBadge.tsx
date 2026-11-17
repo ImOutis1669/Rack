@@ -6,7 +6,6 @@ const DOT: Record<Source, string> = {
   ebay: "bg-ebay",
   vinted: "bg-vinted",
   grailed: "bg-grailed dark:bg-white",
-  vestiaire: "bg-vestiaire",
 };
 
 /** Small source label; `glass` when it floats over a photo. */

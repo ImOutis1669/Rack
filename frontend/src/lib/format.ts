@@ -35,5 +35,4 @@ export const SOURCE_LABEL: Record<string, string> = {
   ebay: "eBay",
   vinted: "Vinted",
   grailed: "Grailed",
-  vestiaire: "Vestiaire",
 };

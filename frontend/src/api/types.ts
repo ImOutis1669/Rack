@@ -1,4 +1,4 @@
-export type Source = "ebay" | "vinted" | "grailed" | "vestiaire";
+export type Source = "ebay" | "vinted" | "grailed";
 export type Category = "any" | "tops" | "trousers" | "shoes" | "outerwear" | "accessories";
 export const CATEGORIES: Exclude<Category, "any">[] = ["tops", "trousers", "shoes", "outerwear", "accessories"];
 
@@ -223,7 +223,6 @@ export interface RefreshStatus {
   message: string;
 }
 
-export type FreeSource = "ebay" | "vinted" | "grailed";
 
 export interface HuntInput {
   name: string;
@@ -232,7 +231,7 @@ export interface HuntInput {
   max_price_gbp: number | null;
   sizes: string[];
   strict_size: boolean; // "Size must match"
-  sources: FreeSource[];
+  sources: Source[];
   min_score: number | null;
   interval_minutes: number;
   enabled: boolean;

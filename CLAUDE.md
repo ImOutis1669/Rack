@@ -1,6 +1,6 @@
 # Rack — CLAUDE.md
 
-Personal, self-hosted, single-user cross-marketplace fashion feed (eBay UK, Vinted UK, Grailed, Vestiaire).
+Personal, self-hosted, single-user cross-marketplace fashion feed (eBay UK, Vinted UK, Grailed).
 Host: the user's Windows gaming PC (Ryzen 5 7600X, 32 GB, RTX 4070 Super) via Docker Desktop, not an N100.
 Ranks listings by an explicit taste profile (wardrobe/wishlist CLIP embeddings, designers, free text, fit),
 not by click history. Saved "hunts" push alerts via ntfy/Telegram/Web Push.
@@ -100,18 +100,14 @@ stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (
   - Grailed: grailed.com is Cloudflare-blocked (also for headless Chromium). User chose to query
     Grailed's Algolia index directly with the public search-only key (in .env), honest UA, no browser
     impersonation headers. Index has no descriptions; hits that don't ship to the UK are dropped.
-  - Vestiaire: Cloudflare Turnstile (also blocks the user's residential connection). User chose the
-    paid Apify actor `b2b_leads/vestiaire-collective-real-time-data-scraper` (Apify's UK residential
-    proxies) via `sources/vestiaire.py`; runs only in its own daily job with per-run and monthly
-    result caps (`vestiaire_*` settings, usage in `app_state['vestiaire_usage']`). Without
-    APIFY_TOKEN, `sources/recheck.py` checks the site daily. Fixture is hand-built from the actor's
-    docs until a live run is recorded.
+  - Vestiaire Collective was removed in v1.2 at the user's request (it ran through a paid Apify
+    actor because the site blocks Rack). Migration 0018 cleared its data. Only eBay, Vinted and
+    Grailed remain; don't re-add it without asking.
   - Rack itself does no CAPTCHA solving, fingerprint spoofing, browser UA impersonation or proxying.
 - Dedupe (`ranking/dedupe.py`): pHash ≤ 6 bits AND CLIP ≥ 0.96 AND compatible brands (checked per
   group) AND title-word overlap ≥ 0.2; hashes shared by > 5 listings are placeholders. Known miss:
   near-identical photos + titles of genuinely different items (e.g. two lookbooks) still merge.
-- The worker stores the last refresh time; restarts don't re-run searches early (same for the
-  Vestiaire job and the daily recheck). Manual refresh: `api/refresh.py` writes
+- The worker stores the last refresh time; restarts don't re-run searches early. Manual refresh: `api/refresh.py` writes
   `app_state['refresh_request']`; the worker's `ManualRefresh` job (every 10 s) runs it, then
   embeds/scores. Cooldown `RACK_MANUAL_REFRESH_COOLDOWN_MINUTES`.
 - Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
@@ -119,8 +115,7 @@ stack (SF Pro) as fallback; never bundle Apple font files. Numbers: `.tabular` (
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all
   images; Grailed exposes only the cover photo + `photo_count`.
 - `docs/security-audit-prompt.md`: the user's audit prompt, to run in a later (security) phase.
-- Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs) and the Apify
-  "Vestiaire Collective Real-Time Data Scraper" actor (later adopted at the user's request).
+- Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs).
 
 - "I bought it" (`api/purchases.py`): copies the listing's first photo (marketplace CDNs only,
   SSRF-checked) and title into a wardrobe `taste_items` row with source, URL, brand, size,
@@ -225,7 +220,7 @@ Phase 4 notes:
   compares tokens, W32 = 32, and men's shoes across systems (EU = UK + 34, US = UK + 1; UK/US vs
   EU within half a size, same system exact; bare 3-15 = UK, 35-50 = EU). First run (and after editing the search)
   is a silent baseline. Global hard filters (hidden, banned words, fit, excluded designers) apply.
-  Free sources only (Vestiaire is paid). Min interval 5 min; worker checks due hunts every minute.
+  All sources. Min interval 5 min; worker checks due hunts every minute.
 - All worker jobs share one adapter per source (`worker/adapters.py`) so rate limits hold across jobs.
 - Alerts (`notify/`): `notify_once` claims a unique key in `notifications` before sending (no
   duplicates); if every channel fails the claim is released for retry. Keys: `hunt:<id>:<source>:

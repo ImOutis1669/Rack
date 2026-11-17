@@ -7,7 +7,7 @@ import { prefetchForOpen, prefetchOnView } from "./prefetch";
 describe("prefetch", () => {
   it("never prefetches Vinted details just because a tile scrolled past", () => {
     expect(prefetchOnView("vinted")).toBe(false);
-    for (const s of ["ebay", "grailed", "vestiaire"]) expect(prefetchOnView(s)).toBe(true);
+    for (const s of ["ebay", "grailed"]) expect(prefetchOnView(s)).toBe(true);
   });
 
   it("on touch, loads the details once and the full-size photo", async () => {
