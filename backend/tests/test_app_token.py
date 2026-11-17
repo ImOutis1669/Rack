@@ -53,7 +53,7 @@ async def test_token_login_shares_the_rate_limits(client: httpx.AsyncClient) -> 
         assert r.status_code == 401
         assert "token" not in r.text
     # the same counter guards both doors, so switching endpoint doesn't buy more tries
-    assert (await client.post("/api/auth/login", json=creds())).status_code == 429
+    assert (await client.post("/api/auth/login", json=creds(), headers={"X-Requested-With": "rack"})).status_code == 429
     assert (await client.post("/api/auth/token", json=creds())).status_code == 429
 
 

@@ -16,7 +16,7 @@ from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.ingest import record_error, record_success, upsert_listings
-from rack.models import SearchRequestRow
+from rack.models import SearchRequestRow, UserRow
 from rack.sources.base import Category, SearchQuery, SourceAdapter, SourceNotConfigured
 from rack.sources.registry import SOURCE_NAMES
 from rack.store import mark_listings_changed
@@ -30,6 +30,17 @@ PER_RUN = 5
 
 async def _claim(sessions: async_sessionmaker[AsyncSession], now: datetime) -> int | None:
     async with sessions() as s:
+        # a disabled account's searches never run (audit 2026-11-17, RACK-24)
+        await s.execute(
+            update(SearchRequestRow)
+            .where(
+                SearchRequestRow.status == "queued",
+                SearchRequestRow.user_id.in_(
+                    select(UserRow.id).where(UserRow.disabled_at.is_not(None))
+                ),
+            )
+            .values(status="error", finished_at=now)
+        )
         row = (
             await s.execute(
                 select(SearchRequestRow)
@@ -40,6 +51,7 @@ async def _claim(sessions: async_sessionmaker[AsyncSession], now: datetime) -> i
             )
         ).scalar_one_or_none()
         if row is None:
+            await s.commit()  # keeps the disabled accounts' searches marked as not run
             return None
         row.status, row.started_at = "running", now
         await s.commit()

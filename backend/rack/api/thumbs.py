@@ -14,11 +14,12 @@ from pathlib import Path
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import User, require_session
+from rack.api.private_files import private_file
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import ImageError, fetch_listing_image
@@ -96,9 +97,10 @@ async def taste_thumb(
     session: Session,
     settings: Config,
     user: User,
+    request: Request,
     w: Width = 480,
     accept: Accept = None,
-) -> FileResponse:
+) -> Response:
     w = _width(w)
     fmt = pick_format(accept)
     row = await session.get(TasteItemRow, item_id)
@@ -115,4 +117,5 @@ async def taste_thumb(
         except ImageError as exc:
             raise HTTPException(422, str(exc)) from exc
         await asyncio.to_thread(write_atomic, path, thumb)
-    return await _serve(path, fmt)
+    # your own photo: revalidated each time, so another account on this browser can't see it
+    return private_file(request, path, MEDIA_TYPES[fmt], vary="Accept")

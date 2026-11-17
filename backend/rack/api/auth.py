@@ -365,6 +365,9 @@ async def login(
     settings: Annotated[Settings, Depends(get_settings)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> None:
+    # Login CSRF (audit 2026-11-17, RACK-22): a cross-site form must not be able to sign a
+    # browser into someone else's account. The web app always sends this header.
+    _require_csrf(request)
     _set_cookie(response, settings, await _verify_login(body, request, settings, session))
 
 

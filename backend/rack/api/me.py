@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +21,7 @@ from rack.api.auth import (
     user_attempts,
     verify_password,
 )
+from rack.api.private_files import private_file
 from rack.avatars import avatar_path, make_avatar
 from rack.config import Settings, get_settings
 from rack.db import get_session
@@ -32,8 +32,6 @@ from rack.thumbs import write_atomic
 router = APIRouter(prefix="/api/me", tags=["me"], dependencies=[Depends(require_user)])
 Session = Annotated[AsyncSession, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
-# The URL carries the version, so a new photo is a new URL: cache the old one for good.
-AVATAR_CACHE = {"Cache-Control": "private, max-age=31536000, immutable"}
 
 
 class MeOut(BaseModel):
@@ -118,12 +116,12 @@ async def delete_avatar(user: User, session: Session, settings: Config) -> MeOut
 
 
 @router.get("/avatar")
-async def get_avatar(user: User, settings: Config) -> FileResponse:
+async def get_avatar(user: User, settings: Config, request: Request) -> Response:
     """Only your own photo; the owner sees friends' through /api/admin/users/{id}/avatar."""
     path = avatar_path(settings.rack_data_dir, user.id)
     if not path.is_file():
         raise HTTPException(404)
-    return FileResponse(path, media_type="image/jpeg", headers=AVATAR_CACHE)
+    return private_file(request, path, "image/jpeg")
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

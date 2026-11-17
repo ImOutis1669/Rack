@@ -216,7 +216,10 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
   ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all
   images; Grailed exposes only the cover photo + `photo_count`.
-- `docs/security-audit-prompt.md`: the user's audit prompt, to run in a later (security) phase.
+- `docs/security-audit-prompt.md`: the user's audit prompt. Audits: `docs/security-audit-2026-11-16.md`
+  (v1.0) and `docs/security-audit-2026-11-17.md` (v2.1 multi-user, RACK-21 to RACK-30). Account
+  photos (profile, wardrobe) are served with `api/private_files.py` `private_file()` (private,
+  no-cache, ETag, 304): never a long browser cache for anything that belongs to one account.
 - Evaluated and not used: `ebay-node-api` (still needs eBay keys; wraps the same APIs).
 
 - "I bought it" (`api/purchases.py`): copies the listing's first photo (marketplace CDNs only,

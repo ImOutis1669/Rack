@@ -15,6 +15,7 @@ import { ListingItem } from "../components/ListingItem";
 import { toast } from "../components/Toast";
 import { Button, Chip, EmptyState, Field, Input, Menu, Sheet, Skeleton } from "../components/ui";
 import { VirtualGrid } from "../components/VirtualGrid";
+import { loadRecent, saveRecent } from "../lib/recentSearches";
 
 const SORTS: [SearchSort, string][] = [
   ["best", "Best match"],
@@ -31,24 +32,6 @@ const CATEGORY_LABEL: Record<Category, string> = {
   outerwear: "Outerwear",
   accessories: "Accessories",
 };
-const RECENT_KEY = "rack.recentSearches";
-
-function loadRecent(): string[] {
-  try {
-    const v: unknown = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]");
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 8) : [];
-  } catch {
-    return [];
-  }
-}
-function saveRecent(list: string[]): void {
-  try {
-    window.localStorage.setItem(RECENT_KEY, JSON.stringify(list));
-  } catch {
-    // private mode: no recent searches
-  }
-}
-
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
   useEffect(() => {

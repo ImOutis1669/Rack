@@ -9,6 +9,7 @@ import type { Account } from "@rack/shared/types";
 import { api } from "../../api/client";
 import { clearSnapshots } from "../../lib/snapshot";
 import { clearOwnerAssets } from "../../lib/ownerAssets";
+import { clearRecent } from "../../lib/recentSearches";
 import { useAccount } from "../../lib/account";
 import { cn } from "../../lib/utils";
 import { Icon, type IconName } from "../icons/Icon";
@@ -22,6 +23,7 @@ import { Avatar } from "./Avatar";
  *  sure no query, snapshot, font or icon of that account stays in memory. */
 function leave(qc: QueryClient): void {
   clearSnapshots();
+  clearRecent();
   clearOwnerAssets();
   qc.clear();
   window.location.replace("/");

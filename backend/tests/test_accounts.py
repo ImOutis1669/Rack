@@ -105,8 +105,8 @@ async def test_owner_is_created_from_env_on_first_login(
 @pytest.mark.db
 async def test_unknown_user_and_wrong_password_look_the_same(client: httpx.AsyncClient) -> None:
     await login(client)
-    a = await client.post("/api/auth/login", json=creds("wrong-password!!"))
-    b = await client.post("/api/auth/login", json=creds(PASSWORD, "nobody"))
+    a = await client.post("/api/auth/login", json=creds("wrong-password!!"), headers={"X-Requested-With": "rack"})
+    b = await client.post("/api/auth/login", json=creds(PASSWORD, "nobody"), headers={"X-Requested-With": "rack"})
     assert a.status_code == b.status_code == 401
     assert a.json() == b.json() == {"detail": auth.FAILED}
 
@@ -124,10 +124,10 @@ async def test_per_username_limit_holds_across_ips(client: httpx.AsyncClient) ->
         r = await client.post(
             "/api/auth/login",
             json=creds("nope-nope-nope"),
-            headers={"CF-Connecting-IP": f"10.1.0.{i}"},
+            headers={"X-Requested-With": "rack", "CF-Connecting-IP": f"10.1.0.{i}"},
         )
         assert r.status_code == 401
-    r = await client.post("/api/auth/login", json=creds(), headers={"CF-Connecting-IP": "10.2.0.1"})
+    r = await client.post("/api/auth/login", json=creds(), headers={"X-Requested-With": "rack", "CF-Connecting-IP": "10.2.0.1"})
     assert r.status_code == 429  # guessing one account from many IPs doesn't work
 
 
@@ -324,7 +324,7 @@ async def test_disable_and_delete_end_a_friends_sessions(client: httpx.AsyncClie
 
         assert (await client.post(f"/api/admin/users/{sam}/disable", headers=H)).status_code == 200
         assert (await friend.get("/api/auth/me")).status_code == 401
-        r = await friend.post("/api/auth/login", json=creds(FRIEND_PW, "sam"))
+        r = await friend.post("/api/auth/login", json=creds(FRIEND_PW, "sam"), headers={"X-Requested-With": "rack"})
         assert r.status_code == 401 and r.json() == {"detail": auth.FAILED}
         assert (await client.post(f"/api/admin/users/{sam}/enable", headers=H)).status_code == 200
         await login(friend, "sam", FRIEND_PW)

@@ -70,7 +70,7 @@ async def test_profile_details_and_photo(
     assert url == "/api/me/avatar?v=1"
     got = await client.get(url)
     assert got.headers["content-type"] == "image/jpeg"
-    assert "immutable" in got.headers["cache-control"] and "private" in got.headers["cache-control"]
+    assert got.headers["cache-control"] == "private, no-cache"  # revalidated: RACK-21
     assert Image.open(io.BytesIO(got.content)).size == (SIDE, SIDE)
     again = await client.put(
         "/api/me/avatar", files={"file": ("me.jpg", photo(), "image/jpeg")}, headers=H
@@ -157,7 +157,7 @@ async def test_delete_my_account_removes_everything(
         r = await sam.request("DELETE", "/api/me", json={"password": SAM_PW}, headers=H)
         assert r.status_code == 204
         assert (await sam.get("/api/me")).status_code == 401
-        assert (await sam.post("/api/auth/login", json=creds(SAM_PW, "sam"))).status_code == 401
+        assert (await sam.post("/api/auth/login", json=creds(SAM_PW, "sam"), headers={"X-Requested-With": "rack"})).status_code == 401
 
     assert not (data / "uploads" / str(sam_id)).exists()
     assert not (data / "avatars" / f"{sam_id}.jpg").exists()

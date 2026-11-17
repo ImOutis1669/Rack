@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import httpx
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from rack.api import auth
 from rack.api.main import config_problems
@@ -28,7 +29,7 @@ async def test_spoofed_cf_header_from_untrusted_peer_is_ignored(client: httpx.As
             await client.post(
                 "/api/auth/login",
                 json=creds("x"),
-                headers={"CF-Connecting-IP": f"10.0.0.{i}"},
+                headers={"X-Requested-With": "rack", "CF-Connecting-IP": f"10.0.0.{i}"},
             )
         ).status_code
         for i in range(6)
@@ -45,11 +46,13 @@ async def test_trusted_tunnel_header_is_used_and_global_cap_holds(
         r = await client.post(
             "/api/auth/login",
             json=creds("x", f"nobody{i}"),  # spread over usernames, so only IP + global count
-            headers={"CF-Connecting-IP": f"203.0.113.{i}"},
+            headers={"X-Requested-With": "rack", "CF-Connecting-IP": f"203.0.113.{i}"},
         )
         assert r.status_code == 401  # each real client IP gets its own 5 tries...
     r = await client.post(
-        "/api/auth/login", json=creds(), headers={"CF-Connecting-IP": "198.51.100.7"}
+        "/api/auth/login",
+        json=creds(),
+        headers={"X-Requested-With": "rack", "CF-Connecting-IP": "198.51.100.7"},
     )
     assert r.status_code == 429  # ...but 60 failures in total closes login for everyone
 
@@ -91,7 +94,9 @@ async def test_password_change_ends_other_sessions(client: httpx.AsyncClient) ->
     client.cookies.set(auth.COOKIE, copied)
     assert (await client.get("/api/auth/me")).status_code == 401  # every other one is out
     client.cookies.clear()
-    assert (await client.post("/api/auth/login", json=creds())).status_code == 401
+    assert (
+        await client.post("/api/auth/login", json=creds(), headers={"X-Requested-With": "rack"})
+    ).status_code == 401
     await login(client, password="a-new-long-password!")
 
 
@@ -230,3 +235,58 @@ def test_config_problems_and_short_secret() -> None:
     assert config_problems(good) == []
     with pytest.raises(Exception, match="at least 32"):
         auth._serializer(s)
+
+
+# --- audit 2026-11-17 (v2.1) ---
+
+
+@pytest.mark.db
+async def test_login_needs_the_csrf_header(client: httpx.AsyncClient) -> None:
+    """RACK-22: a cross-site form can't log a browser into someone else's account."""
+    assert (await client.post("/api/auth/login", json=creds())).status_code == 403
+    assert not client.cookies
+    # the iOS app's token login has no cookie, so it needs no header
+    assert (await client.post("/api/auth/token", json=creds())).status_code == 200
+
+
+@pytest.mark.db
+async def test_private_photos_are_revalidated_every_time(
+    client: httpx.AsyncClient, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """RACK-21: your photos may be cached, but never shown from cache without asking the
+    server, so another account on the same browser can't see them."""
+    from tests.conftest import OWNER, make_user
+    from tests.test_phase2_db import png
+
+    await make_user(sessions, OWNER, "owner")
+    await make_user(sessions, "sam", password="sam-password-long")
+    await login(client)
+    item = (
+        await client.post(
+            "/api/taste/upload",
+            data={"kind": "wardrobe"},
+            files=[("files", ("a.png", png("black"), "image/png"))],
+            headers=H,
+        )
+    ).json()[0]
+    av = await client.put(
+        "/api/me/avatar", files={"file": ("a.png", png("red"), "image/png")}, headers=H
+    )
+    urls = [item["image"], item["thumb"] + "?w=480", av.json()["avatar"]]
+    for url in urls:
+        r = await client.get(url)
+        assert r.status_code == 200, url
+        assert r.headers["cache-control"] == "private, no-cache", url
+        etag = r.headers["etag"]
+        again = await client.get(url, headers={"If-None-Match": etag})
+        assert again.status_code == 304 and not again.content
+    # another account asking the same URLs (as a browser revalidating would): never the photo
+    async with httpx.AsyncClient(transport=client._transport, base_url="http://test") as sam:
+        await login(sam, "sam", "sam-password-long")
+        for url in urls[:2]:
+            assert (await sam.get(url, headers={"If-None-Match": etag})).status_code == 404
+        assert (await sam.get(urls[2])).status_code == 404  # sam has no photo of their own
+    # shared listing thumbnails keep their long cache
+    from rack.api.thumbs import CACHE_HEADERS
+
+    assert "immutable" in CACHE_HEADERS["Cache-Control"]

@@ -177,5 +177,35 @@ def creds(password: str = PASSWORD, username: str = OWNER) -> dict[str, str]:
 
 
 async def login(client: httpx.AsyncClient, username: str = OWNER, password: str = PASSWORD) -> None:
-    r = await client.post("/api/auth/login", json=creds(password, username))
-    assert r.status_code == 204, r.text
+    r = await client.post(
+        "/api/auth/login", json=creds(password, username), headers={"X-Requested-With": "rack"}
+    )
+    assert r.status_code == 204, f"{r.text} | {await _login_context()}"
+
+
+async def _login_context() -> str:
+    """What the database and settings looked like when a test login failed: an intermittent
+    401 was seen three times during v2.1 and never reproduced, so this records the state."""
+    import os
+
+    from sqlalchemy import text as sql
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from rack.api.auth import verify_password
+    from rack.config import get_settings
+
+    engine = create_async_engine(os.environ.get("DATABASE_URL", ""))
+    try:
+        async with engine.connect() as c:
+            rows = (
+                await c.execute(sql("SELECT username, role, password_hash, disabled_at FROM users"))
+            ).all()
+    finally:
+        await engine.dispose()
+    users = [(u, role, verify_password(PASSWORD, h), d is not None) for u, role, h, d in rows]
+    s = get_settings()
+    return (
+        f"users (name, role, test password ok, disabled)={users} "
+        f"env_hash_ok={os.environ.get('RACK_PASSWORD_HASH') == password_hash()} "
+        f"settings_hash_ok={s.rack_password_hash == password_hash()} owner_username={s.rack_owner_username!r}"
+    )

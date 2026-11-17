@@ -7,13 +7,13 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rack.api.auth import User, require_session
+from rack.api.private_files import private_file
 from rack.config import Settings, get_settings
 from rack.db import get_session
 from rack.embeddings.images import MAX_BYTES, ImageError, fetch_user_image, sanitize_upload
@@ -340,13 +340,13 @@ async def comparables(
 
 
 @router.get("/{item_id}/image")
-async def item_image(item_id: int, session: Session, settings: Config, user: User) -> FileResponse:
+async def item_image(
+    item_id: int, session: Session, settings: Config, user: User, request: Request
+) -> Response:
     row = await _get(session, item_id, user.id)
     if not row.image_path:
         raise HTTPException(404)
     path = settings.uploads_dir / row.image_path
     if not path.is_file():
         raise HTTPException(404)
-    return FileResponse(
-        path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"}
-    )
+    return private_file(request, path, "image/jpeg")

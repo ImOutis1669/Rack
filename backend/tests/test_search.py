@@ -278,3 +278,28 @@ async def test_stale_and_old_requests_are_cleaned_up(
     async with sessions() as s:
         rows = {r.query: r.status for r in (await s.execute(select(SearchRequestRow))).scalars()}
     assert rows == {"stuck": "error"}  # crashed run given up; day-old query deleted
+
+
+@pytest.mark.db
+async def test_disabled_accounts_searches_never_run(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    """RACK-24: disabling a friend also stops what they queued."""
+    sam = await make_user(sessions, "sam", password=SAM_PW)
+    async with sessions() as s:
+        s.add(
+            SearchRequestRow(
+                user_id=sam, query="visvim", status="queued", created_at=datetime.now(UTC)
+            )
+        )
+        from rack.models import UserRow
+
+        u = await s.get(UserRow, sam)
+        assert u is not None
+        u.disabled_at = datetime.now(UTC)
+        await s.commit()
+    vinted = Fake("vinted", [])
+    assert await run_live_searches(sessions, {"vinted": vinted}) == 0
+    assert vinted.asked == []
+    async with sessions() as s:
+        assert (await s.execute(select(SearchRequestRow.status))).scalar_one() == "error"

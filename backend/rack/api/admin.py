@@ -3,8 +3,7 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from rack.account_files import remove_user_files
 from rack.accounts import invite_expiry, invite_hash, invite_status, new_invite_code
 from rack.api.auth import CurrentUser, forget_user, require_owner
+from rack.api.private_files import private_file
 from rack.avatars import avatar_path
 from rack.config import Settings, get_settings
 from rack.db import get_session
@@ -78,16 +78,12 @@ async def list_users(session: Session) -> list[UserOut]:
 
 @router.get("/users/{user_id}/avatar")
 async def user_avatar(
-    user_id: int, settings: Annotated[Settings, Depends(get_settings)]
-) -> FileResponse:
+    user_id: int, request: Request, settings: Annotated[Settings, Depends(get_settings)]
+) -> Response:
     path = avatar_path(settings.rack_data_dir, user_id)
     if not path.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    return FileResponse(
-        path,
-        media_type="image/jpeg",
-        headers={"Cache-Control": "private, max-age=31536000, immutable"},
-    )
+    return private_file(request, path, "image/jpeg")
 
 
 async def _friend(session: AsyncSession, user_id: int) -> UserRow:
