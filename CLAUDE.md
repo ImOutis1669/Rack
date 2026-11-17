@@ -200,6 +200,13 @@ Security notes:
   at 1 s, failures cached 10 min); global login cap; sessions carry an epoch
   (`app_state['auth']`) + password fingerprint (logout-all, password change). Session secret
   must be >= 32 chars. uvicorn runs with `--no-proxy-headers`.
+- iOS app auth (iOS step 1): `POST /api/auth/token` (same password check and rate limits as
+  `/login`) returns a bearer token signed with salt `rack-app-token` (cookies use
+  `rack-session`, so neither works as the other), same epoch + fingerprint claims, lifetime
+  `RACK_SESSION_DAYS`. `require_session`: a present `Authorization` header is the only credential
+  (no cookie fallback) and needs no CSRF header. Stateless: logging out on the phone deletes the
+  token from the Keychain (user's choice, like the cookie logout); logout-all and password
+  changes revoke it. Tests: `tests/test_app_token.py`.
 - Worker image downloads: https marketplace CDNs only (`embeddings/images.py`
   `IMAGE_HOST_SUFFIXES`), public IPs, connection pinned to the checked IP (Host + SNI), no
   redirects. Security headers + body-size limits in `api/main.py`.

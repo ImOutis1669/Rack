@@ -1,7 +1,14 @@
-"""Single-user auth: argon2 password hash from env, signed session cookie, login rate limits.
+"""Single-user auth: argon2 password hash from env, login rate limits, two kinds of credential.
 
-Sessions carry a server-side generation ("epoch") and a fingerprint of the password hash, so
-"log out all devices" and changing the password both invalidate every outstanding cookie.
+- Web app: a signed HttpOnly session cookie, plus the `X-Requested-With` CSRF header on writes.
+- iOS app: a signed bearer token from `POST /api/auth/token`, sent as `Authorization: Bearer`
+  and kept in the phone's Keychain. Browsers never attach that header on their own, so bearer
+  requests need no CSRF header. Tokens use a different salt from cookies, so neither value works
+  as the other. Logging out on the phone just deletes the token there (user's choice, iOS step 1),
+  the same as the cookie's logout.
+
+Both carry a server-side generation ("epoch") and a fingerprint of the password hash, so
+"log out all devices" and changing the password both invalidate every cookie and every token.
 """
 
 import asyncio
@@ -23,6 +30,7 @@ from rack.db import get_session
 from rack.store import get_state, set_state
 
 COOKIE = "rack_session"
+APP_TOKEN_SALT = "rack-app-token"  # never "rack-session": a cookie must not work as a token
 CSRF_HEADER = "X-Requested-With"
 CSRF_VALUE = "rack"
 MAX_ATTEMPTS = 5  # per client IP per window
@@ -87,14 +95,14 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _serializer(settings: Settings) -> URLSafeTimedSerializer:
+def _serializer(settings: Settings, salt: str = "rack-session") -> URLSafeTimedSerializer:
     secret = settings.rack_session_secret
     if len(secret) < MIN_SECRET_LENGTH:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             f"RACK_SESSION_SECRET must be at least {MIN_SECRET_LENGTH} characters",
         )
-    return URLSafeTimedSerializer(secret, salt="rack-session")
+    return URLSafeTimedSerializer(secret, salt=salt)
 
 
 def password_fingerprint(password_hash: str) -> str:
@@ -161,16 +169,11 @@ async def current_epoch(session: AsyncSession) -> int:
     return epoch
 
 
-async def require_session(
-    request: Request,
-    settings: Annotated[Settings, Depends(get_settings)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> None:
-    token = request.cookies.get(COOKIE)
-    if not token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+async def _check_claims(value: str, salt: str, settings: Settings, session: AsyncSession) -> None:
+    """A cookie or bearer value must be signed with `salt`, unexpired, and from the current
+    epoch and password."""
     try:
-        data = _serializer(settings).loads(token, max_age=settings.rack_session_days * 86400)
+        data = _serializer(settings, salt).loads(value, max_age=settings.rack_session_days * 86400)
     except (BadSignature, SignatureExpired) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired") from exc
     if (
@@ -179,6 +182,25 @@ async def require_session(
         or data.get("p") != password_fingerprint(settings.rack_password_hash)
     ):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session ended")
+
+
+async def require_session(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    authorization = request.headers.get("Authorization")
+    if authorization is not None:
+        # iOS app. If the header is there, only the header counts (no falling back to a cookie).
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+        await _check_claims(value.strip(), APP_TOKEN_SALT, settings, session)
+        return  # no CSRF check: a browser never sends this header by itself
+    token = request.cookies.get(COOKIE)
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+    await _check_claims(token, "rack-session", settings, session)
     if request.method not in ("GET", "HEAD", "OPTIONS") and (
         request.headers.get(CSRF_HEADER) != CSRF_VALUE
     ):
@@ -189,14 +211,10 @@ class LoginBody(BaseModel):
     password: str
 
 
-@router.post("/login", status_code=status.HTTP_204_NO_CONTENT)
-async def login(
-    body: LoginBody,
-    request: Request,
-    response: Response,
-    settings: Annotated[Settings, Depends(get_settings)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> None:
+async def _verify_login(
+    body: LoginBody, request: Request, settings: Settings, session: AsyncSession
+) -> dict[str, object]:
+    """Checks the password under the shared rate limits; returns the claims to sign."""
     ip = client_ip(request, await trusted_proxy_ips(settings))
     if attempts.blocked(ip):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts, try later")
@@ -205,9 +223,21 @@ async def login(
         attempts.fail(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong password")
     attempts.reset(ip)
-    token = _serializer(settings).dumps(
-        {"e": await current_epoch(session), "p": password_fingerprint(settings.rack_password_hash)}
-    )
+    return {
+        "e": await current_epoch(session),
+        "p": password_fingerprint(settings.rack_password_hash),
+    }
+
+
+@router.post("/login", status_code=status.HTTP_204_NO_CONTENT)
+async def login(
+    body: LoginBody,
+    request: Request,
+    response: Response,
+    settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    token = _serializer(settings).dumps(await _verify_login(body, request, settings, session))
     response.set_cookie(
         COOKIE,
         token,
@@ -216,6 +246,29 @@ async def login(
         secure=settings.rack_cookie_secure,
         samesite="lax",
         path="/",
+    )
+
+
+class AppToken(BaseModel):
+    token: str
+    expires_in: int  # seconds
+
+
+@router.post("/token")
+async def app_token(
+    body: LoginBody,
+    request: Request,
+    response: Response,
+    settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AppToken:
+    """Login for the iOS app: same password and rate limits as /login, but returns a bearer
+    token for the Keychain instead of setting a cookie."""
+    claims = await _verify_login(body, request, settings, session)
+    response.headers["Cache-Control"] = "no-store"
+    return AppToken(
+        token=_serializer(settings, APP_TOKEN_SALT).dumps(claims),
+        expires_in=settings.rack_session_days * 86400,
     )
 
 
