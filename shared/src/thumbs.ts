@@ -31,9 +31,28 @@ export function shortHash(s: string): string {
  * `key` (the photo URL) makes the cache key change when the photo behind the route changes.
  */
 export function thumbSet(base: string, key?: string): TileImage {
-  const v = key ? `${THUMB_VERSION}.${shortHash(key)}` : `${THUMB_VERSION}`;
-  const url = (w: number) => `${base}?w=${w}&v=${v}`;
+  const url = (w: ThumbWidth) => thumbUrl(base, w, key);
   return { src: url(480), srcSet: `${url(480)} 480w, ${url(640)} 640w, ${url(960)} 960w`, sizes: TILE_SIZES };
+}
+
+export type ThumbWidth = 480 | 640 | 960;
+
+/** One thumbnail URL at a fixed width (the iOS app picks the width itself). */
+export function thumbUrl(base: string, w: ThumbWidth, key?: string): string {
+  const v = key ? `${THUMB_VERSION}.${shortHash(key)}` : `${THUMB_VERSION}`;
+  return `${base}?w=${w}&v=${v}`;
+}
+
+/** Smallest thumbnail at least `px` wide (device pixels), else the largest. */
+export function thumbWidthFor(px: number): ThumbWidth {
+  return px <= 480 ? 480 : px <= 640 ? 640 : 960;
+}
+
+/** A listing's first photo as one thumbnail URL path, or the original URL if Rack has no id. */
+export function listingThumb(item: { images: string[]; image_ids?: number[] }, w: ThumbWidth): string | null {
+  const id = item.image_ids?.[0];
+  if (id != null) return thumbUrl(`/api/img/${id}`, w, item.images[0]);
+  return item.images[0] ?? null;
 }
 
 /** A listing tile's first photo as a thumbnail; the original URL if Rack has no id for it. */

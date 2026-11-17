@@ -1,8 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 import * as SecureStore from 'expo-secure-store';
+import { AppState } from 'react-native';
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { Session, type KeyStore } from './session';
+import { clearDeviceData, expireImageCache } from './storage';
 
 const KEYCHAIN = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 
@@ -20,11 +22,17 @@ export function SessionProvider({ queryClient, children }: { queryClient: QueryC
     () =>
       new Session(keychain, {
         defaultServer: process.env.EXPO_PUBLIC_RACK_URL ?? null,
-        clearCache: () => queryClient.clear(),
+        clearCache: async () => {
+          queryClient.clear();
+          await clearDeviceData();
+        },
       }),
   );
   useEffect(() => {
     session.load().catch(() => void session.signOut());
+    void expireImageCache();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && void expireImageCache());
+    return () => sub.remove();
   }, [session]);
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
 }

@@ -80,6 +80,12 @@ export class Session {
     this.set({ server: saved ?? this.server, status: token && (saved ?? this.server) ? 'signedIn' : 'signedOut' });
   }
 
+  /** Headers for requests the app makes itself (photos through expo-image). */
+  imageHeaders(): Record<string, string> {
+    // AVIF where the server has it (expo-image decodes it), like Safari
+    return { ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}), Accept: 'image/avif,image/webp,*/*;q=0.5' };
+  }
+
   /** The API for a server, sending this session's token. */
   api(server = this.server): Api {
     if (!server) throw new Error('No server set');

@@ -1,4 +1,3 @@
-import privateAssets from '@rack/private';
 import { router, Stack } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -20,14 +19,12 @@ export function useHeaderOptions() {
 /** The stack inside one tab: its page has a native large title and the Settings button. */
 export function TabStack({ title }: { title: string }) {
   const header = useHeaderOptions();
-  const gear = privateAssets.barIcons.settings?.default ?? 'gearshape';
   return (
     <Stack screenOptions={header}>
       <Stack.Screen name="index" options={{ title }}>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
-            icon={gear}
-            iconRenderingMode="template"
+            icon="gearshape"
             accessibilityLabel="Settings"
             onPress={() => router.push('/settings')}
           />

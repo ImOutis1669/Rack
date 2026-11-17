@@ -44,7 +44,8 @@ App shell (iOS step 3, checked on the user's iPhone in Expo Go):
 - **Titles:** native large titles (34 pt, iOS's own size; the web's 40 px is not used) in Neue
   Montreal Bold; the collapsed title in Medium. The feed is titled "Rack".
 - **Settings:** the gear is a native header button (`Stack.Toolbar`) on every tab; Settings opens
-  as a modal sheet with a Done button.
+  as a modal sheet with a Done button. Header buttons are SF Symbols (`gearshape`): a Basil image
+  there got its own tinted background apart from the other buttons (iOS step 4).
 - **Colours:** `mobile/src/theme/colors.ts` mirrors the tokens table above, light and dark,
   following the system. Type roles in `mobile/src/theme/type.ts`: each Neue Montreal weight is its
   own family (never a `fontWeight` on top, which iOS would fake); numbers use the system font's
@@ -52,6 +53,20 @@ App shell (iOS step 3, checked on the user's iPhone in Expo Go):
 - **Lists:** inset grouped sections (`components/Grouped.tsx`): radius 16, hairlines, 44 pt rows.
 - **Login:** the name, a password field (iOS password autofill), a monochrome capsule button;
   the server address is shown small and can be edited. No orb card: that was a web effect.
+
+Feed (iOS step 4, checked on the user's iPhone):
+- **Grid:** FlashList masonry, 2 columns (shared `laneGeometry`), 16 pt gutters, 12 pt gaps.
+  Tiles as on the web: 4:5 photo (radius 12), brand caps, title, tabular price (struck-through
+  old price), one meta line. Overlays on the photo (source badge, "Price cut", bookmark) use
+  Liquid Glass (`expo-glass-effect`), a soft fill before iOS 26.
+- **Header:** sort as a native menu (checkmark on the current sort), Filters with a count badge,
+  the gear: one glass group. Category chips sit under the large title and scroll with the feed.
+- **Filters:** a native form sheet (detents 62% / full, grabber, swipe down to close).
+- **Tile actions:** tap opens the listing; the bookmark saves in one tap; long-press is a native
+  context menu (Save, More like this, Less like this). Haptics: selection for votes, light /
+  medium impact for unsave / save, error notification when an action fails and is undone.
+- **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
+  messages show as a toast above the tab bar.
 
 ## Navigation
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.

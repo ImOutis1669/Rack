@@ -5,6 +5,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useState } from 'react';
 
+import { ToastProvider } from '@/components/Toast';
 import { SessionProvider, useSession } from '@/lib/auth';
 import { makeQueryClient } from '@/lib/queryClient';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
@@ -21,7 +22,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SessionProvider queryClient={queryClient}>
         <ThemeProvider customFont={customFont}>
-          <RootStack />
+          <ToastProvider>
+            <RootStack />
+          </ToastProvider>
         </ThemeProvider>
       </SessionProvider>
     </QueryClientProvider>
@@ -58,6 +61,7 @@ function RootStack() {
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="listing/[id]" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="login" />
