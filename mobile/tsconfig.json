@@ -8,7 +8,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/assets/*": ["./assets/*"],
-      "@rack/shared/*": ["../shared/src/*"]
+      "@rack/shared/*": ["../shared/src/*"],
+      "@rack/private": ["./assets/private/index.ts", "./src/private/fallback.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],

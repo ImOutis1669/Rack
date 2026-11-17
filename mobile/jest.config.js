@@ -7,5 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '^@rack/shared/(.*)$': '<rootDir>/../shared/src/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
+    // tests never see the owner's private assets
+    '^@rack/private$': '<rootDir>/src/private/fallback.ts',
   },
 };

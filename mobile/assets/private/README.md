@@ -4,8 +4,13 @@ The iOS app uses the owner's own licensed files, which must not be published in 
 
 - `fonts/neuemontreal-{regular,medium,bold}.otf`: Neue Montreal (Pangram Pangram). Embedding
   it in an app needs Pangram's App licence.
-- Basil Icons (Craftwork): the app reads the same generated path data as the web app
-  (`frontend/src/components/icons/basil.generated.ts`, made by `npm run icons` in `frontend/`).
+- `basil.json` and `bars/*.png`: Basil Icons (Craftwork) as path data (drawn with
+  react-native-svg) and as images for the native tab bar and header buttons.
+- `index.ts`: the manifest the app imports as `@rack/private`.
+
+Build them with `npm run private-assets` (in `mobile/`). By default it reads the web app's
+`frontend/public/fonts/` and `frontend/src/components/icons/basil.generated.ts` (made by
+`npm run icons` in `frontend/`); pass other paths as arguments.
 
 Everything in this folder except this README is git-ignored. Without the files the app falls back
 to SF Pro and SF Symbols. The GitHub Actions build gets them from an encrypted repository secret

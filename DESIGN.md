@@ -37,6 +37,22 @@ large titles, native sheets and menus, haptics. Neue Montreal and Basil come fro
 files in git-ignored `mobile/assets/private/`; without them it uses SF Pro and SF Symbols.
 Decisions specific to the app are added here as each step lands.
 
+App shell (iOS step 3, checked on the user's iPhone in Expo Go):
+- **Tabs:** the native iOS tab bar (`NativeTabs`): Liquid Glass on iOS 26, minimises on scroll
+  down, monochrome tint (`foreground`). Basil icons are rendered to template PNGs (outline at
+  rest, solid when selected); Wardrobe is the SF Symbol `tshirt` (Basil has no shirt).
+- **Titles:** native large titles (34 pt, iOS's own size; the web's 40 px is not used) in Neue
+  Montreal Bold; the collapsed title in Medium. The feed is titled "Rack".
+- **Settings:** the gear is a native header button (`Stack.Toolbar`) on every tab; Settings opens
+  as a modal sheet with a Done button.
+- **Colours:** `mobile/src/theme/colors.ts` mirrors the tokens table above, light and dark,
+  following the system. Type roles in `mobile/src/theme/type.ts`: each Neue Montreal weight is its
+  own family (never a `fontWeight` on top, which iOS would fake); numbers use the system font's
+  tabular figures.
+- **Lists:** inset grouped sections (`components/Grouped.tsx`): radius 16, hairlines, 44 pt rows.
+- **Login:** the name, a password field (iOS password autofill), a monochrome capsule button;
+  the server address is shown small and can be edited. No orb card: that was a web effect.
+
 ## Navigation
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.
 - On iPhone they're a bottom glass tab bar; on desktop a segmented control in the top glass bar.

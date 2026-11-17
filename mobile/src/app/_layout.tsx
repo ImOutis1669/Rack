@@ -1,14 +1,68 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import privateAssets from '@rack/private';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useMemo, useState } from 'react';
 
-// Placeholder shell for iOS step 0. Step 3 replaces it with native tabs, large titles and login.
+import { SessionProvider, useSession } from '@/lib/auth';
+import { makeQueryClient } from '@/lib/queryClient';
+import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  const scheme = useColorScheme();
+  const [queryClient] = useState(makeQueryClient);
+  // the owner's Neue Montreal files when present (@rack/private), else the system font
+  const [fontsLoaded, fontError] = useFonts(privateAssets.fonts);
+  if (!fontsLoaded && !fontError) return null;
+  const customFont = fontsLoaded && !fontError && Object.keys(privateAssets.fonts).length > 0;
   return (
-    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerLargeTitle: true }}>
-        <Stack.Screen name="index" options={{ title: 'Rack' }} />
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider queryClient={queryClient}>
+        <ThemeProvider customFont={customFont}>
+          <RootStack />
+        </ThemeProvider>
+      </SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
+function RootStack() {
+  const session = useSession();
+  const { scheme, colors } = useTheme();
+  const navTheme = useMemo(() => {
+    const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.foreground, // monochrome tint, like the web
+        background: colors.background,
+        card: colors.background,
+        text: colors.foreground,
+        border: colors.border,
+      },
+    };
+  }, [scheme, colors]);
+
+  useEffect(() => {
+    if (session.status !== 'loading') void SplashScreen.hideAsync();
+  }, [session.status]);
+  if (session.status === 'loading') return null;
+
+  const signedIn = session.status === 'signedIn';
+  return (
+    <NavigationTheme value={navTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={signedIn}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!signedIn}>
+          <Stack.Screen name="login" />
+        </Stack.Protected>
       </Stack>
-    </ThemeProvider>
+    </NavigationTheme>
   );
 }
