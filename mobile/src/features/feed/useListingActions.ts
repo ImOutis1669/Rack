@@ -1,33 +1,38 @@
-import { nextVote, voteValue, type Vote } from '@rack/shared/vote';
 import type { Listing } from '@rack/shared/types';
+import { nextVote, voteValue, type Vote } from '@rack/shared/vote';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
 
 import { useToast } from '@/components/Toast';
 import { useSession } from '@/lib/auth';
+import { setListingState, useListingState } from '@/lib/listingState';
 
 export interface ListingActions {
   vote: Vote;
   saved: boolean;
   castVote: (v: -1 | 1) => void;
   toggleSave: () => void;
-  hide: (kind: 'seller' | 'brand', value: string) => void;
+  /** Hide this seller or brand everywhere; the listing leaves the feed at once. */
+  hide: (kind: 'seller' | 'brand', value: string) => Promise<boolean>;
 }
 
-/** Optimistic vote / save / hide for one listing, with haptics (the web's useListingActions). */
-export function useListingActions(item: Listing, onHidden?: (id: number) => void): ListingActions {
+/**
+ * Optimistic vote / save / hide for one listing, with haptics (the web's useListingActions).
+ * State lives in lib/listingState, so the tile and the listing sheet always agree.
+ */
+export function useListingActions(item: Listing): ListingActions {
   const api = useSession().api();
   const toast = useToast();
-  const [vote, setVote] = useState<Vote>(item.feedback);
-  const [saved, setSaved] = useState(item.saved);
+  const { vote, saved } = useListingState(item);
 
-  const run = async (fn: () => Promise<unknown>, undo: () => void) => {
+  const run = async (fn: () => Promise<unknown>, undo: () => void): Promise<boolean> => {
     try {
       await fn();
+      return true;
     } catch (e) {
       undo();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       toast(e instanceof Error ? e.message : "Couldn't save that");
+      return false;
     }
   };
 
@@ -37,24 +42,22 @@ export function useListingActions(item: Listing, onHidden?: (id: number) => void
     castVote: (v) => {
       const prev = vote;
       const next = nextVote(vote, v);
-      setVote(next);
+      setListingState(item.id, { vote: next });
       void Haptics.selectionAsync();
-      void run(() => api.feedback(item.id, voteValue(next)), () => setVote(prev));
+      void run(() => api.feedback(item.id, voteValue(next)), () => setListingState(item.id, { vote: prev }));
     },
     toggleSave: () => {
       const prev = saved;
-      setSaved(!saved);
+      setListingState(item.id, { saved: !prev });
       void Haptics.impactAsync(prev ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
-      void run(() => (prev ? api.unsave(item.id) : api.save(item.id)), () => setSaved(prev));
+      void run(() => (prev ? api.unsave(item.id) : api.save(item.id)), () => setListingState(item.id, { saved: prev }));
     },
-    hide: (kind, value) => {
-      void run(
-        async () => {
-          await api.hide(kind, value);
-          onHidden?.(item.id);
-        },
-        () => undefined,
-      );
-    },
+    hide: (kind, value) =>
+      run(async () => {
+        await api.hide(kind, value);
+        setListingState(item.id, { hidden: true });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        toast(kind === 'seller' ? `Hid seller ${value}` : `Hid ${value}`);
+      }, () => undefined),
   };
 }

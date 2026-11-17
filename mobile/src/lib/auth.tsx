@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { Session, type KeyStore } from './session';
+import { clearListingState } from './listingState';
 import { clearDeviceData, expireImageCache } from './storage';
 
 const KEYCHAIN = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
@@ -24,6 +25,7 @@ export function SessionProvider({ queryClient, children }: { queryClient: QueryC
         defaultServer: process.env.EXPO_PUBLIC_RACK_URL ?? null,
         clearCache: async () => {
           queryClient.clear();
+          clearListingState();
           await clearDeviceData();
         },
       }),

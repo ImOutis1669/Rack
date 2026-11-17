@@ -32,15 +32,14 @@ function Overlay({ style, children }: { style?: object; children: ReactNode }) {
 interface Props {
   item: Listing;
   width: number;
-  onHidden?: (id: number) => void;
 }
 
-export const ListingTile = memo(function ListingTile({ item, width, onHidden }: Props) {
+export const ListingTile = memo(function ListingTile({ item, width }: Props) {
   const session = useSession();
   const qc = useQueryClient();
   const { colors, scheme, text, customFont } = useTheme();
   const medium = font('medium', customFont);
-  const actions = useListingActions(item, onHidden);
+  const actions = useListingActions(item);
 
   const thumb = listingThumb(item, thumbWidthFor(width * PixelRatio.get()));
   const uri = thumb && thumb.startsWith('/') ? `${session.server}${thumb}` : thumb;

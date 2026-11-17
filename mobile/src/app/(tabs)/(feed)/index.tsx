@@ -20,7 +20,7 @@ const SIDE = 16;
 export default function FeedScreen() {
   const { colors, text, customFont } = useTheme();
   const { params, setParams, filterCount } = useFeedParams();
-  const { query, items, loadMore, onSeen, onHidden, needsSetup } = useFeed();
+  const { query, items, loadMore, onSeen, needsSetup } = useFeed();
   const { refresh, refreshing } = useRefresh();
   const { width } = useWindowDimensions();
 
@@ -40,10 +40,10 @@ export default function FeedScreen() {
   const renderItem = useCallback(
     ({ item }: { item: Listing }) => (
       <View style={{ paddingHorizontal: grid.gap / 2 }}>
-        <ListingTile item={item} width={tileWidth} onHidden={onHidden} />
+        <ListingTile item={item} width={tileWidth} />
       </View>
     ),
-    [tileWidth, grid.gap, onHidden],
+    [tileWidth, grid.gap],
   );
 
   const sortLabel = SORTS.find(([s]) => s === params.sort)?.[1] ?? 'For you';

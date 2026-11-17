@@ -61,7 +61,15 @@ Full approved plan: see "Phases" below; deviations must be discussed with the us
   `Accept: image/avif`; `Link` with a native `Link.Menu`). Device cache rules (`lib/storage.ts`,
   expo-sqlite kv-store): snapshot via shared `snapshot`, photo cache emptied when 24 h old (start
   + foreground) and with the snapshot on log out / any 401. The listing route `listing/[id]`
-  reads the listing the tile put in the query cache (`['listing', id]`). The browser pane's web
+  reads the listing the tile put in the query cache (`['listing', id]`). Listing sheet (step 5):
+  `app/listing/[id].tsx` + `app/bought/[id].tsx` (form sheet); `components/PhotoPager`
+  (UIScrollView zoom, `lib/doubleTap.ts`: one-finger taps only); `lib/listingState.ts` = save /
+  vote / hidden shared by tile and sheet via `useSyncExternalStore` snapshots that change identity
+  per update (reading a module Map directly got memoized by the React Compiler: stale UI);
+  `lib/share.ts` = RN Share. "Hunt for this" stores `['huntPrefill']` in the query cache and
+  `router.dismissTo('/hunts')` (step 6 reads it). `Icon` wraps everything in a
+  `pointerEvents="none"` View (SF SymbolView swallowed taps); `system` forces the SF Symbol.
+  The browser pane's web
   build of the app errors (no Keychain/SQLite on web): ignore it, the app is iOS only. Expo Go on the user's iPhone: Metro with
   `REACT_NATIVE_PACKAGER_HOSTNAME` = this PC's Tailscale IP (launch.json "mobile"; 8081 is often
   taken, Metro then uses 8082).

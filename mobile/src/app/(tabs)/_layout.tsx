@@ -30,11 +30,11 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="saved">
         <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon {...tabIcon('bookmark', { default: 'bookmark', selected: 'bookmark.fill' })} />
+        <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="wardrobe">
         <NativeTabs.Trigger.Label>Wardrobe</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon {...tabIcon('wardrobe', { default: 'tshirt', selected: 'tshirt.fill' })} />
+        <NativeTabs.Trigger.Icon sf={{ default: 'tshirt', selected: 'tshirt.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

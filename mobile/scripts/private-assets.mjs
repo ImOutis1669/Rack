@@ -28,9 +28,10 @@ const FONT_FILES = {
   "NeueMontreal-Medium": "neuemontreal-medium.otf",
   "NeueMontreal-Bold": "neuemontreal-bold.otf",
 };
-/** Tab bar roles drawn as images (Wardrobe has no Basil icon: SF Symbol). Header buttons use SF
+/** Tab bar roles drawn as images. Saved (bookmark, user's choice) and Wardrobe (no Basil icon) are
+ *  SF Symbols. Header buttons use SF
  *  Symbols: an image button there got its own tinted background, apart from the other buttons. */
-const BAR_ROLES = ["feed", "hunts", "bookmark"];
+const BAR_ROLES = ["feed", "hunts"];
 const BAR_POINTS = 24; // tab bar and navigation bar icons
 
 /** Only <path> elements with plain path data, as written by frontend/scripts/basil-icons.mjs. */

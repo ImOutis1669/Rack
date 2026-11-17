@@ -61,7 +61,17 @@ function RootStack() {
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="listing/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="listing/[id]" options={{ presentation: 'modal', headerShown: true }} />
+          <Stack.Screen
+            name="bought/[id]"
+            options={{
+              presentation: 'formSheet',
+              headerShown: true,
+              title: 'I bought it',
+              sheetAllowedDetents: [0.45],
+              sheetGrabberVisible: true,
+            }}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="login" />

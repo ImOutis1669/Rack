@@ -3,7 +3,7 @@
 // when active (DESIGN.md "Icons"). Roles Basil has no icon for always use SF Symbols.
 import privateAssets from '@rack/private';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
-import type { ColorValue } from 'react-native';
+import { View, type ColorValue } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 /** SF Symbol per role: [outline, filled]. */
@@ -43,6 +43,9 @@ export const SF: Record<string, [SFSymbol, SFSymbol]> = {
 
 export type IconName = keyof typeof SF;
 
+/** Roles that are always SF Symbols, even with the Basil pack (user's choice: the bookmark, iOS step 5). */
+export const SF_ONLY: ReadonlySet<string> = new Set(['bookmark']);
+
 interface Props {
   name: IconName;
   filled?: boolean;
@@ -51,23 +54,28 @@ interface Props {
   color: ColorValue;
   /** VoiceOver label; omit for decorative icons next to text */
   label?: string;
+  /** Always the SF Symbol, even when Basil has this icon (to match SF neighbours). */
+  system?: boolean;
 }
 
-export function Icon({ name, filled = false, size = 22, color, label }: Props) {
-  const basil = privateAssets.basil[name];
+export function Icon({ name, filled = false, size = 22, color, label, system = false }: Props) {
+  const basil = system || SF_ONLY.has(name) ? undefined : privateAssets.basil[name];
   const a11y = label ? { accessible: true, accessibilityLabel: label } : { accessible: false };
-  if (basil) {
-    const markup = filled ? basil.solid : basil.outline;
-    return (
-      <SvgXml
-        {...a11y}
-        xml={`<svg viewBox="0 0 24 24">${markup}</svg>`}
-        width={size}
-        height={size}
-        color={String(color)}
-      />
-    );
-  }
   const [outline, solid] = SF[name];
-  return <SymbolView {...a11y} name={filled ? solid : outline} size={size} tintColor={color} />;
+  // pointerEvents none: an icon never takes the touch from the button around it (the native
+  // SF Symbol view swallowed taps on the listing sheet's vote buttons, iOS step 5)
+  return (
+    <View {...a11y} pointerEvents="none" style={{ width: size, height: size }}>
+      {basil ? (
+        <SvgXml
+          xml={`<svg viewBox="0 0 24 24">${filled ? basil.solid : basil.outline}</svg>`}
+          width={size}
+          height={size}
+          color={String(color)}
+        />
+      ) : (
+        <SymbolView name={filled ? solid : outline} size={size} tintColor={color} />
+      )}
+    </View>
+  );
 }

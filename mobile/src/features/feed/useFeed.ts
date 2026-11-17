@@ -2,10 +2,11 @@ import { isDefaultFeed } from '@rack/shared/snapshot';
 import { SeenBatcher } from '@rack/shared/seen';
 import type { FeedPage, FeedParams } from '@rack/shared/types';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 
 import { useSession } from '@/lib/auth';
+import { useHiddenIds } from '@/lib/listingState';
 import { loadSnapshot, saveSnapshot } from '@/lib/storage';
 
 import { useFeedParams } from './FeedParams';
@@ -14,7 +15,7 @@ import { useFeedParams } from './FeedParams';
 export function useFeed() {
   const api = useSession().api();
   const { params, newOnly } = useFeedParams();
-  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  const hiddenIds = useHiddenIds();
 
   const visit = useQuery({ queryKey: ['visit'], queryFn: api.visit, staleTime: Infinity });
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile });
@@ -53,7 +54,6 @@ export function useFeed() {
     };
   }, [batcher]);
   const onSeen = useCallback((id: number) => batcher.add(id), [batcher]);
-  const onHidden = useCallback((id: number) => setHiddenIds((s) => new Set(s).add(id)), []);
 
   const { hasNextPage, isFetchingNextPage, isPlaceholderData, fetchNextPage } = query;
   const loadMore = useCallback(() => {
@@ -65,5 +65,5 @@ export function useFeed() {
     [query.data, hiddenIds],
   );
   const needsSetup = profile.data && profile.data.designer_count === 0 && profile.data.taste_count === 0;
-  return { query, items, loadMore, onSeen, onHidden, needsSetup: Boolean(needsSetup), visit };
+  return { query, items, loadMore, onSeen, needsSetup: Boolean(needsSetup), visit };
 }

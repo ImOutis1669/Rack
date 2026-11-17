@@ -39,8 +39,9 @@ Decisions specific to the app are added here as each step lands.
 
 App shell (iOS step 3, checked on the user's iPhone in Expo Go):
 - **Tabs:** the native iOS tab bar (`NativeTabs`): Liquid Glass on iOS 26, minimises on scroll
-  down, monochrome tint (`foreground`). Basil icons are rendered to template PNGs (outline at
-  rest, solid when selected); Wardrobe is the SF Symbol `tshirt` (Basil has no shirt).
+  down, monochrome tint (`foreground`). Feed and Hunts are Basil icons rendered to template PNGs
+  (outline at rest, solid when selected); Saved is the SF `bookmark` (user's choice) and Wardrobe
+  the SF `tshirt` (Basil has no shirt).
 - **Titles:** native large titles (34 pt, iOS's own size; the web's 40 px is not used) in Neue
   Montreal Bold; the collapsed title in Medium. The feed is titled "Rack".
 - **Settings:** the gear is a native header button (`Stack.Toolbar`) on every tab; Settings opens
@@ -67,6 +68,23 @@ Feed (iOS step 4, checked on the user's iPhone):
   medium impact for unsave / save, error notification when an action fails and is undone.
 - **Pull to refresh** = the web's Refresh button (worker search with the server's cooldown);
   messages show as a toast above the tab bar.
+
+Listing sheet (iOS step 5, checked on the user's iPhone):
+- **Presentation:** a native modal sheet (swipe down or ✕), brand as the title, ⋯ in the header
+  as a native menu (I bought it while saved, Hide seller (disabled for eBay), Hide brand).
+- **Photos:** 4:5 pager with counter and dots; pinch to zoom in and out, double-tap toggles 2x /
+  whole photo (UIScrollView zoom; only one-finger taps count, so a pinch never reads as a
+  double-tap). The tile's thumbnail shows until the full photo loads.
+- **Action row:** separate 44 pt round `fill` buttons: up, down, save, share, hunt (user's choice:
+  votes as round buttons like the others, not the web's capsule). Votes are SF Symbols (Basil
+  has no vote arrows). Cast votes fill green (up) / red (down).
+- **Bookmark:** the SF Symbol `bookmark` / `bookmark.fill` everywhere in the app (tiles, sheet,
+  Saved tab), user's choice: it matches the SF vote arrows (`SF_ONLY` in `components/Icon.tsx`).
+- **Share:** iOS's share sheet with the marketplace link (several links: an action sheet first).
+- **Buy on …:** pinned at the bottom, first one monochrome primary; opens the marketplace's app
+  (universal link) or Safari.
+- **I bought it:** a small form sheet with the price; closes both sheets, toast with Undo.
+- Save / vote / hidden state is shared by tile and sheet (`lib/listingState.ts`).
 
 ## Navigation
 **Tabs (4):** Feed · Hunts · Saved · Wardrobe.
