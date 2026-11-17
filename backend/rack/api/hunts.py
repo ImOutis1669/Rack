@@ -16,7 +16,7 @@ from rack.models import HuntMatchRow, HuntRow, ListingRow
 from rack.schemas import ListingOut
 from rack.sources.base import Category
 from rack.sources.registry import SOURCE_NAMES
-from rack.worker.hunts import MIN_INTERVAL_MINUTES
+from rack.worker.hunts import MIN_INTERVAL_MINUTES, prune_matches
 
 router = APIRouter(prefix="/api/hunts", tags=["hunts"], dependencies=[Depends(require_session)])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -127,6 +127,7 @@ async def update_hunt(hunt_id: int, body: HuntIn, session: Session) -> HuntOut:
     _apply(hunt, body)
     if changed_search:
         hunt.last_run_at = None  # new search: next run is a fresh baseline, no alert storm
+    await prune_matches(session, hunt)  # matches that the new settings exclude go now
     await session.commit()
     return _out(hunt, await _counts(session))
 

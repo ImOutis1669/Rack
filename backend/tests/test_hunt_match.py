@@ -179,3 +179,94 @@ async def test_api_round_trip(client: httpx.AsyncClient) -> None:
     assert h2["strict_size"] is False
     listed = (await client.get("/api/hunts")).json()
     assert listed[0]["strict_size"] is False
+
+
+# --- stored matches follow the hunt's current settings (bug found in iOS step 6) ---
+
+
+@pytest.mark.db
+async def test_editing_a_hunt_drops_matches_its_new_settings_exclude(
+    client: httpx.AsyncClient, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """Turning on "Size must match" used to leave every earlier wrong-size match listed."""
+    await login(client)
+    body = {"name": "Geo", "query": "geobasket", "sources": ["vinted"], "sizes": ["UK 9"]}
+    hunt_id = (await client.post("/api/hunts", json=body, headers=H)).json()["id"]
+    adapter, inbox = FakeVinted(), Inbox()
+
+    async def run() -> int:
+        async with sessions() as s:
+            h = await s.get(HuntRow, hunt_id)
+            assert h is not None
+            return await run_hunt(s, h, {"vinted": adapter}, [inbox])
+
+    # lenient: no size passes; a different size never did
+    adapter.results = [
+        vinted("1", None),
+        vinted("2", "UK 9"),
+        vinted("3", "EU 43"),
+        vinted("4", "UK 13"),
+    ]
+    await run()  # baseline stores the fitting ones
+    matches = (await client.get(f"/api/hunts/{hunt_id}/matches")).json()
+    assert sorted(m["source_id"] for m in matches) == ["1", "2", "3"]
+
+    h = (
+        await client.put(f"/api/hunts/{hunt_id}", json={**body, "strict_size": True}, headers=H)
+    ).json()
+    assert h["match_count"] == 2  # the listing without a size is gone at once
+    matches = (await client.get(f"/api/hunts/{hunt_id}/matches")).json()
+    assert sorted(m["source_id"] for m in matches) == ["2", "3"]
+
+    # a lower max price prunes too
+    h = (
+        await client.put(
+            f"/api/hunts/{hunt_id}",
+            json={**body, "strict_size": True, "max_price_gbp": 1},
+            headers=H,
+        )
+    ).json()
+    assert h["match_count"] == 0
+
+
+@pytest.mark.db
+async def test_a_run_drops_a_match_whose_size_turns_out_wrong(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    """A size learned later (eBay item lookup) that doesn't fit takes the match away."""
+    from sqlalchemy import func, select, update
+
+    from rack.models import HuntMatchRow
+
+    adapter, inbox = FakeVinted(), Inbox()
+    async with sessions() as s:
+        hunt = HuntRow(
+            name="Geo", query="geobasket", sources=["vinted"], sizes=["43"], interval_minutes=30
+        )
+        s.add(hunt)
+        await s.commit()
+        hunt_id = hunt.id
+
+    async def run() -> int:
+        async with sessions() as s:
+            h = await s.get(HuntRow, hunt_id)
+            assert h is not None
+            return await run_hunt(s, h, {"vinted": adapter}, [inbox])
+
+    async def count() -> int:
+        async with sessions() as s:
+            return int(
+                (
+                    await s.execute(select(func.count()).where(HuntMatchRow.hunt_id == hunt_id))
+                ).scalar_one()
+            )
+
+    adapter.results = [vinted("1", None)]
+    await run()
+    assert await count() == 1
+    async with sessions() as s:
+        await s.execute(update(ListingRow).where(ListingRow.source_id == "1").values(size="UK 12"))
+        await s.commit()
+    adapter.results = []
+    await run()
+    assert await count() == 0

@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -61,14 +61,8 @@ def due(hunt: HuntRow, now: datetime) -> bool:
     return hunt.last_run_at + every <= now
 
 
-async def run_hunt(
-    session: AsyncSession,
-    hunt: HuntRow,
-    adapters: Mapping[str, SourceAdapter],
-    channels: Sequence[Channel],
-) -> int:
-    """Search, store, match and notify. Returns the number of new matches."""
-    spec = HuntSpec(
+def spec_for(hunt: HuntRow) -> HuntSpec:
+    return HuntSpec(
         query=hunt.query,
         category=Category(hunt.category),
         max_price_gbp=float(hunt.max_price_gbp) if hunt.max_price_gbp is not None else None,
@@ -76,6 +70,65 @@ async def run_hunt(
         strict_size=hunt.strict_size,
         min_score=hunt.min_score,
     )
+
+
+async def prune_matches(session: AsyncSession, hunt: HuntRow) -> int:
+    """Delete this hunt's stored matches that its current settings would no longer match.
+
+    Matches used to be add-only, so editing a hunt (e.g. turning on "Size must match", or a
+    lower max price) left every earlier match listed (bug found in iOS step 6). Re-checked with
+    the listing's current data, so a size learned later counts too. Doesn't commit.
+    """
+    spec = spec_for(hunt)
+    rows = (
+        await session.execute(
+            select(HuntMatchRow.id, ListingRow)
+            .join(ListingRow, ListingRow.id == HuntMatchRow.listing_id)
+            .where(HuntMatchRow.hunt_id == hunt.id)
+        )
+    ).all()
+    if not rows:
+        return 0
+    scores = {
+        s.listing_id: s.score
+        for s in (
+            await session.execute(
+                select(ListingScoreRow).where(
+                    ListingScoreRow.listing_id.in_([r.id for _, r in rows])
+                )
+            )
+        ).scalars()
+    }
+    stale = [
+        match_id
+        for match_id, row in rows
+        if not hunt_matches(
+            spec,
+            title=row.title,
+            brand=row.brand,
+            description=row.description,
+            price_gbp=float(row.price_gbp) if row.price_gbp is not None else None,
+            size=row.size,
+            score=scores.get(row.id),
+        )
+    ]
+    if stale:
+        await session.execute(delete(HuntMatchRow).where(HuntMatchRow.id.in_(stale)))
+        log.info("hunt %s: %d stored matches no longer fit its settings", hunt.id, len(stale))
+    return len(stale)
+
+
+async def run_hunt(
+    session: AsyncSession,
+    hunt: HuntRow,
+    adapters: Mapping[str, SourceAdapter],
+    channels: Sequence[Channel],
+) -> int:
+    """Search, store, match and notify. Returns the number of new matches."""
+    spec = spec_for(hunt)
+    # matches stored under older settings (or before a listing's size was known) that no
+    # longer fit leave first, so the list always reflects the hunt as it is now
+    await prune_matches(session, hunt)
     q = SearchQuery(
         text=hunt.query, category=spec.category, max_price_gbp=hunt.max_price_gbp, limit=50
     )
