@@ -149,6 +149,23 @@ def test_style_listing_is_penalised() -> None:
     assert a.score == pytest.approx(b.score - 0.5)
 
 
+def test_maximum_top_length() -> None:
+    p = Profile(measurements=Measurements(length_min_cm=72, length_max_cm=80))
+    top = dict(category=Category.TOPS, profile=p)
+    assert _filter(**top, measurements=parse_measurements("length 76cm")) is None
+    assert _filter(**top, measurements=parse_measurements("length 82cm")) is None  # within 3 cm
+    assert _filter(**top, measurements=parse_measurements("length 85cm")) == "fit_length"
+    assert _filter(**top, measurements=parse_measurements("length 66cm")) == "fit_length"
+    # trousers have no top length; no measurement never filters
+    assert (
+        _filter(
+            category=Category.TROUSERS, profile=p, measurements=parse_measurements("length 95cm")
+        )
+        is None
+    )
+    assert _filter(**top) is None
+
+
 def test_fit_rewards_long_inseam() -> None:
     p = Profile(measurements=Measurements(inseam_min_cm=86))
     good, short = score_all(

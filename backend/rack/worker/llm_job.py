@@ -34,6 +34,7 @@ async def _profile_text(s: AsyncSession, uid: int) -> str:
             "inseam_min_cm": m.inseam_min_cm,
             "sleeve_min_cm": m.sleeve_min_cm,
             "length_min_cm": m.length_min_cm,
+            "length_max_cm": m.length_max_cm,
         },
         {str(k): v for k, v in profile.sizes.items()},
     )

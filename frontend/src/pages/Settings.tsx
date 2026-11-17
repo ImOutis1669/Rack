@@ -29,6 +29,7 @@ const LENGTHS: [LenKey, string][] = [
   ["inseam_min_cm", "Minimum inseam"],
   ["sleeve_min_cm", "Minimum sleeve"],
   ["length_min_cm", "Minimum top length"],
+  ["length_max_cm", "Maximum top length"],
   ["p2p_min_cm", "Minimum pit to pit"],
   ["p2p_max_cm", "Maximum pit to pit"],
 ];

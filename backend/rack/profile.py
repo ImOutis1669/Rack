@@ -26,6 +26,7 @@ class Measurements(BaseModel):
     p2p_min_cm: float | None = None
     p2p_max_cm: float | None = None
     length_min_cm: float | None = None
+    length_max_cm: float | None = None  # tops/outerwear longer than this are too long
     tolerance_cm: float = 3.0  # shortfall beyond this hard-filters the listing
 
 

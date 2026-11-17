@@ -38,7 +38,8 @@ def banned_keyword(text: str, keywords: list[str]) -> str | None:
 def measurement_gaps(
     m: ParsedMeasurements, profile: Profile, category: Category
 ) -> dict[str, float]:
-    """Shortfall in cm per measurement (positive = too small/short, or too big for p2p_max)."""
+    """Misfit in cm per measurement: positive = too small/short, or too big/long for the
+    pit-to-pit and top-length maximums."""
     p = profile.measurements
     gaps: dict[str, float] = {}
     fields = FIT_FIELDS[category]
@@ -54,6 +55,9 @@ def measurement_gaps(
     if "p2p" in fields and m.p2p_cm is not None and p.p2p_max_cm is not None:
         over = m.p2p_cm - p.p2p_max_cm
         gaps["p2p"] = max(gaps.get("p2p", over), over)
+    if "length" in fields and m.length_cm is not None and p.length_max_cm is not None:
+        over = m.length_cm - p.length_max_cm
+        gaps["length"] = max(gaps.get("length", over), over)
     return gaps
 
 

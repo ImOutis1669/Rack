@@ -13,7 +13,8 @@ account and taste, and one crawler serves everyone.
   Upvotes and downvotes nudge it further. A designer you list only ever *adds* to a score, so unbranded items are never
   pushed down.
 - **Fit for a tall frame**: inseam, sleeve, pit-to-pit and length are read from listing text (cm or
-  inches, "W32 L34"). Listings that are too short are hidden; listings with no measurements never are.
+  inches, "W32 L34"). Listings that are too short (or longer or wider than your maximums) are hidden;
+  listings with no measurements never are.
 - **Hunts**: saved searches checked every 5 minutes to daily, with alerts for new matches. Turn on
   "Size must match" to skip listings without your size; UK, EU and US shoe sizes are compared
   (UK 9 = EU 43) and W32 matches 32.

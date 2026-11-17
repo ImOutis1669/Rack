@@ -8,6 +8,7 @@ const stored: Measurements = {
   p2p_min_cm: 56,
   p2p_max_cm: null,
   length_min_cm: null,
+  length_max_cm: null,
   tolerance_cm: 2,
 };
 

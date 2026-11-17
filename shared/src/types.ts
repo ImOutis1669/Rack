@@ -101,6 +101,7 @@ export interface Measurements {
   p2p_min_cm: number | null;
   p2p_max_cm: number | null;
   length_min_cm: number | null;
+  length_max_cm: number | null;
   tolerance_cm: number;
 }
 
