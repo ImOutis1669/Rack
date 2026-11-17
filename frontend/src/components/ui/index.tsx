@@ -1,5 +1,5 @@
 /** Rack's UI primitives. Tokens and rules: DESIGN.md. */
-import { AnimatePresence, m, useReducedMotion } from "motion/react";
+import { AnimatePresence, m, useReducedMotion, useTransform } from "motion/react";
 import {
   forwardRef,
   useEffect,
@@ -16,6 +16,7 @@ import { cn } from "../../lib/utils";
 import { INSTANT, SHEET_SPRING } from "../../lib/motion";
 import { settleViewport } from "../../lib/viewport";
 import { Icon } from "../icons/Icon";
+import { useSheetDrag } from "./useSheetDrag";
 
 /* ---------- buttons ---------- */
 
@@ -275,6 +276,9 @@ export function Sheet({
 }) {
   const reduce = useReducedMotion();
   const panel = useRef<HTMLDivElement>(null);
+  // swipe down to close (v1.2): the drag layer follows the finger, the scrim fades with it
+  const dragY = useSheetDrag(open, panel, onClose, !!reduce);
+  const scrimFade = useTransform(dragY, [0, 400], [1, 0.25]);
 
   useEffect(() => {
     if (!open) return;
@@ -294,14 +298,18 @@ export function Sheet({
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6">
-          <m.div
-            className="absolute inset-0 bg-scrim"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.2 }}
-            onClick={onClose}
-          />
+          <m.div className="absolute inset-0" style={{ opacity: scrimFade }}>
+            <m.div
+              className="absolute inset-0 bg-scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduce ? 0 : 0.2 }}
+              onClick={onClose}
+            />
+          </m.div>
+          {/* drag layer: separate from the panel so the swipe offset never fights its enter/exit */}
+          <m.div data-testid="sheet-drag-layer" className="relative flex w-full justify-center" style={{ y: dragY }}>
           <m.div
             ref={panel}
             tabIndex={-1}
@@ -320,7 +328,8 @@ export function Sheet({
               className,
             )}
           >
-            <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+            {/* grabber + header: dragging here always moves the sheet, so the browser mustn't pan */}
+            <div data-sheet-header className="flex touch-none items-center gap-2 px-4 pt-3 pb-2">
               <div aria-hidden className="absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full bg-fill-strong md:hidden" />
               <div className="min-w-0 flex-1 truncate text-headline font-semibold">{title}</div>
               {actions}
@@ -330,6 +339,7 @@ export function Sheet({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
             {footer && <div className="border-t border-border px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)]">{footer}</div>}
+          </m.div>
           </m.div>
         </div>
       )}

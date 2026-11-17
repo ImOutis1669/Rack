@@ -46,6 +46,19 @@ clothes are the interface, and the chrome stays quiet.
 | Wardrobe / wishlist item | Full-screen sheet like the listing detail; the pencil in its header switches to an edit form (Save/Cancel at the bottom, Delete with an in-app confirmation) |
 | Sources | Sheet, from the status dot in the header |
 
+**Swipe down to close (v1.2), every sheet**, built once in `Sheet` (`components/ui/useSheetDrag.ts`,
+decisions in `lib/sheetDrag.ts`):
+- The sheet follows the finger 1:1 from the grabber/header (`data-sheet-header`, `touch-none`),
+  and from the content only when it's scrolled to the top. Dragging up rubber-bands (max 24px).
+- On release it closes if the momentum-projected end point (Apple's `v/1000·r/(1−r)`, r 0.998)
+  passes half the sheet (max 320px): a long drag or a short fast flick. Otherwise it springs back
+  with `SHEET_SPRING`, keeping the finger's velocity. The scrim fades as the sheet goes down.
+- Left to the browser: horizontal swipes (photo carousel), pinches (a second finger cancels),
+  scrolled content, form fields and anything inside `data-sheet-no-drag`.
+- Reduced motion: no spring; it just closes or snaps back. The close button and Escape stay.
+- Native touch listeners, not pointer events: only a non-passive `touchmove` can stop iOS from
+  scrolling once the finger is dragging the sheet.
+
 ## Tokens (`frontend/src/index.css`)
 Semantic colours only, so light and dark both work and follow the system:
 
