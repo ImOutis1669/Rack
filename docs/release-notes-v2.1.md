@@ -101,6 +101,10 @@ add a Cloudflare rate limit on `/api/auth/*` (audit RACK-25).
 - **More of Rack for you.** Your refresh runs 8 searches (friends 4) and you can refresh every 2
   minutes (friends 15); the background rotation gives you 3 searches for every one of an active
   friend's; your live searches are 10 s apart (were 30). Same request rate to every site.
+- **iPhone fixes (18 November):** text fields scroll above the keyboard on every form (Add to
+  wishlist's "Describe it" was hidden); feed tiles no longer go blank and untappable while
+  scrolling; the Filters sheet has the category chips, so you can change category from deep in
+  the feed.
 - Rebuilding the server runs migration 0022 and re-scores everyone's feed.
 
 ## Numbers

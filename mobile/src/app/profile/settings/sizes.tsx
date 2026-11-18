@@ -18,7 +18,7 @@ function SizesForm({ profile }: { profile: Profile }) {
   const [strict, setStrict] = useState(profile.strict_size);
   const [dirty, setDirty] = useState(false);
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16 }} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16 }} keyboardShouldPersistTaps="handled">
       <SaveButton
         dirty={dirty}
         pending={save.isPending}

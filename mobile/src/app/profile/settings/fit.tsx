@@ -30,7 +30,7 @@ function FitForm({ profile }: { profile: Profile }) {
   };
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16 }} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16 }} keyboardShouldPersistTaps="handled">
       <SaveButton
         dirty={dirty && Number.isFinite(tol) && tol >= 0}
         pending={save.isPending}

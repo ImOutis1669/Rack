@@ -73,7 +73,10 @@ Feed (iOS step 4, checked on the user's iPhone):
   Liquid Glass (`expo-glass-effect`), a soft fill before iOS 26.
 - **Header:** sort as a native menu (checkmark on the current sort), Filters with a count badge,
   the gear: one glass group. Category chips sit under the large title and scroll with the feed.
-- **Filters:** a native form sheet (detents 62% / full, grabber, swipe down to close).
+- **Filters:** a native form sheet (detents 75% / full, grabber, swipe down to close). It repeats
+  the category chips first, so the category can change from deep in the feed; Clear resets it too.
+- **Forms:** every scrolling screen with a text field sets `automaticallyAdjustKeyboardInsets`, so
+  the focused field scrolls above the keyboard (sheets included).
 - **Tile actions:** tap opens the listing; the bookmark saves in one tap; long-press is a native
   context menu (Save, More like this, Less like this). Haptics: selection for votes, light /
   medium impact for unsave / save, error notification when an action fails and is undone.

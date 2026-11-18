@@ -48,7 +48,7 @@ export default function PasswordScreen() {
     </View>
   );
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} keyboardShouldPersistTaps="handled">
       <Section>{input('Current password', current, setCurrent, 'password')}</Section>
       <Section footer={change.error instanceof Error ? change.error.message : problem || 'At least 12 characters. A few random words work well.'}>
         {input('New password', next, setNext, 'newPassword')}

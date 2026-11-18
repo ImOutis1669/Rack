@@ -54,7 +54,7 @@ export default function ProfileScreen() {
     ]);
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }}>
       {a ? (
         <Header account={a} />
       ) : account.isError ? (

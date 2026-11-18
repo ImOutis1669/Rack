@@ -74,7 +74,7 @@ function DesignersForm({ initial, adjacent }: { initial: Designer[]; adjacent: R
     );
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <SaveButton dirty={dirty} pending={save.isPending} onPress={() => save.mutate()} />
       <View style={[styles.box, { backgroundColor: colors.surface }]}>
         {ds.map((d, i) => (

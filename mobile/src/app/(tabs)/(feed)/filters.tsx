@@ -1,12 +1,12 @@
 import { SOURCE_LABEL } from '@rack/shared/format';
-import type { Visit } from '@rack/shared/types';
+import { CATEGORIES, type Category, type Visit } from '@rack/shared/types';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Chip } from '@/components/Chip';
 import { useFeedParams } from '@/features/feed/FeedParams';
-import { SOURCES } from '@/features/feed/options';
+import { CATEGORY_LABEL, SOURCES } from '@/features/feed/options';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font, tabular } from '@/theme/type';
 
@@ -20,7 +20,21 @@ export default function FiltersSheet() {
   const label = [text('footnote'), font('medium', customFont), { color: colors.muted }];
   const input = [styles.input, text('body'), { fontSize: 17, color: colors.foreground, backgroundColor: colors.surface }];
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" style={{ backgroundColor: colors.background }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" style={{ backgroundColor: colors.background }}>
+      {/* the same choice as the chips under the feed's title, reachable when scrolled far down */}
+      <View style={styles.group}>
+        <Text style={label}>Category</Text>
+        <View style={styles.row}>
+          {(['any', ...CATEGORIES] as Category[]).map((c) => (
+            <Chip
+              key={c}
+              label={CATEGORY_LABEL[c]}
+              selected={(params.category ?? 'any') === c}
+              onPress={() => setParams((p) => ({ ...p, category: c === 'any' ? null : c }))}
+            />
+          ))}
+        </View>
+      </View>
       <View style={styles.group}>
         <Text style={label}>Sources</Text>
         <View style={styles.row}>

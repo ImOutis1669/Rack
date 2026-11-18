@@ -32,7 +32,7 @@ function FeedForm({ profile }: { profile: Profile }) {
   const weightsOk = Object.values(parsedWeights).every((n) => Number.isFinite(n) && n >= 0);
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <SaveButton
         dirty={dirty && weightsOk}
         pending={save.isPending}

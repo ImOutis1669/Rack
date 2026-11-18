@@ -50,6 +50,7 @@ export default function BoughtSheet() {
   if (!item) return null;
   return (
     <ScrollView
+      automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       style={{ backgroundColor: colors.background }}

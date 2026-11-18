@@ -18,7 +18,7 @@ export default function FeedLayout() {
           options={{
             title: 'Filters',
             presentation: 'formSheet',
-            sheetAllowedDetents: [0.62, 1],
+            sheetAllowedDetents: [0.75, 1], // category, sources, brand and price fit without scrolling
             sheetGrabberVisible: true,
             headerLargeTitleEnabled: false,
           }}

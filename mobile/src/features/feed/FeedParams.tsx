@@ -27,7 +27,7 @@ export function FeedParamsProvider({ children }: { children: ReactNode }) {
       setNewOnly,
       filterCount: filterCount(params, newOnly),
       clearFilters: () => {
-        setParamsState((p) => ({ ...p, sources: [], brand: '', maxPrice: null }));
+        setParamsState((p) => ({ ...p, category: null, sources: [], brand: '', maxPrice: null }));
         setNewOnly(false);
       },
     }),

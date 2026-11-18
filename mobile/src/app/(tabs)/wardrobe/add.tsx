@@ -69,7 +69,7 @@ export default function AddSheet() {
 
   const title = kind === 'wardrobe' ? 'Add to wardrobe' : 'Add to wishlist';
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title }} />
       <View style={styles.pickRow}>
         <PickButton icon="add-photo" label="Choose photos" onPress={() => void pickLibrary()} />

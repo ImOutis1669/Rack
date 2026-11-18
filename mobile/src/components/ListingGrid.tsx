@@ -38,10 +38,13 @@ export function ListingGrid({ items, header, empty, footer, onEndReached, refres
     for (const t of changed) if (t.isViewable && t.item) onSeenRef.current?.(t.item.id);
   }).current;
 
+  // FlashList reuses a scrolled-off cell for the next item. The tile's long-press menu is a native
+  // link-preview view that kept showing nothing after being handed a new listing (blank, untappable
+  // gaps while scrolling), so each listing gets its own tile: keyed by id, it mounts fresh.
   const renderItem = useCallback(
     ({ item }: { item: Listing }) => (
       <View style={{ paddingHorizontal: grid.gap / 2 }}>
-        <ListingTile item={item} width={tileWidth} showBought={showBought} />
+        <ListingTile key={item.id} item={item} width={tileWidth} showBought={showBought} />
       </View>
     ),
     [tileWidth, grid.gap, showBought],

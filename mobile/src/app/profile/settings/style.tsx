@@ -14,7 +14,7 @@ function StyleForm({ profile }: { profile: Profile }) {
   const save = useSaveProfile();
   const [context, setContext] = useState(profile.context);
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, gap: 8 }} keyboardShouldPersistTaps="handled">
+    <ScrollView automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, gap: 8 }} keyboardShouldPersistTaps="handled">
       <SaveButton dirty={context !== profile.context} pending={save.isPending} onPress={() => save.mutate({ ...profile, context })} />
       <TextInput
         value={context}
