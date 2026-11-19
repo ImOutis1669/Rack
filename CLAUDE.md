@@ -232,6 +232,16 @@ via the Hunts `prefill` state), `/friends` (owner: invites, people, revoke), `/j
   `visible_listings` query as the feed; both apps show it as a strip on the default feed, leave
   its listings out of the grid, and hide seen items from `shared/src/fresh.ts` `hideSeenSince`
   (later of visit start and refresh start). Closing it is per refresh (`rack.freshDismissed`).
+- Vinted likes import (`vinted_export.py`, `api/imports.py`, `worker/vinted_import.py`): the
+  user uploads Vinted's personal-data export in Settings; the web app pulls only
+  `favourite_items/index.html` out of the zip in the browser (`lib/zipEntry.ts`) and the server
+  reads only that page from a whole zip too (never messages, invoices or addresses; nothing of
+  the export is stored). Items Rack has are liked at once (an existing Rack vote wins); the rest
+  are queued in `user_state['vinted_import']` and the worker fetches one item page every 10 s
+  through the shared Vinted adapter (same rate limit as searches), adds it (sold ones kept,
+  inactive) and likes it; 404s are counted, a 403/429 pauses that import 30 min. Price is the
+  item page price + Vinted's buyer protection (£0.70 + 5%, estimated). `embed_listings` also
+  embeds inactive listings someone liked, so sold likes still shape taste.
 - Gallery (`api/gallery.py`): opening a listing fetches its item page on demand (Vinted only;
   ≤ once/day/listing) for all photos + description; `ingest.set_images` keeps the fuller photo set
   and `description` is coalesced, so search refreshes don't wipe them. eBay search already has all

@@ -61,6 +61,21 @@ export interface FeedPage {
   next_cursor: string | null;
 }
 
+/** Importing your Vinted likes from Vinted's data export (GET/POST /api/import/vinted). */
+export interface VintedImport {
+  running: boolean;
+  total: number;
+  queued: number;
+  added: number;
+  already: number;
+  skipped: number;
+  missing: number;
+  started_at: string | null;
+  finished_at: string | null;
+  paused_until: string | null;
+  error: string | null;
+}
+
 /** "New for you": strong new finds since your latest Refresh started (GET /api/feed/fresh). */
 export interface FreshPage {
   since: string | null;

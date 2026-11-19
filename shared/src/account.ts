@@ -42,3 +42,23 @@ export function inviteFromHash(hash: string): string {
 }
 
 export const isOwner = (a: Pick<Account, "role"> | null | undefined): boolean => a?.role === "owner";
+
+/** One line on a Vinted likes import ("212 of 365 added · 9 no longer on Vinted"). */
+export function vintedImportSummary(s: {
+  running: boolean;
+  total: number;
+  queued: number;
+  added: number;
+  already: number;
+  skipped: number;
+  missing: number;
+}): string {
+  const toFetch = s.added + s.missing + s.queued;
+  const parts = [
+    s.running ? `${s.added + s.missing} of ${toFetch} fetched from Vinted` : `${s.added + s.already} of ${s.total} liked items added`,
+  ];
+  if (s.already) parts.push(`${s.already} already in Rack`);
+  if (s.missing) parts.push(`${s.missing} no longer on Vinted`);
+  if (s.skipped) parts.push(`${s.skipped} already voted on in Rack`);
+  return parts.join(" · ");
+}

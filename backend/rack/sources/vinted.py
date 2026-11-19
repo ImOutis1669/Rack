@@ -142,6 +142,8 @@ class ItemDetails:
     price: Decimal | None
     currency: str | None
     available: bool | None
+    title: str | None = None  # JSON-LD name and brand: enough to add a listing we never saw
+    brand: str | None = None
 
 
 def _photo_sets(flight: str) -> list[dict[str, Any]]:
@@ -189,6 +191,10 @@ def parse_item_page(html: str, item_id: str) -> ItemDetails:
         price=_dec(offer.get("price")),
         currency=offer.get("priceCurrency"),
         available=("InStock" in availability) if availability else None,
+        title=str(product["name"])[:500] if product.get("name") else None,
+        brand=str(brand["name"])
+        if isinstance(brand := product.get("brand"), dict) and brand.get("name")
+        else None,
     )
 
 

@@ -126,7 +126,13 @@ async def embed_listings(
                     select(ListingImageRow)
                     .join(ListingRow, ListingRow.id == ListingImageRow.listing_id)
                     .where(
-                        ListingRow.active.is_(True),
+                        # sold/removed listings someone liked still shape their taste
+                        or_(
+                            ListingRow.active.is_(True),
+                            exists().where(
+                                FeedbackRow.listing_id == ListingRow.id, FeedbackRow.value > 0
+                            ),
+                        ),
                         ListingImageRow.position < images_per_listing,
                         or_(
                             ListingImageRow.embedding.is_(None),

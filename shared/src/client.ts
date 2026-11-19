@@ -18,6 +18,7 @@ import type {
   HuntInput,
   SentNotification,
   RefreshStatus,
+  VintedImport,
   FreshPage,
   Hidden,
   Listing,
@@ -141,6 +142,13 @@ export function createApi(cfg: ApiConfig) {
       return request<Account>("/api/me/avatar", { method: "PUT", body: form });
     },
     removeAvatar: () => request<Account>("/api/me/avatar", json("DELETE")),
+    vintedImport: () => request<VintedImport>("/api/import/vinted"),
+    /** Vinted's data export (.zip) or its favourite_items/index.html: only your likes are read. */
+    importVinted: (file: UploadFile) => {
+      const form = new FormData();
+      form.append("file", file as Blob);
+      return request<VintedImport>("/api/import/vinted", { method: "POST", body: form });
+    },
     /** Friends only. Ends with no session: clear everything on the device afterwards. */
     deleteAccount: async (password: string) => {
       await request<void>("/api/me", json("DELETE", { password }));

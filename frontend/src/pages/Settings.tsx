@@ -12,6 +12,7 @@ import {
 } from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
 import { Notifications } from "../components/Notifications";
+import { VintedImport } from "../components/VintedImport";
 import { toast } from "../components/Toast";
 import { Button, Group, IconButton, Row, Segmented, Skeleton, Switch, Textarea } from "../components/ui";
 import { formatLength, parseLengthCm, splitList } from "@rack/shared/units";
@@ -67,6 +68,7 @@ export function Settings() {
           <SettingsForm profile={profile.data.profile} designers={designers.data} adjacent={adjacent.data} />
         )}
         <Notifications />
+        <VintedImport />
         <HiddenList />
       </div>
     </PageShell>

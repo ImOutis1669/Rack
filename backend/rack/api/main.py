@@ -17,6 +17,7 @@ from rack.api import (
     feed,
     gallery,
     hunts,
+    imports,
     me,
     notify,
     owner_assets,
@@ -38,6 +39,8 @@ API_MAX_BODY = 1024 * 1024  # 1 MB for JSON requests
 IMMUTABLE = "public, max-age=31536000, immutable"
 UPLOAD_MAX_BODY = 20 * 10 * 1024 * 1024 + 1024 * 1024  # 20 photos x 10 MB + form overhead
 AVATAR_MAX_BODY = 10 * 1024 * 1024 + 256 * 1024  # one 10 MB photo + form overhead
+# a whole Vinted data export (photos, PDFs); the web app normally sends just its likes page
+IMPORT_MAX_BODY = 400 * 1024 * 1024
 
 # Marketplace photos are hotlinked, so images may come from any https host; everything else is ours.
 CSP = (
@@ -95,6 +98,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
     app.include_router(actions.router)
     app.include_router(gallery.router)
     app.include_router(refresh.router)
+    app.include_router(imports.router)
     app.include_router(hunts.router)
     app.include_router(notify.router)
     app.include_router(push.router)
@@ -122,6 +126,7 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
             limit = {
                 "/api/taste/upload": UPLOAD_MAX_BODY,
                 "/api/me/avatar": AVATAR_MAX_BODY,
+                "/api/import/vinted": IMPORT_MAX_BODY,
             }.get(request.url.path, API_MAX_BODY)
             length = request.headers.get("content-length")
             if length is None and request.headers.get("transfer-encoding"):

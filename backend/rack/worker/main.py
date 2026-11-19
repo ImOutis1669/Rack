@@ -59,6 +59,7 @@ from rack.worker.refresh import refresh_all
 from rack.worker.resale import refresh_estimates
 from rack.worker.sold import embed_sold, fetch_sold
 from rack.worker.taste import assign_clusters, embed_listings, embed_taste, rescore
+from rack.worker.vinted_import import run_vinted_imports
 
 log = logging.getLogger("rack.worker")
 _refresh_lock = asyncio.Lock()
@@ -198,6 +199,14 @@ async def run_hunts() -> None:
         await run_due_hunts(sessionmaker(), shared_adapters(), get_settings())
     except Exception:
         log.exception("hunts run failed")
+
+
+async def run_imports() -> None:
+    """Vinted likes people imported from their data export, one item per run."""
+    try:
+        await run_vinted_imports(sessionmaker(), shared_adapters())
+    except Exception:
+        log.exception("vinted import failed")
 
 
 async def run_live() -> None:
@@ -482,6 +491,7 @@ async def main() -> None:
         (update_fx, timedelta(hours=24), "fx", await resume_at("fx", timedelta(hours=24))),
         (run_hunts, timedelta(minutes=1), "hunts", now),
         (run_live, timedelta(seconds=5), "live_search", now),
+        (run_imports, timedelta(seconds=10), "vinted_import", now + timedelta(seconds=20)),
         (run_price_checks, timedelta(minutes=30), "price_drops", now),
         (purge_ebay_listings, timedelta(hours=1), "ebay_retention", now),
         (run_ebay_details, timedelta(minutes=2), "ebay_details", now + timedelta(seconds=30)),

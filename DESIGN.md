@@ -164,6 +164,10 @@ Listing sheet (iOS step 5, checked on the user's iPhone):
   On Wardrobe it opens "Add to …" with the pasted photos, or adds them if it's open; chosen
   photos show as 64 px previews with a remove badge. With Profile open, a pasted image becomes
   your photo. Text pastes are untouched; a paste over 10 MB is re-saved as a JPEG (2560 px).
+- **Import from Vinted (web Settings):** one group: a line on what it does, a progress line
+  ("212 of 365 fetched from Vinted · 17 already in Rack"), a thin bar and "About N min left" while
+  it runs, one button (Upload Vinted export / Importing / Import again); the footer says where to
+  get the export and that only likes are read.
 - Settings (taste, sizes, budget, alerts, hidden) is reached from Profile.
 - The feed is titled **Rack** (the app name) on iPhone; on desktop the "Rack" wordmark in the bar
   is its title and the feed has no large heading. The sort menu keeps "For you".

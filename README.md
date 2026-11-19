@@ -106,6 +106,12 @@ already seen stay hidden. The 30-minute background search is shared, with 3 of y
 every one of an active friend's.
 
 ## Teaching it your taste
+**Bring your Vinted likes:** ask Vinted for a copy of your account data (its privacy settings),
+then upload the zip in **Settings > Import from Vinted**. Only your liked items are read (the
+rest of the zip never leaves your browser); each becomes a like in Rack. Items Rack hasn't seen
+are fetched from Vinted at its usual pace, about one every 10 seconds, so a few hundred take an
+hour or so in the background.
+
 1. **Settings**: designers (love / like / curious / exclude), a few words about your style, minimum
    inseam/sleeve/length (cm or inches), sizes, budget, exploration share and banned words.
 2. **Wardrobe / Wishlist**: upload photos of clothes you own or want, paste an image or listing link,

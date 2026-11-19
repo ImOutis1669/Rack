@@ -108,6 +108,10 @@ add a Cloudflare rate limit on `/api/auth/*` (audit RACK-25).
 - **Paste photos on the web (19 November):** Ctrl+V / ⌘V a screenshot or a copied image on the
   Wardrobe page (opens "Add to …" with it, or adds it if open; up to 20, with previews you can
   remove) or with Profile open (it becomes your photo). Very large pastes are shrunk to fit.
+- **Import your Vinted likes (19 November):** upload Vinted's data export in Settings and every
+  item you've liked on Vinted becomes a like in Rack (your export: 382 likes, 17 already in Rack).
+  Only the likes page is read, and the web app sends only that page. Missing items are fetched
+  from Vinted at its normal pace (about an hour for 365); sold ones still count.
 - Rebuilding the server runs migration 0022 and re-scores everyone's feed.
 
 ## Numbers

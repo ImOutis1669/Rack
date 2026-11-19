@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initials, inviteFromHash, isOwner, memberSince, passwordProblem, usernameProblem } from "./account";
+import { initials, inviteFromHash, isOwner, memberSince, passwordProblem, usernameProblem, vintedImportSummary } from "./account";
 
 describe("account", () => {
   it("makes initials", () => {
@@ -33,5 +33,17 @@ describe("account", () => {
     expect(isOwner({ role: "owner" })).toBe(true);
     expect(isOwner({ role: "friend" })).toBe(false);
     expect(isOwner(null)).toBe(false);
+  });
+});
+
+describe("vinted import summary", () => {
+  it("says how far it got and what happened to the rest", () => {
+    const base = { total: 382, already: 17, skipped: 0 };
+    expect(vintedImportSummary({ ...base, running: true, queued: 153, added: 203, missing: 9 })).toBe(
+      "212 of 365 fetched from Vinted · 17 already in Rack · 9 no longer on Vinted",
+    );
+    expect(vintedImportSummary({ ...base, running: false, queued: 0, added: 340, missing: 25, skipped: 2 })).toBe(
+      "357 of 382 liked items added · 17 already in Rack · 25 no longer on Vinted · 2 already voted on in Rack",
+    );
   });
 });
