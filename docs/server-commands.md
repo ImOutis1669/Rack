@@ -6,6 +6,10 @@ everything else runs on the server after `ssh rack`.
 
 Most Rack commands need you to be in Rack's folder first: **`cd ~/rack`**.
 
+**On the server, `help-outis` shows this whole page** (arrow keys or space to scroll, `q` to
+quit). `help-outis backups` shows just one section (any word from a title works), and
+`help-outis --list` lists the sections.
+
 ---
 
 ## Getting in and out

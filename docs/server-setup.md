@@ -344,6 +344,7 @@ df -h /
 # Rack shortcuts (docs/server-setup.md section 12)
 alias rack-status="~/rack/scripts/rack-status.sh"
 alias rack-live="~/rack/scripts/rack-live.sh"
+alias help-outis="~/rack/scripts/help-outis.sh"
 # a Rack summary under the welcome text when you log in over SSH
 if [[ $- == *i* && -n ${SSH_TTY:-} && -z ${TMUX:-} ]]; then ~/rack/scripts/rack-status.sh; fi
 ```
@@ -354,6 +355,8 @@ when your feed was last re-ranked, a running Vinted import, the last backup, and
 load, memory, disk and temperature. `rack-status` shows it again; **`rack-live`** follows Rack's
 activity as it happens (searches in cyan, re-ranking in green, hunts in magenta, imports and
 warnings in yellow, errors in red; Ctrl+C to stop; `rack-live 2h` starts two hours back).
+**`help-outis`** shows every server command (`docs/server-commands.md`), or one section:
+`help-outis backups`.
 
 
 | You want to | Do |

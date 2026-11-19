@@ -80,4 +80,4 @@ temp=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -n | tail -1
 printf '%-10s %sload %s · memory %s · disk %s%s%s\n' "Server" "$d" \
   "$(cut -d' ' -f1 /proc/loadavg)" "$(free | awk '/Mem:/ {printf "%d%%", $3 / $2 * 100}')" \
   "$(df -h / | awk 'NR == 2 {print $5}')" "${temp:+ · $((temp / 1000))°C}" "$n"
-echo "${d}Live activity: rack-live · this summary again: rack-status${n}"
+echo "${d}Live activity: rack-live · this summary: rack-status · every command: help-outis${n}"
