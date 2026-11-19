@@ -17,7 +17,15 @@ from typing import Any
 import httpx
 
 from rack.pricing.fx import to_gbp
-from rack.sources.base import Category, Listing, SearchQuery, Seller, SourceError, build_listing
+from rack.sources.base import (
+    Category,
+    Listing,
+    SearchQuery,
+    Seller,
+    SourceError,
+    SourceGone,
+    build_listing,
+)
 from rack.sources.http import RateLimitedClient
 
 BASE = "https://www.vinted.co.uk"
@@ -253,7 +261,7 @@ class VintedAdapter:
             raise SourceError("not a Vinted UK item URL")
         resp = await self._http.get(url)
         if resp.status_code == 404:
-            raise SourceError("Vinted item no longer exists (404)")
+            raise SourceGone("Vinted item no longer exists (404)")
         if resp.status_code != 200:
             raise SourceError(f"Vinted item page failed: HTTP {resp.status_code}")
         return resp.text

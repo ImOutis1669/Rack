@@ -18,7 +18,7 @@ from rack.config import get_settings
 from rack.db import get_session
 from rack.ingest import set_images
 from rack.models import ListingImageRow, ListingRow
-from rack.sources.base import SourceError
+from rack.sources.base import SourceError, SourceGone
 from rack.sources.vinted import ItemDetails, VintedAdapter
 from rack.store import mark_listings_changed
 
@@ -64,6 +64,11 @@ async def gallery(
     if fetcher is not None and stale and row.active:
         try:
             details = await fetcher.item_details(row.url)
+        except SourceGone:
+            row.active = False
+            row.details_fetched_at = datetime.now(UTC)
+            await session.commit()
+            note = "This listing is no longer available."
         except SourceError as exc:
             note = f"Couldn't load more photos: {exc}"
         else:

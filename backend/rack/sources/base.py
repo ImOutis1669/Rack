@@ -87,6 +87,11 @@ class SourceNotConfigured(SourceError):
     """Adapter lacks credentials/config and should be skipped, not counted as an error."""
 
 
+class SourceGone(SourceError):
+    """The listing no longer exists on the marketplace (sold and removed, or deleted): treat it
+    as sold, don't retry it."""
+
+
 class SourceAdapter(Protocol):
     name: str
 

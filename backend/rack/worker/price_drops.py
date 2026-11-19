@@ -13,7 +13,7 @@ from rack.models import ListingRow, SavedRow, UserRow
 from rack.notify.base import Channel, Notification
 from rack.notify.dispatch import build_channels, notify_once
 from rack.pricing.history import record_price
-from rack.sources.base import SourceAdapter, SourceError, SourceNotConfigured
+from rack.sources.base import SourceAdapter, SourceError, SourceGone, SourceNotConfigured
 from rack.sources.vinted import VintedAdapter
 
 log = logging.getLogger(__name__)
@@ -93,6 +93,13 @@ async def check_saved_prices(
                     if not await _refresh_price(row, adapters.get(row.source)):
                         continue
                 except SourceNotConfigured:
+                    continue
+                except SourceGone as exc:
+                    # sold and taken down: it can't come back, so stop checking it
+                    log.info("price check %s: gone (%s); marked sold", row.url, exc)
+                    row.active = False
+                    saved.price_checked_at = now
+                    await s.commit()
                     continue
                 except SourceError as exc:
                     log.info("price check %s failed: %s", row.url, exc)

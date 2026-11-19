@@ -98,7 +98,10 @@ async def test_hunt_baseline_then_alerts_once_and_respects_hides(
         uid = await db_owner(s)
         hunt = HuntRow(
             user_id=uid,
-            name="Belas", query="rick owens belas", sources=["vinted"], interval_minutes=30
+            name="Belas",
+            query="rick owens belas",
+            sources=["vinted"],
+            interval_minutes=30,
         )
         s.add(hunt)
         s.add(HiddenRow(user_id=uid, kind="seller", value="Bad Seller"))
@@ -184,3 +187,44 @@ async def test_price_drop_alerts(sessions: async_sessionmaker[AsyncSession]) -> 
     assert await check("170") == 0  # already told you
     assert await check("150") == 1  # dropped again
     assert await check(None) == 0  # sold/gone: no alert, listing deactivated
+
+
+async def test_a_vinted_404_marks_the_saved_item_sold_once(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    """A Vinted item that 404s is gone for good: mark it sold and stop asking (it used to be
+    retried every 30 minutes and after every restart)."""
+    from rack.models import ListingRow
+    from rack.sources.base import SourceGone
+    from rack.sources.vinted import ItemDetails, VintedAdapter
+
+    class GoneVinted(VintedAdapter):
+        def __init__(self) -> None:
+            super().__init__(min_interval=0)
+            self.asked = 0
+
+        async def item_details(self, url: str) -> ItemDetails:
+            self.asked += 1
+            raise SourceGone("Vinted item no longer exists (404)")
+
+    settings = Settings(rack_price_check_hours=6)
+    item = listing("77", "Balenciaga plaid bomber", price="120")
+    item.source, item.url = "vinted", "https://www.vinted.co.uk/items/77-balenciaga-bomber"
+    async with sessions() as s:
+        [lid] = await upsert_listings(s, [item])
+        uid = await db_owner(s)
+        s.add(SavedRow(user_id=uid, listing_id=lid, price_gbp_at_save=Decimal(120)))
+        row = await s.get(ListingRow, lid)
+        assert row is not None
+        row.last_seen_at = datetime.now(UTC) - timedelta(hours=7)
+        await s.commit()
+
+    vinted = GoneVinted()
+    assert await check_saved_prices(sessions, {"vinted": vinted}, settings, [FakeChannel()]) == 0
+    assert await check_saved_prices(sessions, {"vinted": vinted}, settings, [FakeChannel()]) == 0
+    assert vinted.asked == 1  # not asked again
+    async with sessions() as s:
+        row = await s.get(ListingRow, lid)
+        saved = await s.get(SavedRow, (uid, lid))
+    assert row is not None and row.active is False
+    assert saved is not None and saved.price_checked_at is not None
