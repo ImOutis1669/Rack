@@ -278,7 +278,7 @@ on working with nothing to change.
 4. Open `https://outis.tail2b624f.ts.net` on your iPhone. You should still be logged in, with
    your feed, Saved and wardrobe photos. If anything looks wrong, section 13 has the way back.
 
-From the gaming PC, `ssh <username>@outis` now reaches the server.
+From the gaming PC, `ssh <username>@outis.tail2b624f.ts.net` now reaches the server. Use the full name: the gaming PC is itself called "Outis" in Windows, so a bare `outis` points back at the PC.
 
 Rack's port 8000 only listens on the server itself (`127.0.0.1`), so Tailscale is the only way
 in: nothing on your home network or the internet can reach Rack directly.
@@ -307,7 +307,7 @@ A backup on the same disk doesn't survive the disk dying. Now and then, copy the
 the gaming PC (PowerShell):
 
 ```powershell
-scp <username>@outis:~/rack/backups/rack-*.dump C:\dev\rack\backups\
+scp <username>@outis.tail2b624f.ts.net:~/rack/backups/rack-*.dump C:\dev\rack\backups\
 ```
 
 ---
@@ -324,7 +324,7 @@ docker compose up -d --build
 ```
 
 Migrations run by themselves when the API starts. I (Claude) can do this for you from the gaming
-PC over Tailscale SSH (`ssh <username>@outis "cd ~/rack && git pull && docker compose up -d --build"`)
+PC over Tailscale SSH (`ssh <username>@outis.tail2b624f.ts.net "cd ~/rack && git pull && docker compose up -d --build"`)
 once the server is set up.
 
 Every month or two, free space taken by old builds:
