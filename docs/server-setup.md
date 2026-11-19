@@ -338,6 +338,24 @@ df -h /
 
 ## 12. Day-to-day
 
+**Rack at a glance.** Add these lines to the end of `~/.bashrc` on the server (`nano ~/.bashrc`):
+
+```bash
+# Rack shortcuts (docs/server-setup.md section 12)
+alias rack-status="~/rack/scripts/rack-status.sh"
+alias rack-live="~/rack/scripts/rack-live.sh"
+# a Rack summary under the welcome text when you log in over SSH
+if [[ $- == *i* && -n ${SSH_TTY:-} && -z ${TMUX:-} ]]; then ~/rack/scripts/rack-status.sh; fi
+```
+
+Every SSH login then shows whether Rack is running, how many listings it has (and how many came
+in today and in the last hour), the last search and what each site returned, each site's health,
+when your feed was last re-ranked, a running Vinted import, the last backup, and the server's
+load, memory, disk and temperature. `rack-status` shows it again; **`rack-live`** follows Rack's
+activity as it happens (searches in cyan, re-ranking in green, hunts in magenta, imports and
+warnings in yellow, errors in red; Ctrl+C to stop; `rack-live 2h` starts two hours back).
+
+
 | You want to | Do |
 |---|---|
 | See if Rack is running | `cd ~/rack && docker compose ps` |
