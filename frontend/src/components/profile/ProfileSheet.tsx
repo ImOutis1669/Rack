@@ -17,6 +17,7 @@ import { SourcesList } from "../SourcesButton";
 import { toast } from "../Toast";
 import { Button, Group, Input, Menu, Row, Sheet } from "../ui";
 import { Avatar } from "./Avatar";
+import { usePasteImages } from "../../lib/pasteImages";
 
 /** Signed out (log out, everywhere, or account deleted): drop everything this browser holds for
  *  the account and start the app again at the login screen. A full reload is the only way to be
@@ -143,6 +144,8 @@ function Header({ account }: { account: Account }) {
   const remove = useMutation({ mutationFn: api.removeAvatar, onSuccess: done });
   const busy = upload.isPending || remove.isPending;
   const choose = () => file.current?.click();
+  // Ctrl+V / Cmd+V with Profile open: the pasted image becomes your photo
+  usePasteImages((pasted) => upload.mutate(pasted[0]), !busy);
   return (
     <section className="flex flex-col items-center gap-1 pt-1 text-center">
       <Menu
@@ -153,6 +156,7 @@ function Header({ account }: { account: Account }) {
             {...p}
             onClick={account.avatar ? p.onClick : choose}
             aria-label={account.avatar ? "Change or remove photo" : "Add a photo"}
+            title="Choose a photo, or paste one"
             className={cn("press relative mb-2 rounded-full", busy && "opacity-50")}
             disabled={busy}
           >

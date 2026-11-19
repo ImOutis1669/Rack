@@ -105,6 +105,9 @@ add a Cloudflare rate limit on `/api/auth/*` (audit RACK-25).
   wishlist's "Describe it" was hidden); feed tiles no longer go blank and untappable while
   scrolling; the Filters sheet has the category chips, so you can change category from deep in
   the feed.
+- **Paste photos on the web (19 November):** Ctrl+V / ⌘V a screenshot or a copied image on the
+  Wardrobe page (opens "Add to …" with it, or adds it if open; up to 20, with previews you can
+  remove) or with Profile open (it becomes your photo). Very large pastes are shrunk to fit.
 - Rebuilding the server runs migration 0022 and re-scores everyone's feed.
 
 ## Numbers

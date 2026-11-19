@@ -160,6 +160,10 @@ Listing sheet (iOS step 5, checked on the user's iPhone):
   "Show all" (a full sheet; iPhone: a pushed page) when there are more than 12, and a close button
   that hides it until the next refresh. Its listings aren't repeated in the grid below. Tiles are
   the feed's own (web 144 / 176 px wide, iPhone 150 pt), scrolling sideways with snap.
+- **Paste photos (web):** Ctrl+V / ⌘V works wherever a photo goes in (`lib/pasteImages.ts`).
+  On Wardrobe it opens "Add to …" with the pasted photos, or adds them if it's open; chosen
+  photos show as 64 px previews with a remove badge. With Profile open, a pasted image becomes
+  your photo. Text pastes are untouched; a paste over 10 MB is re-saved as a JPEG (2560 px).
 - Settings (taste, sizes, budget, alerts, hidden) is reached from Profile.
 - The feed is titled **Rack** (the app name) on iPhone; on desktop the "Rack" wordmark in the bar
   is its title and the feed has no large heading. The sort menu keeps "For you".

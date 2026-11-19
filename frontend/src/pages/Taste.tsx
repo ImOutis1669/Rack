@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { TasteKind } from "@rack/shared/types";
 import { PageShell } from "../components/AppShell";
@@ -7,6 +7,10 @@ import { TasteItemSheet, TasteTile } from "../components/TasteItemView";
 import { Button, EmptyState, Field, IconButton, Input, Segmented, Sheet, Skeleton } from "../components/ui";
 import { WardrobeSummary } from "../components/WardrobeValue";
 import { Icon } from "../components/icons/Icon";
+import { usePasteImages } from "../lib/pasteImages";
+
+const MAX_FILES = 20; // backend api/taste.py MAX_FILES
+const addFiles = (have: File[], more: File[]) => [...have, ...more].slice(0, MAX_FILES);
 
 const COPY: Record<TasteKind, string> = {
   wardrobe: "Photos of clothes you own and love. Rack looks for things that look like them.",
@@ -17,7 +21,13 @@ export function Taste() {
   const [kind, setKind] = useState<TasteKind>("wardrobe");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const qc = useQueryClient();
+  // Ctrl+V / Cmd+V on the page: open "Add to …" with the pasted photos (the sheet handles its own)
+  usePasteImages((pasted) => {
+    setFiles((have) => addFiles(have, pasted));
+    setAdding(true);
+  }, !adding && openId == null);
   const items = useQuery({
     queryKey: ["taste", kind],
     queryFn: () => api.taste(kind),
@@ -81,6 +91,8 @@ export function Taste() {
       <AddSheet
         open={adding}
         kind={kind}
+        files={files}
+        setFiles={setFiles}
         onClose={() => setAdding(false)}
         onAdded={() => {
           setAdding(false);
@@ -91,18 +103,34 @@ export function Taste() {
   );
 }
 
-function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: TasteKind; onClose: () => void; onAdded: () => void }) {
+function AddSheet({
+  open,
+  kind,
+  files,
+  setFiles,
+  onClose,
+  onAdded,
+}: {
+  open: boolean;
+  kind: TasteKind;
+  files: File[];
+  setFiles: (update: (have: File[]) => File[]) => void;
+  onClose: () => void;
+  onAdded: () => void;
+}) {
   const [note, setNote] = useState("");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement>(null);
+  usePasteImages((pasted) => setFiles((have) => addFiles(have, pasted)), open);
+  const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
   const done = () => {
     setNote("");
     setUrl("");
     setText("");
-    setFiles([]);
+    setFiles(() => []);
     if (picker.current) picker.current.value = "";
     onAdded();
   };
@@ -121,7 +149,11 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
             accept="image/*"
             multiple
             className="hidden"
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+            onChange={(e) => {
+              const chosen = Array.from(e.target.files ?? []);
+              e.target.value = ""; // choosing the same photo again still adds it
+              setFiles((have) => addFiles(have, chosen));
+            }}
           />
           <button
             onClick={() => picker.current?.click()}
@@ -129,8 +161,29 @@ function AddSheet({ open, kind, onClose, onAdded }: { open: boolean; kind: Taste
           >
             <Icon name="add-photo" size={26} className="text-muted" />
             <span className="text-body font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} chosen` : "Choose photos"}</span>
-            <span className="text-caption text-muted">From your camera roll or files. Up to 20 at once.</span>
+            <span className="text-caption text-muted">
+              From your camera roll or files, or paste with {navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl+"}V. Up to 20 at once.
+            </span>
           </button>
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2" aria-label="Chosen photos">
+              {previews.map((src, i) => (
+                <button
+                  key={src}
+                  type="button"
+                  aria-label={`Remove ${files[i]?.name ?? "photo"}`}
+                  title="Remove"
+                  onClick={() => setFiles((have) => have.filter((_, j) => j !== i))}
+                  className="press relative size-16 overflow-hidden rounded-lg bg-fill"
+                >
+                  <img src={src} alt="" className="size-full object-cover" />
+                  <span className="absolute top-1 right-1 inline-flex size-5 items-center justify-center rounded-full bg-black/60 text-white">
+                    <Icon name="close" size={11} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           <Input placeholder="Name (optional), e.g. black Margiela derbies" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button variant="primary" className="w-full" disabled={!files.length || upload.isPending} onClick={() => upload.mutate()}>
             {upload.isPending ? "Uploading" : "Add photos"}
