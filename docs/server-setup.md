@@ -361,3 +361,62 @@ df -h /
   and the gaming PC back to `outis`. Then in PowerShell on the gaming PC run
   `cd C:\dev\rack; docker compose up -d`, then `tailscale serve --bg 8000`. It comes back exactly
   as it was at the moment of the backup in 7a.
+
+---
+
+## 14. Optional: reach Rack without Tailscale (Cloudflare Tunnel)
+
+Tailscale already gives you Rack anywhere, privately. A Cloudflare Tunnel puts Rack on a normal
+web address (for example `https://rack.yourdomain.com`) so it also opens on devices without
+Tailscale. Nothing is opened on your router, but the address *is* on the internet, so this
+section adds Cloudflare Access in front: only your email can get past it.
+
+**You need a domain on Cloudflare.** Buy one in the Cloudflare dashboard (Domain Registration,
+about £8-10 a year for a `.com`), or add one you own and switch its nameservers to Cloudflare.
+
+### 14a. Create the tunnel (Cloudflare dashboard)
+1. **Zero Trust** (left menu). The first time, pick a team name and the **Free** plan (up to 50
+   users; it may ask for a card even on the free plan).
+2. **Networks > Tunnels > Create a tunnel > Cloudflared.** Name it `rack`.
+3. On "Install and run a connector", choose **Docker**. Copy only the long token at the end of
+   the command shown (after `--token`). Don't run that command: Rack's compose file already has
+   the connector.
+4. **Public hostname:** subdomain `rack`, your domain; **Service: HTTP**, URL **`api:8000`**.
+   Save.
+
+### 14b. Start the connector (server)
+```bash
+cd ~/rack
+nano .env.tunnel          # one line: TUNNEL_TOKEN=<the token>
+chmod 600 .env.tunnel
+nano .env                 # set RACK_PUBLIC_URL=https://rack.<yourdomain> (RACK_COOKIE_SECURE stays true)
+docker compose --profile tunnel up -d
+docker compose logs --tail 20 cloudflared     # "Registered tunnel connection" x4
+```
+From now on, start and update Rack with `--profile tunnel`, for example
+`docker compose --profile tunnel up -d --build`, or the tunnel stops at the next update.
+
+`RACK_PUBLIC_URL` is only used for the links in alerts and invites. The Tailscale address keeps
+working as before.
+
+### 14c. Put Cloudflare Access in front (do this before using the address)
+1. **Zero Trust > Access > Applications > Add an application > Self-hosted.**
+2. Name `Rack`, domain `rack.<yourdomain>`, session duration **1 month**.
+3. Policy: **Allow**, *Include > Emails >* your email address. Login method: **One-time PIN**.
+4. Save. Opening the address now asks for your email, sends a code, and only then shows Rack's
+   own login. Anyone else never reaches Rack at all.
+
+**The iPhone app keeps using the Tailscale address.** Access's email login is a web page the app
+can't show. Keep the app's server set to `https://outis.tail2b624f.ts.net` and use the new
+address in browsers.
+
+### 14d. Slow down password guessing (security audit RACK-25)
+**Your domain > Security > WAF > Rate limiting rules > Create rule:** when the URI path starts with
+`/api/auth/`, the same IP, more than 10 requests in 10 seconds, **Block**. The free plan allows one
+rule, and this is the one to have. (Rack also limits logins itself: 5 tries per address and per
+username, 60 in total per 15 minutes.)
+
+### 14e. Check it
+- In a private browser window, `https://rack.<yourdomain>` asks for your email first.
+- After the code, Rack's login appears; log in as usual.
+- To turn the tunnel off again: `docker compose stop cloudflared`.
